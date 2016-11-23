@@ -16,6 +16,8 @@ for k,v in pairs(config.networks) do
     if networks[k].get_oauth_url then
       networks[k].redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/' .. k
     end
+  else
+    ngx.log(ngx.ERROR,helper)
   end
 end
 

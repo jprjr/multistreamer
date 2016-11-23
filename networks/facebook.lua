@@ -76,7 +76,7 @@ function M.get_oauth_url(user)
       state = encode_base64(encode_with_secret({ id = user.id })),
       redirect_uri = M.redirect_uri,
       client_id = facebook_config.app_id,
-      scope = 'user_videos,publish_actions,manage_pages,publish_pages',
+      scope = 'user_events,user_managed_groups,publish_actions,manage_pages,publish_pages',
     })
 end
 
