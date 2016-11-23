@@ -163,6 +163,7 @@ see http://leafo.net/lapis/reference/configuration.html for details.
 One of the more important items in the config file is the `networks` section,
 right now the supported networks are:
 
+* `facebook` - supports profiles and pages, auto-creates live video, pushes video.
 * `rtmp` - just push video to an RTMP URL
 * `twitch` - supports editing/updating channel information and pushing video
 
