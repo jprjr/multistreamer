@@ -10,6 +10,28 @@ It also allows for updating their stream's metadata (stream title,
 description, etc) from a single page, instead of logging into multiple
 services.
 
+
+## Table of Contents
+
+* [Requirements](#requirements)
+* [Installation](#installation)
+  + [Install OpenResty with RTMP](#install-openresty-with-rtmp)
+  + [Alternative: Install nginx with Lua and rtmp](#alternative-install-nginx-with-lua-and-rtmp)
+  + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
+  + [Setup Authentication Server](#setup-authentication-server)
+  + [Clone and setup](#clone-and-setup)
+  + [Install Lua modules](#install-lua-modules)
+  + [Initialize the database](#initialize-the-database)
+* [Usage](#usage)
+  + [Start the server](#start-the-server)
+  + [Web Usage](#web-usage)
+* [Reference](#reference)
+  + [`bin/multistreamer` usage:](#binmultistreamer-usage)
+  + [Alternative install options:](#alternative-install-options)
+    - [Remove Bash dependency](#remove-bash-dependency)
+    - [Remove some module dependencies](#remove-some-module-dependencies)
+* [Licensing](#licensing)
+
 ## Requirements
 
 * nginx with some modules:
