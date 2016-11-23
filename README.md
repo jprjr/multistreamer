@@ -30,6 +30,7 @@ services.
   + [Alternative install options:](#alternative-install-options)
     - [Remove Bash dependency](#remove-bash-dependency)
     - [Remove some module dependencies](#remove-some-module-dependencies)
+* [Wishlist](#wishlist)
 * [Licensing](#licensing)
 
 ## Requirements
@@ -299,6 +300,13 @@ cd /path/to/multistreamer
 exec nginx -p /some/directory/ -c /path/to/nginx.conf
 ```
 
+## Wishlist
+
+Here's some features I'm hoping to add:
+
+* More networks
+* Unified Chat Interface - allow a user to view all comments/chat/messages/etc in a single location
+  * maybe as an IRC interface with a Lua TCP module?
 
 ## Licensing
 
