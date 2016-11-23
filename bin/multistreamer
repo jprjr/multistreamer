@@ -102,4 +102,4 @@ if [ -e "${install_dir}/lua_modules" ] ; then
 fi
 
 cd "${install_dir}"
-exec ${lua_impl} "${install_dir}/bin/multistreamer.lua" "$@"
+exec "${lua_bin}" "${install_dir}/bin/multistreamer.lua" "$@"
