@@ -1,8 +1,5 @@
 # multistreamer
 
-**WORK IN PROGRESS** - this is not yet usable, this README
-is more "wish-list" than README right now.
-
 This is a tool for simulcasting RTMP streams to multiple services.
 
 It allows users to add accounts for their favorite streaming services,

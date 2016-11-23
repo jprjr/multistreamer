@@ -10,13 +10,11 @@ end
 local posix = require'posix'
 local len = string.len
 local exit = os.exit
-local lfs = require'lfs'
 local etlua = require'etlua'
 local insert = table.insert
 local whereami = require'whereami'
 local StreamModel = require'models.stream'
 
-local lua_bin = whereami()
 local script_path = posix.realpath(arg[0])
 local streamer_dir = posix.dirname(posix.dirname(script_path))
 posix.chdir(streamer_dir)
@@ -61,12 +59,15 @@ config.public_rtmp_url = config.public_rtmp_url:gsub('/+$','')
 config.private_http_url = config.private_http_url:gsub('/+$','')
 config.private_rtmp_url = config.private_rtmp_url:gsub('/+$','')
 
-config.lua_package_path = package.path;
-config.lua_package_cpath = package.cpath;
-config.lua_bin = lua_bin
-config.script_path = script_path;
 
 if(arg[1] == 'run') then
+  local whereami = require'whereami'
+  local lua_bin = whereami()
+  local lfs = require'lfs'
+
+  config.lua_bin = lua_bin
+  config.script_path = script_path;
+
   if not config.work_dir then
     config.work_dir = getenv('HOME') .. '/.multistreamer'
   end
