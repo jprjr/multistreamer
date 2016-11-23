@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -e
+
+# handy functions {{{
+function abspath_portable() {
+    # BSD readlink is different from GNU readlink, ugh.
+    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+}
+
+function is_integer?() {
+    [[ $@ =~ ^-?[0-9]+$ ]]
+}
+
+function abs_path() {
+    local abs_path=$(abspath_portable "$0")
+    printf "%s\n" "${abs_path}"
+}
+
+function script_abs_path() {
+    local abs_path=$(abs_path)
+    local script_abs_path=$(readlink "${abs_path}" || printf "%s\n" "${abs_path}")
+    printf "%s\n" "${script_abs_path}"
+}
+
+function script_dir() {
+    local abs_path=$(abs_path)
+    local script_dir=$(dirname "${abs_path}")
+    printf "%s\n" "${script_dir}"
+}
+
+function script_abs_dir() {
+    local abs_path=$(abs_path)
+    local script_abs_path=$(script_abs_path)
+    local script_abs_dir=$(cd "$(dirname "${script_abs_path}")" && pwd -P)
+    printf "%s\n" "${script_abs_dir}"
+}
+
+function script_name() {
+    local abs_path=$(abs_path)
+    local script_abs_dir=$(script_abs_dir)
+    local script_name="${abs_path#$script_abs_dir/}"
+    printf "%s\n" "${script_name}"
+}
+
+function script_abs_name() {
+    local script_abs_path=$(script_abs_path)
+    local script_abs_dir=$(script_abs_dir)
+    local script_abs_name="${script_abs_path#$script_abs_dir/}"
+    printf "%s\n" "${script_abs_name}"
+}
+# }}}
+
+function usage() { # {{{
+    printf "Usage:\n %s [-h] -e environment [-l /path/to/lua]\n" "$(script_name)"
+    printf "  -h                - show this help\n"
+    printf "  -e <environment>  - use environment from config.lua\n"
+    printf "  -l </path/to/lua> - specify lua binary\n"
+} # }}}
+
+install_dir=$(dirname $(script_abs_dir))
+
+while getopts "he:l:" opt; do
+    case "$opt" in
+        e) lapis_env=$OPTARG ;;
+        l) lua_bin=$OPTARG ;;
+        h) usage ; exit ;;
+        \?) usage; exit ;;
+        :) printf "Option -%s requires in argument\n" "${OPTARG}" >&2 ; exit 1;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+if [ -z "${lapis_env}" ] ; then
+    usage
+    exit 1
+fi
+
+export LAPIS_ENVIRONMENT=${lapis_env}
+
+if [ -z "${lua_bin}" ] ; then
+    if command -v lua >/dev/null 2>&1; then
+        if lua -e 'return true' ; then
+            lua_bin=lua
+        fi
+    elif command -v luajit >/dev/null 2>&1; then
+        if luajit -e 'return true' ; then
+            lua_bin=luajit
+        fi
+    else
+        printf "Unable to find a suitable lua - please specify with -l /path/to/lua\n"
+        exit 1
+    fi
+fi
+
+lua_bin=$(command -v ${lua_bin})
+
+if [ -e "${install_dir}/lua_modules" ] ; then
+    lua_major_ver=$(${lua_bin} -e "print(_VERSION:match('%d+%.%d+'))")
+    export LUA_PATH="${install_dir}/lua_modules/share/lua/${lua_major_ver}/?.lua;${install_dir}/lua_modules/share/lua/${lua_major_ver}/?/init.lua;./?.lua;"
+    export LUA_CPATH="${install_dir}/lua_modules/lib/lua/${lua_major_ver}/?.so;"
+fi
+
+cd "${install_dir}"
+exec ${lua_impl} "${install_dir}/bin/multistreamer.lua" "$@"

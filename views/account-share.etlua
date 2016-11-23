@@ -1,0 +1,18 @@
+<h3>Share Account</h3>
+
+<p>Sharing settings for <%= account.name %> (<%= account.network.displayname %>)<p>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('account-share', { id = account.id }) %>" enctype="multipart/form-data">
+
+<% for _,other_user in pairs(users) do %>
+<div class="pure-control-group">
+<label for="user.<%= other_user.id %>"><%= other_user.username %></label>
+<input type="checkbox" id="user.<%= other_user.id %>" name="user.<%= other_user.id %>" <%= other_user.shared and 'checked' or '' %> />
+</div>
+<% end %>
+
+<div class="pure-controls">
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn">Update</button>
+</div>
+</form>
+

@@ -1,0 +1,57 @@
+<h3>Streams</h3>
+<ul>
+<% if #streams == 0 then %>
+<li><p>No streams created</p></li>
+<% else %>
+<% for k,v in pairs(streams) do %>
+<li><%= v.name %>:
+  <ul>
+    <li><a href="<%= url_for('stream-edit', { id = v.id })%>">Add/Remove Accounts</a></li>
+    <li><a href="<%= url_for('metadata-edit', { id = v.id }) %>">Edit Metadata</a></li>
+  </ul></li>
+<% end %>
+<% end %>
+<li><a href="<%= url_for('stream-edit')%>">Create new stream</a></li>
+</ul>
+
+
+<h3>Accounts</h3>
+
+<ul>
+<% if #accounts == 0 then %>
+<li>No connected accounts</li>
+<% else %>
+<% for k,v in pairs(accounts) do %>
+<% if v.network then %>
+
+<li><%= v.shared and '(Shared) ' or '' %><%= v.network.displayname -%>
+<% if v.name then %>: <%= v.name -%> <% end %><% if v.errors then %><span class="error">(<%= v.errors %>)</span><% end %>
+
+<ul>
+
+<% if v.network.create_form and not v.shared then %>
+<li><a href="<%= url_for('account-'..v.network.name) %>/<%= v.id %>">Edit</a></li>
+<% end %>
+
+<li><a href="<%= url_for('account-delete',{id = v.id}) %>"><%= v.shared and 'Remove' or 'Delete'%></a></li>
+
+<% if not v.shared and v.network.allow_sharing then %>
+<li><a href="<%= url_for('account-share',{id = v.id}) %>">Share</a></li>
+<% end %>
+</ul>
+</li>
+
+<% end %>
+<% end %>
+<% end %>
+
+<% for k,v in networks() do %>
+<% if v.get_oauth_url then %>
+<li>Add New <a href="<%= v.get_oauth_url(user) %>"><%= v.displayname %></a></li>
+<% else %>
+<li>Add New <a href="<%= url_for('account-'..v.name) %>"><%= v.displayname %></a></li>
+<% end %>
+<% end %>
+
+</ul>
+

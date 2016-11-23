@@ -1,0 +1,76 @@
+span.error {
+    color: red;
+}
+
+a {
+    color: #428bca;
+}
+
+.header {
+  background-color: #428bca;
+  color: #ffffff;
+}
+
+.header h1 a {
+    color: #ffffff;
+    text-decoration:none;
+}
+
+.header a {
+    color: #ffffff;
+}
+
+
+.wrapper {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+
+.title {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+input[type=text], input[type=password], select, textarea {
+    width: 40em;
+    max-width: 100%;
+    -ms-box-sizing:content-box;
+    -moz-box-sizing:content-box;
+    box-sizing:content-box;
+    -webkit-box-sizing:content-box;
+}
+
+textarea {
+    height: 15em;
+}
+
+.closebtn {
+    font-weight: bold;
+    float: right;
+    cursor: pointer;
+}
+
+.closebtn:hover {
+    color: #000000;
+}
+
+div.msg {
+    width: 50%;
+    font-weight: bold;
+    color: #ffffff;
+    padding: .5em;
+}
+
+div.msg.msg-success {
+    background-color: #0fc436;
+}
+div.msg.msg-error {
+    background-color: #c40f18;
+}
+ 
+li {
+    padding-top: .25em;
+    padding-bottom: .25em;
+}

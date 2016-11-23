@@ -1,0 +1,16 @@
+<% if account.shared then %>
+<h3>Remove Account</h3>
+<p>This will remove account <%= account.name %> (<%= account.network.displayname %>) from your list of available accounts</p>
+<% else %>
+<h3>Delete Account</h3>
+<p>This will delete account <%= account.name %> (<%= account.network.displayname %>)</p>
+<% end %>
+
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('account-delete', { id = account.id }) %>" enctype="multipart/form-data">
+
+<div class="pure-controls">
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn"><%= account.shared and 'Remove' or 'Delete' %></button>
+</div>
+</form>
+

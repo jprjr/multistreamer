@@ -1,0 +1,19 @@
+<p>Login</p>
+
+<form class="pure-form pure-form-aligned" id="login_form" method="post" action="<%= url_for('login') %>">
+
+<fieldset>
+
+<div class="pure-control-group"><label for="username">Username</label>
+<input type="text" name="username"></div>
+
+<div class="pure-control-group"><label for="password">Password</label>
+<input type="password" name="password"></div>
+
+<div class="pure-controls">
+<button type="submit" class="pure-button pure-button-primary">Login</button>
+</div>
+
+</fieldset>
+
+</form>

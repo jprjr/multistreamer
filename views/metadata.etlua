@@ -1,0 +1,85 @@
+<h3>Edit Metadata</h3>
+
+<p><strong>RTMP URL</strong> <code><%= public_rtmp_url %>/<%= rtmp_prefix %></code></p>
+<p><strong>Stream Key</strong> <code><%= stream.uuid %></code></p>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('metadata-edit')..stream.id %>" enctype="multipart/form-data">
+
+<div class="pure-control-group"><label for="title">Title</label>
+<input type="text" id="title" name="title" <% if stream:get('title') then %>value="<%= stream:get('title') %>"<% end %> /></div>
+
+<div class="pure-control-group"><label for="description">Description</label>
+<textarea id="description" name="description"><% if stream:get('description') then %><%= stream:get('description') %><% end %></textarea></div>
+
+<div class="pure-control-group"><label>Copy above fields to below fields</label>
+<button id="copyDownBtn" type="button" class="pure-button">Copy</button>
+</div>
+
+<% for _,account in pairs(accounts) do %>
+<h4><%= account.name %> (<%= account.network.displayname %>) Settings</h4>
+<% local metadata_form, err = account.network.metadata_form(account:get_keystore(),stream:get_stream_account(account):get_keystore()) %>
+
+<% if err then %>
+<p>Error loading form for this account. Error: <%= err %></p>
+<% elseif metadata_form then %>
+<% for i,v in ipairs(metadata_form) do %>
+<div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= v.label %></label>
+
+<% if v.type == 'text' then %>
+<input type="text" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> />
+
+<% elseif v.type == 'textarea' then %>
+<textarea id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>"><%= v.value ~= nil and v.value or '' %></textarea>
+
+<% elseif v.type == 'select' then %>
+<select id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>">
+<option value="" disabled <% if not v.value then %>selected<% end %>>Select</option>
+<% for i,o in ipairs(v.options) do %>
+<option value="<%= o.value %>" <%= o.value == v.value and 'selected' or '' %>><%= o.label %></option>
+<% end %>
+</select>
+<% end %>
+</div>
+<% end %>
+
+<% else %>
+<p>No settings for this account</o>
+<% end %>
+<% end %>
+
+<div class="pure-controls">
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn">Submit</button>
+</div>
+</form>
+
+<script type="text/javascript">
+var copyDownBtn = document.getElementById('copyDownBtn');
+var titleKeys = [];
+var descriptionKeys = [];
+var titleInput = document.getElementById('title');
+var descriptionInput = document.getElementById('description');
+<% for _,account in pairs(accounts) do -%>
+<% local metadata_fields, err = account.network.metadata_fields() -%>
+<% if metadata_fields then -%>
+<% for _,field in pairs(metadata_fields) do -%>
+<% if field.key == 'title' then -%>
+titleKeys.push('<%= field.key %>.<%= account.id %>');
+<% elseif field.key == 'description' then -%>
+descriptionKeys.push('<%= field.key %>.<%= account.id %>');
+<% end -%>
+<% end -%>
+<% end -%>
+<% end -%>
+copyDownBtn.onclick = function() {
+  titleKeys.forEach(function(k) {
+    var a = document.getElementById(k);
+    a.value = titleInput.value;
+  });
+  descriptionKeys.forEach(function(k) {
+    var a = document.getElementById(k);
+    a.value = descriptionInput.value;
+  });
+}
+
+
+</script>

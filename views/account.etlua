@@ -1,0 +1,27 @@
+<% if account then %>
+<h3>Edit <%= network.displayname %> Account</h3>
+<% else %>
+<h3>Create <%= network.displayname %> Account</h3>
+<% end %>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('account-'..network.name) %><% if account then %>/<%= account.id %><% end %>">
+
+<% for i,v in ipairs(network.create_form()) do %>
+<% local value ; if account then value = account:get(v.key) end  %>
+<div class="pure-control-group"><label for="<%= v.key %>"><%= v.label %></label>
+<% if v.type == "text" then %>
+<input type="text" name="<%= v.key %>" <% if value then %>value="<%= value %>"<% end%> />
+<% elseif v.type == 'textarea' then %>
+<textarea name="<%= v.key %>"><% if value then %><%= value %><% end %></textarea>
+<% end %>
+</div>
+
+
+<% end %>
+
+<div class="pure-control-group"><label>Save</label>
+<input class="pure-button" type="submit" value="Submit" id="submitBtn" />
+</div>
+</form>
+
+

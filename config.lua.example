@@ -1,0 +1,106 @@
+local config = require('lapis.config').config
+
+config({'development','production'}, {
+  -- name of the cookie used to store session data
+  session_name = 'multistreamer',
+
+  -- key for encrypting session data
+  secret = 'CHANGEME',
+
+  -- whether to log queries and requests
+  logging = {
+      queries = true,
+      requests = true,
+  },
+
+  -- if deploying somewhere other than the root of a domain,
+  -- set this to your prefix (ie, '/multistreamer')
+  http_prefix = '',
+
+  -- set an rtmp prefix
+  -- note: this can only be a single string,
+  -- no slashes etc
+  -- defaults to 'multistreamer' if unset
+  rtmp_prefix = 'multistreamer',
+
+  -- path to your nginx+lua+rtmp binary
+  nginx = '/usr/sbin/nginx',
+
+  -- path to psql
+  psql = '/usr/bin/psql',
+
+  -- path to ffmpeg
+  ffmpeg = '/usr/bin/ffmpeg',
+
+  -- set your logging level
+  log_level = 'debug',
+
+  -- setup your external urls (without prefixes)
+  public_http_url = 'http://example.com',
+  public_rtmp_url = 'rtmp://example.com:1935',
+
+  -- setup your private (loopback) urls (without prefixes)
+  private_http_url = 'http://127.0.0.1:8081',
+  private_rtmp_url = 'rtmp://127.0.0.1:1935',
+
+  -- configure streaming networks/services
+  -- you'll need to register a new app with each
+  -- service and insert keys/ids in here
+
+  -- 'rtmp' just stores RTMP urls and has no config,
+  -- besides just a true/false
+  -- 'twitch' requires a client_id and client_secret
+  networks = {
+    twitch = {
+      client_id = 'client_id',
+      client_secret = 'client_secret',
+    },
+    facebook = {
+      app_id = 'app_id',
+      app_secret = 'app_secret',
+    },
+    rtmp = true,
+  },
+
+  -- postgres connection settings
+  postgres = {
+    host = '127.0.0.1',
+    user = 'multistreamer',
+    password = 'multistreamer',
+    database = 'multistreamer'
+  },
+
+  -- nginx http "listen" directive, see
+  -- http://nginx.org/en/docs/http/ngx_http_core_module.html#listen
+  http_listen = '127.0.0.1:8081',
+
+  -- nginx rtmp "listen" directive, see
+  -- https://github.com/arut/nginx-rtmp-module/wiki/Directives#listen
+  rtmp_listen = '1935',
+
+  -- number of worker processes
+  worker_processes = 1,
+
+  -- http auth endpoint
+  -- multistreamer will make an HTTP request with the 'Authorization'
+  -- header to this URL when a user logs in
+  -- see http://nginx.org/en/docs/http/ngx_http_auth_request_module.html
+  -- see https://github.com/jprjr/ldap-auth-server for an LDAP implementation
+  auth_endpoint = 'http://127.0.0.1:8080/',
+
+  -- path to trusted ssl certificate store
+  ssl_trusted_certificate = '/etc/ssl/certs/ca-certificates.crt',
+
+  -- dns resolver
+  dns_resolver = '8.8.8.8',
+
+  -- maximum ssl verify depth
+  ssl_verify_depth = 5,
+
+  -- specify the run directory to hold temp files etc,
+  -- defaults to $HOME/.multistreamer if not set
+  workdir = '/path/to/some/folder',
+
+})
+
+
