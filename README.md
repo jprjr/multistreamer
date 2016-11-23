@@ -166,7 +166,7 @@ right now the supported networks are:
 * `rtmp` - just push video to an RTMP URL
 * `twitch` - supports editing/updating channel information and pushing video
 
-Each module has more details in the wiki.
+Each module has more details in the [wiki.](https://github.com/jprjr/multistreamer/wiki)
 
 ### Install Lua modules
 
@@ -224,7 +224,7 @@ Once it's been setup, you can start the server with `./bin/multistreamer -e <env
 The web interface has two fundamental concepts: "Accounts" and "Streams."
 
 A user is able to add Accounts to their profile (like a Twitch account or
-Facebook Page). The user is also able to create Streams, which generates a
+Facebook Account). The user is also able to create Streams, which generates a
 stream key for the user.
 
 Once a stream is created and an account added, the user can start associating
