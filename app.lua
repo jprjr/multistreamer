@@ -211,7 +211,23 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
 }))
 
 app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
-
+  if not self.params.name then
+    return plain_err_out(self,'Not Found')
+  end
+  local stream = Stream:find({ uuid = self.params.name })
+  if not stream then
+    return plain_err_out(self,'Not Found')
+  end
+  local sas = stream:get_streams_accounts()
+  for _,sa in pairs(sas) do
+    local account = sa:get_account()
+    account.network = networks[account.network]
+    if account.network.publish_stop then
+      account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+    end
+    sa:update({rtmp_url = nil})
+  end
+  return plain_err_out(self,'OK',200)
 end)
 
 app:get('site-root', config.http_prefix .. '/', function(self)
