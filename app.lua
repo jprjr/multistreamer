@@ -165,7 +165,6 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       self.stream:set('description',self.params.description)
     end
     for _,account in pairs(self.accounts) do
-      account.network = networks[account.network]
       local metadata_fields = account.network.metadata_fields()
       if not metadata_fields then metadata_fields = {} end
       for i,field in pairs(metadata_fields) do
