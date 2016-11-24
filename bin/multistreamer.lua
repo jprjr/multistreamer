@@ -1,6 +1,8 @@
 #!/usr/bin/env lua
 
 local getenv = os.getenv
+local exit = os.exit
+
 local multistreamer_env = getenv('LAPIS_ENVIRONMENT')
 if not multistreamer_env then
   print('LAPIS_ENVIRONMENT not set')
@@ -9,7 +11,6 @@ end
 
 local posix = require'posix'
 local len = string.len
-local exit = os.exit
 local etlua = require'etlua'
 local insert = table.insert
 local whereami = require'whereami'
@@ -107,10 +108,15 @@ if(arg[1] == 'run') then
   nof:write(template(config))
   nof:close()
 
-  posix.exec(config.nginx, { '-p', config.work_dir, '-c', 'nginx.'..multistreamer_env..'.conf' })
+  local _, err = posix.exec(config.nginx, { '-p', config.work_dir, '-c', 'nginx.'..multistreamer_env..'.conf' })
+  -- if we get here it's an error
+  print(err)
+  exit(1)
 
 elseif(arg[1] == 'psql') then
-  posix.exec(config.psql, { '-U', config.postgres.user, '-h' , config.postgres.host })
+  local _, err = posix.exec(config.psql, { '-U', config.postgres.user, '-h' , config.postgres.host })
+  print(err)
+  exit(1)
 
 elseif(arg[1] == 'initdb') then
   for i,f in ipairs(sql_files) do
@@ -119,7 +125,9 @@ elseif(arg[1] == 'initdb') then
       print(errmsg)
       exit(1)
     elseif pid == 0 then
-      posix.exec(config.psql, { '-U', config.postgres.user, '-h' , config.postgres.host, '-f', f })
+      local _, err = posix.exec(config.psql, { '-U', config.postgres.user, '-h' , config.postgres.host, '-f', f })
+      print(err)
+      exit(1)
     else
       posix.wait(pid)
     end
@@ -153,7 +161,9 @@ elseif(arg[1] == 'push') then
     insert(ffmpeg_args,sa.rtmp_url)
   end
 
-  posix.exec(config.ffmpeg,ffmpeg_args)
+  local _, err = posix.exec(config.ffmpeg,ffmpeg_args)
+  print(err)
+  exit(1)
 
 end
 
