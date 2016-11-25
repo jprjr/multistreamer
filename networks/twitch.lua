@@ -74,6 +74,30 @@ local function twitch_api_client(access_token)
 
 end
 
+local function update_ingest_endpoints(account)
+  local endpoints = account:get('endpoints')
+  if endpoints then
+    endpoints = from_json(endpoints)
+    return endpoints, nil
+  else
+    local tclient = twitch_api_client(account:get('token'))
+    local res, err = tclient:get('/ingests/')
+    if err then
+      return false, err
+    end
+    endpoints = {}
+    for _,v in pairs(res.ingests) do
+      local k = format('%d',v._id)
+      endpoints[k] = {
+        name = v.name,
+        url_template = v.url_template,
+      }
+    end
+    account:set('endpoints',to_json(endpoints),  864000 )
+    return endpoints, nil
+  end
+end
+
 function M.metadata_fields()
   return {
     [1] = {
@@ -105,34 +129,14 @@ function M.metadata_form(account, stream)
   end
   form[3].options = {}
 
-  local endpoints = account:get('endpoints')
-  if endpoints then
-    endpoints = from_json(endpoints)
-    for k,v in pairs(endpoints) do
-      insert(form[3].options, {
-        value = k,
-        label = v.name
-      })
-    end
-  else
-    local tclient = twitch_api_client(account:get('token'))
-    local res, err = tclient:get('/ingests/')
-    if err then
-      return false, err
-    end
-    endpoints = {}
-    for _,v in pairs(res.ingests) do
-      local k = format('%d',v._id)
-      endpoints[k] = {
-        name = v.name,
-        url_template = v.url_template,
-      }
-      insert(form[3].options, {
-        value = k,
-        label = v.name
-      })
-    end
-    account:set('endpoints',to_json(endpoints), 10080)
+  local endpoints, err = update_ingest_endpoints(account)
+  if err then return false, err end
+
+  for k,v in pairs(endpoints) do
+    insert(form[3].options, {
+      value = k,
+      label = v.name
+    })
   end
 
   sort(form[3].options,function(a,b)
@@ -142,59 +146,6 @@ function M.metadata_form(account, stream)
   return form, nil
 end
 
-function M.publish_start(account, stream)
-  local tclient = twitch_api_client(account:get('token'))
-
-  local res, err = tclient:put('/channels/'..account:get('channel')..'/', {
-    channel = {
-      status = stream:get('title'),
-      game = stream:get('game'),
-    }
-  }, {
-    ['Content-Type'] = 'application/json'
-  })
-
-  if not res then
-    if type(err) == 'table' then
-      return false, err.error
-    else
-      return false, err
-    end
-  end
-
-  local endpoints = account:get('endpoints')
-  if endpoints then
-    endpoints = from_json(endpoints)
-  else
-    local tclient = twitch_api_client(account:get('token'))
-    local res, err = tclient:get('/ingests/')
-    if err then
-      return false, err
-    end
-    endpoints = {}
-    for _,v in pairs(res.ingests) do
-      local k = format('%d',v._id)
-      endpoints[k] = {
-        name = v.name,
-        url_template = v.url_template,
-      }
-    end
-    account:set('endpoints',to_json(endpoints), 10080)
-  end
-
-  local endpoint = stream:get('endpoint')
-  local stream_key = account:get('stream_key')
-
-  local rtmp_url
-
-  if endpoint and endpoints[endpoint] and stream_key then
-    rtmp_url = endpoints[endpoint].url_template:gsub('{stream_key}',stream_key)
-    return rtmp_url,nil
-  end
-
-  return false, 'unable to create rtmp url'
-
-end
 
 function M.get_oauth_url(user)
   return format('%s/oauth2/authorize?',api_uri)..
@@ -287,6 +238,48 @@ function M.register_oauth(params)
   end
 
   return account, nil
+end
+
+function M.publish_start(account, stream)
+  local endpoint = stream:get('endpoint')
+  local stream_key = account:get('stream_key')
+  local channel = account:get('channel')
+  local token = account:get('token')
+
+  local endpoints, err = update_ingest_endpoints(account)
+  if err then return false, err end
+
+  local rtmp_url
+
+  if endpoints and endpoints[endpoint] and stream_key then
+    rtmp_url = endpoints[endpoint].url_template:gsub('{stream_key}',stream_key)
+  else
+    return false, 'Unable to create rtmp_url'
+  end
+
+  local tclient = twitch_api_client(token)
+  local res, err = tclient:put('/channels/'..channel..'/', {
+    channel = {
+      status = stream:get('title'),
+      game = stream:get('game'),
+    }
+  }, {
+    ['Content-Type'] = 'application/json'
+  })
+
+  if not res then
+    if type(err) == 'table' then
+      return false, err.error
+    else
+      return false, err
+    end
+  end
+
+  return rtmp_url, nil
+end
+
+function M.publish_stop(account, stream)
+  return true
 end
 
 function M.check_errors(account)
