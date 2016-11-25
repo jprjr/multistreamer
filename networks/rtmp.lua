@@ -73,7 +73,13 @@ function M.save_account(user, account, params)
 end
 
 function M.publish_start(account, stream)
-  return account:get('url')
+  local rtmp_url = account:get('url')
+
+  return rtmp_url
+end
+
+function M.publish_stop(account, stream)
+  return true
 end
 
 function M.check_errors(account)
