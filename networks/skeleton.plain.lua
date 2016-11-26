@@ -139,25 +139,3 @@ end
 
 return M
 
-
-
-
-
-function M.publish_stop(account, stream)
-  return function(dict_prefix)
-    return ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
-  end
-end
-
-function M.check_errors(account)
-  return false
-end
-
-function M.notify_update(account, stream)
-  return function()
-    return true
-  end
-end
-
-return M
-
