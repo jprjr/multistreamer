@@ -167,6 +167,7 @@ right now the supported networks are:
 * `facebook` - supports profiles and pages, auto-creates live video, pushes video.
 * `rtmp` - just push video to an RTMP URL
 * `twitch` - supports editing/updating channel information and pushing video
+* `youtube` - auto-creates live "events" and pushes video
 
 Each module has more details in the [wiki.](https://github.com/jprjr/multistreamer/wiki)
 
