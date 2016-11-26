@@ -135,5 +135,9 @@ function M.check_errors(account)
   return false,nil
 end
 
+function M.notify_update(account)
+  return true,nil
+end
+
 return M
 

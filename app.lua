@@ -1,6 +1,7 @@
 local lapis = require'lapis'
 local app = lapis.Application()
 local config = require('lapis.config').get()
+local db = require'lapis.db'
 
 local User = require'models.user'
 local Account = require'models.account'
@@ -51,6 +52,24 @@ local function require_login(self)
     return false, 'not logged in'
   end
   return true, nil
+end
+
+local function get_all_streams_accounts(uuid)
+  if not uuid then
+    return false, 'UUID not provided'
+  end
+  local stream = Stream:find({ uuid = uuid })
+  if not stream then
+    return false, 'Stream not found'
+  end
+  local sas = stream:get_streams_accounts()
+  local ret = {}
+  for _,sa in pairs(sas) do
+    local account = sa:get_account()
+    account.network = networks[account.network]
+    insert(ret, { account, sa } )
+  end
+  return ret, nil
 end
 
 app:match('login', config.http_prefix .. '/login', respond_to({
@@ -189,17 +208,13 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
-    if not self.params.name then
-      return plain_err_out(self,'Not Found')
+    local sas, err = get_all_streams_accounts(self.params.name)
+    if not sas then
+      return plain_err_out(self,err)
     end
-    local stream = Stream:find({ uuid = self.params.name })
-    if not stream then
-      return plain_err_out(self,'Not Found')
-    end
-    local sas = stream:get_streams_accounts()
-    for _,sa in pairs(sas) do
-      local account = sa:get_account()
-      account.network = networks[account.network]
+    for _,v in pairs(sas) do
+      local account = v[1]
+      local sa = v[2]
       local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
       if (not rtmp_url) or err then
         return plain_err_out(self,'Unable to start stream ('.. account.name ..'): ' .. err)
@@ -210,22 +225,37 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
  end,
 }))
 
-app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
-  if not self.params.name then
+app:match('on-update',config.http_prefix .. '/on-update', respond_to({
+  GET = function(self)
     return plain_err_out(self,'Not Found')
-  end
-  local stream = Stream:find({ uuid = self.params.name })
-  if not stream then
-    return plain_err_out(self,'Not Found')
-  end
-  local sas = stream:get_streams_accounts()
-  for _,sa in pairs(sas) do
-    local account = sa:get_account()
-    account.network = networks[account.network]
-    if account.network.publish_stop then
-      account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+  end,
+  POST = function(self)
+    local sas, err = get_all_streams_accounts(self.params.name)
+    if not sas then
+      return plain_err_out(self,err)
     end
-    sa:update({rtmp_url = nil})
+    for _,v in pairs(sas) do
+      local account = v[1]
+      local sa = v[2]
+      local ok, err = account.network.notify_update(account:get_keystore(),sa:get_keystore())
+      if not ok then
+        return plain_err_out(self,'Unable to start stream ('.. account.name ..'): ' .. err)
+      end
+    end
+    return plain_err_out(self,'OK',200)
+ end,
+}))
+
+app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
+  local sas, err = get_all_streams_accounts(self.params.name)
+  if not sas then
+    return plain_err_out(self,err)
+  end
+  for _,v in pairs(sas) do
+    local account = v[1]
+    local sa = v[2]
+    account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+    sa:update({rtmp_url = db.NULL})
   end
   return plain_err_out(self,'OK',200)
 end)

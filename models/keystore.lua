@@ -11,11 +11,11 @@ local function keystore_new(_, account_id, stream_id)
   m.stream_id = stream_id
 
   if m.account_id and m.stream_id then
-    m.query_string = 'value, extract(epoch from expires_at - now()) as expires_in from keystore where account_id = ? and stream_id = ? and key = ? and (expires_at > now() or expires_at is null)'
+    m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id = ? and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   elseif not m.stream_id then
-    m.query_string = 'value, extract(epoch from expires_at - now()) as expires_in from keystore where account_id = ? and stream_id is NULL and key = ? and (expires_at > now() or expires_at is null)'
+    m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id is NULL and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   else
-    m.query_string = 'value, extract(epoch from expires_at - now()) as expires_in from keystore where account_id is NULL and stream_id = ? and key = ? and (expires_at > now() or expires_at is null)'
+    m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id is NULL and stream_id = ? and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   end
 
   m.get_keys = function(self)

@@ -381,5 +381,9 @@ function M.check_errors(account)
   return false
 end
 
+function M.notify_update(account, stream)
+  return true, nil
+end
+
 
 return M
