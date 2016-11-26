@@ -246,13 +246,15 @@ function M.metadata_fields()
 
 end
 
-function M.publish_start(account, stream)
+function M.publish_start(account, stream, dict_prefix)
   local err = M.check_errors(account)
   if err then return false, err end
 
+  local stream_o = stream
+
   local account = account:get_all()
   local stream = stream:get_all()
-  
+
   local access_token = account.access_token
 
   local title = stream.title
@@ -268,136 +270,145 @@ function M.publish_start(account, stream)
   -- then after the video has started:
   -- transition broadcast to live (POST /liveBroadcasts/transition)
 
-  return function(dict_prefix, err_key)
-    local yt = youtube_client(access_token)
+  local yt = youtube_client(access_token)
 
-    local broadcast, err = yt:postJSON('/liveBroadcasts', {
-      part = 'id,snippet,contentDetails,status',
-    }, {
-      snippet = {
-        title = title,
-        description = description,
-        scheduledStartTime = date(true):fmt('${iso}') .. 'Z',
+  local broadcast, err = yt:postJSON('/liveBroadcasts', {
+    part = 'id,snippet,contentDetails,status',
+  }, {
+    snippet = {
+      title = title,
+      description = description,
+      scheduledStartTime = date(true):fmt('${iso}') .. 'Z',
+    },
+    status = {
+      privacyStatus = privacy,
+    },
+    contentDetails = {
+      monitorStream = {
+        enableMonitorStream = false,
+        enableEmbed = true,
       },
-      status = {
-        privacyStatus = privacy,
-      },
-      contentDetails = {
-        monitorStream = {
-          enableMonitorStream = false,
-          enableEmbed = true,
-        },
-      },
-    })
+    },
+  })
 
-    if err then
-      return ngx.shared.stream_storage:rpush(err_key, to_json(err))
-    end
-
-    local video_stream, err = yt:postJSON('/liveStreams', {
-      part = 'id,snippet,cdn,status',
-    }, {
-      snippet = {
-        title = title,
-        description = description,
-      },
-      cdn = {
-        ingestionType = 'rtmp',
-        frameRate = framerate,
-        resolution = resolution,
-      },
-    })
-
-    if err then
-      return ngx.shared.stream_storage:rpush(err_key, to_json(err))
-    end
-
-    local bind_res, err = yt:postJSON('/liveBroadcasts/bind', {
-      part = 'id, snippet, contentDetails,status',
-      id = broadcast.id,
-      streamId = video_stream.id,
-    })
-
-    if err then
-      return ngx.shared.stream_storage:rpush(err_key, to_json(err))
-    end
-
-    ngx.shared.stream_storage:set(dict_prefix .. 'broadcast_id',broadcast.id)
-    ngx.shared.stream_storage:set(dict_prefix .. 'stream_id',video_stream.id)
-    ngx.shared.stream_storage:set(dict_prefix .. 'stream_status',video_stream.status.streamStatus)
-    ngx.shared.stream_storage:set(dict_prefix .. 'http_url','https://youtu.be/' .. broadcast.id)
-
-    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',
-      video_stream.cdn.ingestionInfo.ingestionAddress .. '/' .. video_stream.cdn.ingestionInfo.streamName)
+  if err then
+    return false, to_json(err)
   end
+
+  local video_stream, err = yt:postJSON('/liveStreams', {
+    part = 'id,snippet,cdn,status',
+  }, {
+    snippet = {
+      title = title,
+      description = description,
+    },
+    cdn = {
+      ingestionType = 'rtmp',
+      frameRate = framerate,
+      resolution = resolution,
+    },
+  })
+
+  if err then
+    return false, to_json(err)
+  end
+
+  local bind_res, err = yt:postJSON('/liveBroadcasts/bind', {
+    part = 'id, snippet, contentDetails,status',
+    id = broadcast.id,
+    streamId = video_stream.id,
+  })
+
+  if err then
+    return false, to_json(err)
+  end
+
+  local ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'broadcast_id',broadcast.id)
+  if not ok then return false, err end
+
+  ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'stream_id',video_stream.id)
+  if not ok then return false, err end
+
+  ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'stream_status',video_stream.status.streamStatus)
+  if not ok then return false, err end
+
+  local rtmp_url = video_stream.cdn.ingestionInfo.ingestionAddress .. '/' .. video_stream.cdn.ingestionInfo.streamName
+  local http_url = 'https://youtu.be/' .. broadcast.id
+
+  stream_o:set('http_url',http_url)
+
+  ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
+  if not ok then return false, err end
+
+  return rtmp_url, nil
 end
 
-function M.notify_update(account, stream)
+function M.notify_update(account, stream, dict_prefix)
   local err = M.check_errors(account)
   if err then return false, err end
 
   local account = account:get_all()
   local stream = stream:get_all()
 
-  return function(dict_prefix, err_key)
-    local stream_status = ngx.shared.stream_storage:get(dict_prefix .. 'stream_status')
-    if stream_status == 'active' then
-      return true, nil
-    end
-    local access_token = account.access_token
-    local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
-    local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
-
-    local yt = youtube_client(access_token)
-
-    local stream_info, err = yt:get('/liveStreams', {
-      id = stream_id,
-      part = 'status',
-    })
-
-    if err then
-      return ngx.shared.stream_storage:rpush(err_key,to_json_err)
-    end
-
-    if stream_info.items[1].status.streamStatus == 'active' then
-      local live_res, err = yt:postJSON('/liveBroadcasts/transition', {
-        id = broadcast_id,
-        broadcastStatus = 'live',
-        part = 'status',
-      })
-      ngx.shared.stream_storage:set(dict_prefix .. 'stream_status','active')
-    end
-    return true
+  local stream_status = ngx.shared.stream_storage:get(dict_prefix .. 'stream_status')
+  if stream_status == 'active' then
+    return true, nil
   end
-end
 
-function M.publish_stop(account, stream)
-  local err = M.check_errors(account)
-  if err then return false, err end
+  local access_token = account.access_token
+  local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
+  local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
 
-  local account = account:get_all()
-  local stream = stream:get_all()
+  local yt = youtube_client(access_token)
 
-  return function(dict_prefix)
-    local access_token = account.access_token
-    local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
-    local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
+  local stream_info, err = yt:get('/liveStreams', {
+    id = stream_id,
+    part = 'status',
+  })
 
-    local yt = youtube_client(access_token)
+  if err then
+    return false, to_json(err)
+  end
 
+  if stream_info.items[1].status.streamStatus == 'active' then
     local live_res, err = yt:postJSON('/liveBroadcasts/transition', {
       id = broadcast_id,
-      broadcastStatus = 'complete',
+      broadcastStatus = 'live',
       part = 'status',
     })
-
-    ngx.shared.stream_storage:delete(dict_prefix .. 'stream_status')
-    ngx.shared.stream_storage:delete(dict_prefix .. 'stream_id')
-    ngx.shared.stream_storage:delete(dict_prefix .. 'broadcast_id')
-    ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
-    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
-    return true
+    ngx.shared.stream_storage:set(dict_prefix .. 'stream_status','active')
   end
+  return true, nil
+end
+
+function M.publish_stop(account, stream, dict_prefix)
+  local err = M.check_errors(account)
+  if err then return false, err end
+
+  stream:unset('http_url')
+
+  local account = account:get_all()
+  local stream = stream:get_all()
+
+  local access_token = account.access_token
+
+  local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
+  local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
+
+  local yt = youtube_client(access_token)
+
+  local live_res, err = yt:postJSON('/liveBroadcasts/transition', {
+    id = broadcast_id,
+    broadcastStatus = 'complete',
+    part = 'status',
+  })
+
+  ngx.shared.stream_storage:delete(dict_prefix .. 'stream_status')
+  ngx.shared.stream_storage:delete(dict_prefix .. 'stream_id')
+  ngx.shared.stream_storage:delete(dict_prefix .. 'broadcast_id')
+  ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
+  ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
+  return true
 end
 
 function M.check_errors(account)

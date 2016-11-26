@@ -284,7 +284,8 @@ function M.metadata_fields()
 
 end
 
-function M.publish_start(account, stream)
+function M.publish_start(account, stream, dict_prefix)
+  local stream_o = stream
   local account = account:get_all()
   local stream = stream:get_all()
 
@@ -309,24 +310,30 @@ function M.publish_start(account, stream)
   params.status = 'LIVE_NOW'
   params.stop_on_delete_stream = 'false'
 
-  return function(dict_prefix, err_key)
-    local fb_client = facebook_client(access_token)
+  local fb_client = facebook_client(access_token)
 
-    local vid_info, err = fb_client:post('/'..stream.target..'/live_videos',params)
+  local vid_info, err = fb_client:post('/'..stream.target..'/live_videos',params)
 
-    if err then
-      return ngx.shared.stream_storage:rpush(err_key, err)
-    end
-
-    ngx.shared.stream_storage:set(dict_prefix .. 'video_id',vid_info.id)
-    ngx.shared.stream_storage:set(dict_prefix .. 'http_url',vid_info.permalink_url)
-
-    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',vid_info.stream_url)
+  if err then
+    return false, to_json(err)
   end
+
+  local more_vid_info, err = fb_client:get('/' .. vid_info.id, {
+    fields = 'permalink_url',
+  })
+  if err then
+    return false, to_json(err)
+  end
+
+  ngx.shared.stream_storage:set(dict_prefix .. 'video_id',vid_info.id)
+
+  stream_o:set('http_url','https://facebook.com' .. more_vid_info.permalink_url)
+
+  return vid_info.stream_url, nil
 end
 
-
-function M.publish_stop(account, stream)
+function M.publish_stop(account, stream, dict_prefix)
+  stream:unset('http_url')
   local account = account:get_all()
   local stream = stream:get_all()
 
@@ -335,20 +342,16 @@ function M.publish_stop(account, stream)
 
   local access_token = target.token
 
-  return function(dict_prefix)
-    local video_id = ngx.shared.stream_storage:get(dict_prefix .. 'video_id')
-    local fb_client = facebook_client(access_token)
+  local video_id = ngx.shared.stream_storage:get(dict_prefix .. 'video_id')
+  local fb_client = facebook_client(access_token)
 
-    if(video_id) then
-      fb_client:post('/'..video_id, {
-        end_live_video = 'true',
-      })
-    end
-    ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
-    ngx.shared.stream_storage:delete(dict_prefix .. 'video_id')
-    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
-    return true
+  if(video_id) then
+    fb_client:post('/'..video_id, {
+      end_live_video = 'true',
+    })
   end
+  ngx.shared.stream_storage:delete(dict_prefix .. 'video_id')
+  return true
 end
 
 function M.check_errors(account)
@@ -395,10 +398,8 @@ function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream)
-  return function(dict_prefix, err_key)
-    return true
-  end
+function M.notify_update(account, stream, dict_prefix)
+  return true
 end
 
 

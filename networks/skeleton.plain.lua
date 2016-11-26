@@ -89,25 +89,22 @@ function M.metadata_fields()
 
 end
 
-function M.publish_start(account, stream)
+function M.publish_start(account, stream, dict_prefix)
   local some_account_key = account:get('field1')
   local param1 = stream:get('field1')
   local param2 = stream:get('field2')
 
-  return function(dict_prefix, errs_key)
     local res, err = httpc:request_uri('http://example.com/update', {
       method = 'POST',
       body = to_json({param1 = param1, param2 = param2}),
     })
 
-    if err or res.status >= 400 then
-      return ngx.shared.stream_storage:rpush(errs_key,err)
-    end
-    ngx.shared.stream_storage:set(dict_prefix .. 'http_url', http_url)
-
-    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',from_json(res.body).rtmp_url)
+  if err or res.status >= 400 then
+    return false, err or res.body
   end
+  stream:set('http_url',http_url)
 
+  return from_json(res.body).rtmp_url, nil
 end
 
 function M.publish_stop(account, stream)
@@ -115,18 +112,17 @@ function M.publish_stop(account, stream)
   local param1 = stream:get('field1')
   local param2 = stream:get('field2')
 
-  return function(dict_prefix)
-    local res, err = httpc:request_uri('http://example.com/stop', {
-      method = 'POST',
-      headers = {
-        ['Access'] = 'OAuth ' .. access_token,
-      },
-      body = to_json({param1 = param1, param2 = param2}),
-    })
+  local res, err = httpc:request_uri('http://example.com/stop', {
+    method = 'POST',
+    headers = {
+      ['Access'] = 'OAuth ' .. access_token,
+    },
+    body = to_json({param1 = param1, param2 = param2}),
+  })
 
-    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
-    return ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
-  end
+  stream:unset('http_url')
+
+  return nil
 end
 
 function M.check_errors(account)
@@ -134,9 +130,7 @@ function M.check_errors(account)
 end
 
 function M.notify_update(account)
-  return function(dict_prefix, err_key)
-    return true
-  end
+  return true
 end
 
 return M

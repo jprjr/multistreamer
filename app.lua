@@ -209,39 +209,18 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     if not stream then
       return plain_err_out(self,err)
     end
-    local errs_key = stream.id .. '-publish-errs'
-    ngx.shared.stream_storage:delete(errs_key)
-    local funcs = {}
 
     for _,v in pairs(sas) do
       local account = v[1]
       local sa = v[2]
       local dict_prefix = stream.id .. '-' .. account.id .. '-'
-      local publish_func = account.network.publish_start(account:get_keystore(),sa:get_keystore())
-      insert(funcs,ngx.thread.spawn(publish_func,dict_prefix,errs_key))
-    end
-
-    ngx.thread.wait(unpack(funcs))
-
-    if(ngx.shared.stream_storage:llen(errs_key) > 0) then
-      local err_string = ''
-      repeat
-        local err = ngx.shared.stream_storage:lpop(errs_key)
-        if err then
-          err_string = err_string .. err .. '; '
-        end
-      until(err ~= nil)
-      ngx.shared.stream_storage:delete(errs_key)
-      return plain_err_out(self,err_string)
-    end
-
-    for _,v in pairs(sas) do
-      local account = v[1]
-      local sa = v[2]
-      local rtmp_key = stream.id .. '-' .. account.id .. '-' .. 'rtmp_url'
-      local rtmp_url = ngx.shared.stream_storage:get(rtmp_key)
+      local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore(),dict_prefix)
+      if err then
+        plain_err_out(self,err)
+      end
       sa:update({rtmp_url = rtmp_url})
     end
+
     return plain_err_out(self,'OK',200)
  end,
 }))
@@ -262,22 +241,10 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
       local account = v[1]
       local sa = v[2]
       local dict_prefix = stream.id .. '-' .. account.id .. '-'
-      local update_func = account.network.notify_update(account:get_keystore(),sa:get_keystore())
-      insert(funcs,ngx.thread.spawn(update_func,dict_prefix,errs_key))
-    end
-
-    ngx.thread.wait(unpack(funcs))
-
-    if(ngx.shared.stream_storage:llen(errs_key) > 0) then
-      local err_string = ''
-      repeat
-        local err = ngx.shared.stream_storage:lpop(errs_key)
-        if err then
-          err_string = err_string .. err .. '; '
-        end
-      until(err ~= nil)
-      ngx.shared.stream_storage:delete(errs_key)
-      return plain_err_out(self,err_string)
+      local ok, err = account.network.notify_update(account:get_keystore(),sa:get_keystore(),dict_prefix)
+      if err then
+        plain_err_out(self,err)
+      end
     end
 
     return plain_err_out(self,'OK',200)
@@ -298,10 +265,8 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
 
     sa:update({rtmp_url = db.NULL})
 
-    local stop_func = account.network.publish_stop(account:get_keystore(),sa:get_keystore())
-    insert(funcs,ngx.thread.spawn(stop_func,dict_prefix))
+    account.network.publish_stop(account:get_keystore(),sa:get_keystore(),dict_prefix)
   end
-  ngx.thread.wait(unpack(funcs))
 
   return plain_err_out(self,'OK',200)
 end)

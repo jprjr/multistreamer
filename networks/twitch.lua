@@ -240,62 +240,56 @@ function M.register_oauth(params)
   return account, nil
 end
 
-function M.publish_start(account, stream)
+function M.publish_start(account, stream, dict_prefix)
   local endpoints, err = update_ingest_endpoints(account)
+
+  local stream_o = stream
 
   local account = account:get_all()
   local stream = stream:get_all()
 
+  local rtmp_url
 
-  return function(dict_prefix, err_key)
-    local rtmp_url
-
-    if endpoints and endpoints[stream.endpoint] and account.stream_key then
-      rtmp_url = endpoints[stream.endpoint].url_template:gsub('{stream_key}',account.stream_key)
-    else
-      return ngx.shared.stream_storage:rpush(err_key,'Unable to create rtmp_url')
-    end
-
-    local tclient = twitch_api_client(account.token)
-    local res, err = tclient:put('/channels/'..account.channel..'/', {
-      channel = {
-        status = stream.title,
-        game = stream.game,
-      }
-    }, {
-      ['Content-Type'] = 'application/json'
-    })
-
-    if not res then
-      if type(err) == 'table' then
-        return ngx.shared.stream_storage:rpush(err_key,err.error)
-      else
-        return ngx.shared.stream_storage:rpush(err_key,err)
-      end
-    end
-
-    ngx.shared.stream_storage:set(dict_prefix .. 'http_url','https://twitch.tv/' .. account.channel)
-    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
-
+  if endpoints and endpoints[stream.endpoint] and account.stream_key then
+    rtmp_url = endpoints[stream.endpoint].url_template:gsub('{stream_key}',account.stream_key)
+  else
+    return false, 'unable to create rtmp url'
   end
+
+  local tclient = twitch_api_client(account.token)
+  local res, err = tclient:put('/channels/'..account.channel..'/', {
+    channel = {
+      status = stream.title,
+      game = stream.game,
+    }
+  }, {
+    ['Content-Type'] = 'application/json'
+  })
+
+  if not res then
+    if type(err) == 'table' then
+      return false, err.error
+    else
+      return false, err
+    end
+  end
+
+  stream_o:set('http_url','https://twitch.tv/' .. account.channel)
+  return rtmp_url, nil
 end
 
-function M.publish_stop(account, stream)
-  return function(dict_prefix)
-    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
-    ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
-    return true
-  end
+function M.publish_stop(account, stream, dict_prefix)
+  stream:unset('http_url')
+
+  return true
 end
 
 function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream)
-  return function(dict_prefix,err_key)
-    return true
-  end
+function M.notify_update(account, stream, dict_prefix)
+  return true
 end
 
 return M

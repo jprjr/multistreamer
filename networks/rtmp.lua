@@ -79,34 +79,27 @@ function M.save_account(user, account, params)
   return account, nil
 end
 
-function M.publish_start(account, stream)
+function M.publish_start(account, stream, dict_prefix)
   local rtmp_url = account:get('url')
   local http_url = account:get('http_url')
 
-  return function(dict_prefix, errs_key)
-    if http_url then
-      ngx.shared.stream_storage:set(dict_prefix .. 'http_url',http_url)
-    end
-    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
+  if http_url then
+    stream:set('http_url',http_url)
   end
+  return rtmp_url, nil
 end
 
-
-function M.publish_stop(account, stream)
-  return function(dict_prefix)
-    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
-    return ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
-  end
+function M.publish_stop(account, stream, dict_prefix)
+  stream:unsert('http_url')
+  return true, nil
 end
 
 function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream)
-  return function()
-    return true
-  end
+function M.notify_update(account, stream, dict_prefix)
+  return true
 end
 
 return M
