@@ -159,11 +159,8 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       acc.network = networks[acc.network]
     end
     sort(self.accounts, function(a,b)
-      if not a.network.displayname then
-        return false
-      elseif not b.network.displayname then
-        return true
-      end
+      if not a then return false end
+      if not b then return false end
       return a.network.displayname < b.network.displayname
     end)
     self.public_rtmp_url = config.public_rtmp_url
