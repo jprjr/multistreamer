@@ -19,6 +19,9 @@ local StreamAccount = Model:extend('streams_accounts', {
   get = function(self,key)
     return self:get_keystore():get(key)
   end,
+  get_all = function(self)
+    return self:get_keystore():get_all()
+  end,
   unset = function(self,key)
     return self:get_keystore():unset(key)
   end,

@@ -52,7 +52,10 @@ local Account  = Model:extend('accounts', {
     return self:get_keystore():set(key,value,exp)
   end,
   get = function(self,key)
-    return self:get_keystore():get(key,value)
+    return self:get_keystore():get(key)
+  end,
+  get_all = function(self)
+    return self:get_keystore():get_all()
   end,
   unset = function(self,key)
     return self:get_keystore():unset(key,value)

@@ -96,6 +96,10 @@ if(arg[1] == 'run') then
     config.log_level = 'error'
   end
 
+  if not config.stream_storage_size then
+    config.stream_storage_size = '1m'
+  end
+
   config.streamer_dir = streamer_dir
 
   local nf = io.open(streamer_dir .. '/res/nginx.conf','rb')

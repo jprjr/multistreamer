@@ -59,6 +59,10 @@ config({'development','production'}, {
       app_id = 'app_id',
       app_secret = 'app_secret',
     },
+    youtube = {
+      client_id = 'client_id',
+      client_secret = 'client_secret',
+    },
     rtmp = true,
   },
 
@@ -100,6 +104,12 @@ config({'development','production'}, {
   -- specify the run directory to hold temp files etc,
   -- defaults to $HOME/.multistreamer if not set
   workdir = '/path/to/some/folder',
+
+  -- specify the size for shared memory, used by
+  -- network modules to store temporary data
+  -- defaults to "1m", see
+  -- https://github.com/openresty/lua-nginx-module#lua_shared_dict
+  stream_storage_size = "1m",
 
 })
 

@@ -241,45 +241,48 @@ function M.register_oauth(params)
 end
 
 function M.publish_start(account, stream)
-  local endpoint = stream:get('endpoint')
-  local stream_key = account:get('stream_key')
-  local channel = account:get('channel')
-  local token = account:get('token')
-
   local endpoints, err = update_ingest_endpoints(account)
-  if err then return false, err end
 
-  local rtmp_url
+  local account = account:get_all()
+  local stream = stream:get_all()
 
-  if endpoints and endpoints[endpoint] and stream_key then
-    rtmp_url = endpoints[endpoint].url_template:gsub('{stream_key}',stream_key)
-  else
-    return false, 'Unable to create rtmp_url'
-  end
 
-  local tclient = twitch_api_client(token)
-  local res, err = tclient:put('/channels/'..channel..'/', {
-    channel = {
-      status = stream:get('title'),
-      game = stream:get('game'),
-    }
-  }, {
-    ['Content-Type'] = 'application/json'
-  })
+  return function(dict_prefix, err_key)
+    local rtmp_url
 
-  if not res then
-    if type(err) == 'table' then
-      return false, err.error
+    if endpoints and endpoints[stream.endpoint] and account.stream_key then
+      rtmp_url = endpoints[stream.endpoint].url_template:gsub('{stream_key}',account.stream_key)
     else
-      return false, err
+      return ngx.shared.stream_storage:rpush(err_key,'Unable to create rtmp_url')
     end
-  end
 
-  return rtmp_url, nil
+    local tclient = twitch_api_client(account.token)
+    local res, err = tclient:put('/channels/'..account.channel..'/', {
+      channel = {
+        status = stream.title,
+        game = stream.game,
+      }
+    }, {
+      ['Content-Type'] = 'application/json'
+    })
+
+    if not res then
+      if type(err) == 'table' then
+        return ngx.shared.stream_storage:rpush(err_key,err.error)
+      else
+        return ngx.shared.stream_storage:rpush(err_key,err)
+      end
+    end
+
+    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
+
+  end
 end
 
 function M.publish_stop(account, stream)
-  return true
+  return function(dict_prefix)
+    return true
+  end
 end
 
 function M.check_errors(account)
@@ -287,7 +290,9 @@ function M.check_errors(account)
 end
 
 function M.notify_update(account, stream)
-  return true, nil
+  return function(dict_prefix,err_key)
+    return true
+  end
 end
 
 return M

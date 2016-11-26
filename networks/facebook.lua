@@ -285,15 +285,17 @@ function M.metadata_fields()
 end
 
 function M.publish_start(account, stream)
-  local targets = from_json(account:get('targets'))
-  local target_id = stream:get('target')
-  local target = targets[target_id]
+  local account = account:get_all()
+  local stream = stream:get_all()
+
+  local targets = from_json(account.targets)
+  local target = targets[stream.target]
 
   local access_token = target.token
-  local privacy = stream:get('privacy')
-  local stream_type = stream:get('stream_type')
-  local description = stream:get('description')
-  local title = stream:get('title')
+  local privacy = stream.privacy
+  local stream_type = stream.stream_type
+  local description = stream.description
+  local title = stream.title
 
   local params = {}
 
@@ -307,34 +309,44 @@ function M.publish_start(account, stream)
   params.status = 'LIVE_NOW'
   params.stop_on_delete_stream = 'false'
 
-  local fb_client = facebook_client(access_token)
+  return function(dict_prefix, err_key)
+    local fb_client = facebook_client(access_token)
 
-  local vid_info, err = fb_client:post('/'..target_id..'/live_videos',params)
+    local vid_info, err = fb_client:post('/'..stream.target..'/live_videos',params)
 
-  if err then
-    return false, err
+    if err then
+      return ngx.shared.stream_storage:rpush(err_key, err)
+    end
+
+    print('SHARED MEM: ' .. dict_prefix .. 'video_id = ' .. vid_info.id)
+    ngx.shared.stream_storage:set(dict_prefix .. 'video_id',vid_info.id)
+
+    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',vid_info.stream_url)
   end
-
-  stream:set('video_id',vid_info.id)
-
-  return vid_info.stream_url, nil
-
 end
 
 function M.publish_stop(account, stream)
-  local targets = from_json(account:get('targets'))
-  local target_id = stream:get('target')
-  local target = targets[target_id]
+  local account = account:get_all()
+  local stream = stream:get_all()
+
+  local targets = from_json(account.targets)
+  local target = targets[stream.target]
+
   local access_token = target.token
-  local video_id = stream:get('video_id')
 
-  local fb_client = facebook_client(access_token)
+  return function(dict_prefix)
+    local video_id = ngx.shared.stream_storage:get(dict_prefix .. 'video_id')
+    local fb_client = facebook_client(access_token)
 
-  fb_client:post('/'..video_id, {
-    end_live_video = 'true',
-  })
-
-  return nil
+    if(video_id) then
+      fb_client:post('/'..video_id, {
+        end_live_video = 'true',
+      })
+    end
+    ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
+    ngx.shared.stream_storage:delete(dict_prefix .. 'video_id')
+    return true
+  end
 end
 
 function M.check_errors(account)
@@ -382,7 +394,9 @@ function M.check_errors(account)
 end
 
 function M.notify_update(account, stream)
-  return true, nil
+  return function(dict_prefix, err_key)
+    return true
+  end
 end
 
 

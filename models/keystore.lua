@@ -12,10 +12,32 @@ local function keystore_new(_, account_id, stream_id)
 
   if m.account_id and m.stream_id then
     m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id = ? and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
+    m.query_all_string = 'key, value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   elseif not m.stream_id then
     m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id is NULL and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
+    m.query_all_string = 'key, value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id is NULL and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   else
     m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id is NULL and stream_id = ? and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
+    m.query_all_string = 'key, value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id is NULL and stream_id = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
+  end
+
+  m.get_all = function(self)
+    local r = {}
+    local res, err
+    if(m.stream_id and m.account_id) then
+      res, err = db.select(self.query_all_string,
+        self.account_id,
+        self.stream_id)
+    else
+      res, err = db.select(self.query_all_string,
+        self.account_id or self.stream_id)
+    end
+    if res then
+      for i,v in pairs(res) do
+        r[v.key] = v.value
+      end
+    end
+    return r
   end
 
   m.get_keys = function(self)

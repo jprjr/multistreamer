@@ -174,39 +174,6 @@ function M.register_oauth(params)
   account:set('access_token',access_token,exp)
   account:set('refresh_token',refresh_token)
 
-  -- now find channels
-  local channels = {}
-
-  local res, err = yt:get('/channels',{
-    part = 'id,brandingSettings',
-    mine = 'true',
-  })
-
-  local channels_info, channels_info_err
-
-  repeat
-    local nextPageToken
-    if channels_info and channels_info.nextPageToken then
-        nextPageToken = channels_info.nextPageToken
-    end
-    channels_info, channels_info_err = yt:get('/channels', {
-      part = 'id,brandingSettings',
-      mine = 'true',
-      pageToken = nextPageToken,
-    })
-    for i,channel in pairs(channels_info.items) do
-      local name = channel.brandingSettings.channel.title
-      local id = channel.id
-
-      channels[id] = {
-        id = id,
-        name = name,
-      }
-    end
-  until channels_info.nextPageToken == nil
-
-  account:set('channels',to_json(channels))
-
   if account.user_id ~= user.id then
     return false, "Account already registered"
   end
@@ -217,19 +184,6 @@ end
 
 function M.metadata_form(account, stream)
   local form = M.metadata_fields()
-  local channels = from_json(account:get('channels'))
-
-  local channel_titles = {}
-
-  for k,v in pairs(channels) do insert(channel_titles,v) end
-  sort(channel_titles,function(a,b) return a.name<b.name end)
-
-  for _,v in pairs(channel_titles) do
-    insert(form[3].options, {
-      label = v.name,
-      value = v.id,
-    })
-  end
 
   for i,v in pairs(form) do
     v.value = stream:get(v.key)
@@ -255,13 +209,6 @@ function M.metadata_fields()
     },
     [3] = {
       type = 'select',
-      label = 'Channel',
-      key = 'channel',
-      required = true,
-      options = {}
-    },
-    [4] = {
-      type = 'select',
       label = 'Privacy',
       key = 'privacy',
       required = true,
@@ -271,7 +218,7 @@ function M.metadata_fields()
         { label = 'Public', value = 'public' },
       },
     },
-    [5] = {
+    [4] = {
       type = 'select',
       label = 'Resolution',
       key = 'resolution',
@@ -285,7 +232,7 @@ function M.metadata_fields()
         { label = '240p', value = '240p' },
       },
     },
-    [6] = {
+    [5] = {
       type = 'select',
       label = 'Framerate',
       key = 'framerate',
@@ -303,139 +250,152 @@ function M.publish_start(account, stream)
   local err = M.check_errors(account)
   if err then return false, err end
 
-  local access_token = account:get('access_token')
-  local channels = from_json(account:get('channels'))
+  local account = account:get_all()
+  local stream = stream:get_all()
+  
+  local access_token = account.access_token
 
-  local channel_id = stream:get('channel')
-  local title = stream:get('title')
-  local privacy = stream:get('privacy')
-  local description = stream:get('description')
-  local resolution = stream:get('resolution')
-  local framerate = stream:get('framerate')
+  local title = stream.title
+  local privacy = stream.privacy
+  local description = stream.description
+  local resolution = stream.resolution
+  local framerate = stream.framerate
 
   -- the process:
   -- create Broadcast (POST /liveBroadcasts)
   -- create stream    (POST /liveStreams)
   -- create binding   (POST /liveBroadcasts/bind)
+  -- then after the video has started:
   -- transition broadcast to live (POST /liveBroadcasts/transition)
 
-  local yt = youtube_client(access_token)
+  return function(dict_prefix, err_key)
+    local yt = youtube_client(access_token)
 
-  local broadcast, err = yt:postJSON('/liveBroadcasts', {
-    part = 'id,snippet,contentDetails,status',
-  }, {
-    snippet = {
-      title = title,
-      description = description,
-      scheduledStartTime = date(true):fmt('${iso}') .. 'Z',
-    },
-    status = {
-      privacyStatus = privacy,
-    },
-    contentDetails = {
-      monitorStream = {
-        enableMonitorStream = false,
-        enableEmbed = true,
+    local broadcast, err = yt:postJSON('/liveBroadcasts', {
+      part = 'id,snippet,contentDetails,status',
+    }, {
+      snippet = {
+        title = title,
+        description = description,
+        scheduledStartTime = date(true):fmt('${iso}') .. 'Z',
       },
-    },
-  })
+      status = {
+        privacyStatus = privacy,
+      },
+      contentDetails = {
+        monitorStream = {
+          enableMonitorStream = false,
+          enableEmbed = true,
+        },
+      },
+    })
 
-  if err then
-    return false, to_json(err)
+    if err then
+      return ngx.shared.stream_storage:rpush(err_key, to_json(err))
+    end
+
+    local video_stream, err = yt:postJSON('/liveStreams', {
+      part = 'id,snippet,cdn,status',
+    }, {
+      snippet = {
+        title = title,
+        description = description,
+      },
+      cdn = {
+        ingestionType = 'rtmp',
+        frameRate = framerate,
+        resolution = resolution,
+      },
+    })
+
+    if err then
+      return ngx.shared.stream_storage:rpush(err_key, to_json(err))
+    end
+
+    local bind_res, err = yt:postJSON('/liveBroadcasts/bind', {
+      part = 'id, snippet, contentDetails,status',
+      id = broadcast.id,
+      streamId = video_stream.id,
+    })
+
+    if err then
+      return ngx.shared.stream_storage:rpush(err_key, to_json(err))
+    end
+
+    ngx.shared.stream_storage:set(dict_prefix .. 'broadcast_id',broadcast.id)
+    ngx.shared.stream_storage:set(dict_prefix .. 'stream_id',video_stream.id)
+    ngx.shared.stream_storage:set(dict_prefix .. 'stream_status',video_stream.status.streamStatus)
+
+    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',
+      video_stream.cdn.ingestionInfo.ingestionAddress .. '/' .. video_stream.cdn.ingestionInfo.streamName)
   end
-
-  local video_stream, err = yt:postJSON('/liveStreams', {
-    part = 'id,snippet,cdn,status',
-  }, {
-    snippet = {
-      title = title,
-      description = description,
-    },
-    cdn = {
-      ingestionType = 'rtmp',
-      frameRate = framerate,
-      resolution = resolution,
-    },
-  })
-
-  if err then
-    return false, to_json(err)
-  end
-
-  local bind_res, err = yt:postJSON('/liveBroadcasts/bind', {
-    part = 'id, snippet, contentDetails,status',
-    id = broadcast.id,
-    streamId = video_stream.id,
-  })
-
-  if err then
-    return false, to_json(err)
-  end
-
-  stream:set('broadcast_id',broadcast.id)
-  stream:set('stream_id',video_stream.id)
-  stream:set('stream_status',video_stream.status.streamStatus)
-
-  return video_stream.cdn.ingestionInfo.ingestionAddress .. '/' .. video_stream.cdn.ingestionInfo.streamName, nil
 end
 
 function M.notify_update(account, stream)
   local err = M.check_errors(account)
   if err then return false, err end
 
-  local stream_status = stream:get('stream_status')
-  if stream_status == 'active' then
-    return true, nil
-  end
+  local account = account:get_all()
+  local stream = stream:get_all()
 
-  local access_token = account:get('access_token')
-  local broadcast_id = stream:get('broadcast_id')
-  local stream_id = stream:get('stream_id')
+  return function(dict_prefix, err_key)
+    local stream_status = ngx.shared.stream_storage:get(dict_prefix .. 'stream_status')
+    if stream_status == 'active' then
+      return true, nil
+    end
+    local access_token = account.access_token
+    local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
+    local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
 
-  local yt = youtube_client(access_token)
+    local yt = youtube_client(access_token)
 
-  local stream_info, err = yt:get('/liveStreams', {
-    id = stream_id,
-    part = 'status',
-  })
-
-  if err then
-    return false, to_json(err)
-  end
-
-  if stream_info.items[1].status.streamStatus == 'active' then
-    local live_res, err = yt:postJSON('/liveBroadcasts/transition', {
-      id = broadcast_id,
-      broadcastStatus = 'live',
+    local stream_info, err = yt:get('/liveStreams', {
+      id = stream_id,
       part = 'status',
     })
-    account:set('stream_status','active')
-  end
 
-  return true,nil
+    if err then
+      return ngx.shared.stream_storage:rpush(err_key,to_json_err)
+    end
+
+    if stream_info.items[1].status.streamStatus == 'active' then
+      local live_res, err = yt:postJSON('/liveBroadcasts/transition', {
+        id = broadcast_id,
+        broadcastStatus = 'live',
+        part = 'status',
+      })
+      ngx.shared.stream_storage:set(dict_prefix .. 'stream_status','active')
+    end
+    return true
+  end
 end
 
 function M.publish_stop(account, stream)
   local err = M.check_errors(account)
   if err then return false, err end
 
-  local access_token = account:get('access_token')
-  local broadcast_id = stream:get('broadcast_id')
-  local stream_id = stream:get('stream_id')
+  local account = account:get_all()
+  local stream = stream:get_all()
 
-  local yt = youtube_client(access_token)
+  return function(dict_prefix)
+    local access_token = account.access_token
+    local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
+    local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
 
-  local live_res, err = yt:postJSON('/liveBroadcasts/transition', {
-    id = broadcast_id,
-    broadcastStatus = 'complete',
-    part = 'status',
-  })
+    local yt = youtube_client(access_token)
 
-  stream:unset('broadcast_id')
-  stream:unset('stream_id')
-  stream:unset('stream_status')
+    local live_res, err = yt:postJSON('/liveBroadcasts/transition', {
+      id = broadcast_id,
+      broadcastStatus = 'complete',
+      part = 'status',
+    })
 
-  return nil
+    ngx.shared.stream_storage:delete(dict_prefix .. 'stream_status')
+    ngx.shared.stream_storage:delete(dict_prefix .. 'stream_id')
+    ngx.shared.stream_storage:delete(dict_prefix .. 'broadcast_id')
+    ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
+    return true
+  end
 end
 
 function M.check_errors(account)

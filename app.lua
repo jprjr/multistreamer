@@ -56,11 +56,11 @@ end
 
 local function get_all_streams_accounts(uuid)
   if not uuid then
-    return false, 'UUID not provided'
+    return false,false, 'UUID not provided'
   end
   local stream = Stream:find({ uuid = uuid })
   if not stream then
-    return false, 'Stream not found'
+    return false,false, 'Stream not found'
   end
   local sas = stream:get_streams_accounts()
   local ret = {}
@@ -69,7 +69,7 @@ local function get_all_streams_accounts(uuid)
     account.network = networks[account.network]
     insert(ret, { account, sa } )
   end
-  return ret, nil
+  return stream, ret, nil
 end
 
 app:match('login', config.http_prefix .. '/login', respond_to({
@@ -205,17 +205,41 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
-    local sas, err = get_all_streams_accounts(self.params.name)
-    if not sas then
+    local stream, sas, err = get_all_streams_accounts(self.params.name)
+    if not stream then
       return plain_err_out(self,err)
     end
+    local errs_key = stream.id .. '-publish-errs'
+    ngx.shared.stream_storage:delete(errs_key)
+    local funcs = {}
+
     for _,v in pairs(sas) do
       local account = v[1]
       local sa = v[2]
-      local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
-      if (not rtmp_url) or err then
-        return plain_err_out(self,'Unable to start stream ('.. account.name ..'): ' .. err)
-      end
+      local dict_prefix = stream.id .. '-' .. account.id .. '-'
+      local publish_func = account.network.publish_start(account:get_keystore(),sa:get_keystore())
+      insert(funcs,ngx.thread.spawn(publish_func,dict_prefix,errs_key))
+    end
+
+    ngx.thread.wait(unpack(funcs))
+
+    if(ngx.shared.stream_storage:llen(errs_key) > 0) then
+      local err_string = ''
+      repeat
+        local err = ngx.shared.stream_storage:lpop(errs_key)
+        if err then
+          err_string = err_string .. err .. '; '
+        end
+      until(err ~= nil)
+      ngx.shared.stream_storage:delete(errs_key)
+      return plain_err_out(self,err_string)
+    end
+
+    for _,v in pairs(sas) do
+      local account = v[1]
+      local sa = v[2]
+      local rtmp_key = stream.id .. '-' .. account.id .. '-' .. 'rtmp_url'
+      local rtmp_url = ngx.shared.stream_storage:get(rtmp_key)
       sa:update({rtmp_url = rtmp_url})
     end
     return plain_err_out(self,'OK',200)
@@ -227,33 +251,58 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
-    local sas, err = get_all_streams_accounts(self.params.name)
-    if not sas then
+    local stream, sas, err = get_all_streams_accounts(self.params.name)
+    if not stream then
       return plain_err_out(self,err)
     end
+    local errs_key = stream.id .. '-update-errs'
+    local funcs = {}
+
     for _,v in pairs(sas) do
       local account = v[1]
       local sa = v[2]
-      local ok, err = account.network.notify_update(account:get_keystore(),sa:get_keystore())
-      if not ok then
-        return plain_err_out(self,'Unable to start stream ('.. account.name ..'): ' .. err)
-      end
+      local dict_prefix = stream.id .. '-' .. account.id .. '-'
+      local update_func = account.network.notify_update(account:get_keystore(),sa:get_keystore())
+      insert(funcs,ngx.thread.spawn(update_func,dict_prefix,errs_key))
     end
+
+    ngx.thread.wait(unpack(funcs))
+
+    if(ngx.shared.stream_storage:llen(errs_key) > 0) then
+      local err_string = ''
+      repeat
+        local err = ngx.shared.stream_storage:lpop(errs_key)
+        if err then
+          err_string = err_string .. err .. '; '
+        end
+      until(err ~= nil)
+      ngx.shared.stream_storage:delete(errs_key)
+      return plain_err_out(self,err_string)
+    end
+
     return plain_err_out(self,'OK',200)
  end,
 }))
 
 app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
-  local sas, err = get_all_streams_accounts(self.params.name)
-  if not sas then
+  local stream, sas, err = get_all_streams_accounts(self.params.name)
+  if not stream then
     return plain_err_out(self,err)
   end
+
+  local funcs = {}
   for _,v in pairs(sas) do
     local account = v[1]
     local sa = v[2]
-    account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+    local dict_prefix = stream.id .. '-' .. account.id .. '-'
+
     sa:update({rtmp_url = db.NULL})
+
+    local stop_func = account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+    insert(funcs,ngx.thread.spawn(stop_func,dict_prefix))
   end
+  ngx.thread.wait(unpack(funcs))
+
   return plain_err_out(self,'OK',200)
 end)
 

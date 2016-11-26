@@ -75,11 +75,15 @@ end
 function M.publish_start(account, stream)
   local rtmp_url = account:get('url')
 
-  return rtmp_url
+  return function(dict_prefix, errs_key)
+    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
+  end
 end
 
 function M.publish_stop(account, stream)
-  return true
+  return function(dict_prefix)
+    return ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
+  end
 end
 
 function M.check_errors(account)
@@ -87,7 +91,9 @@ function M.check_errors(account)
 end
 
 function M.notify_update(account, stream)
-  return false
+  return function()
+    return true
+  end
 end
 
 return M

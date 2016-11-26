@@ -122,23 +122,33 @@ function M.metadata_fields()
 end
 
 function M.publish_start(account, stream)
+  -- make sure to get any needed keystore data
+  -- before returning the function, keystores
+  -- don't seem to work properly inside the
+  -- nginx threads
   local access_token = account:get('access_token')
   local param1 = stream:get('field1')
   local param2 = stream:get('field2')
 
-  local res, err = httpc:request_uri('http://example.com/update', {
-    method = 'POST',
-    headers = {
-      ['Access'] = 'OAuth ' .. access_token,
-    },
-    body = to_json({param1 = param1, param2 = param2}),
-  })
+  return function(dict_prefix,errs_key)
 
-  if err or res.status >= 400 then
-    return false, err
+    local res, err = httpc:request_uri('http://example.com/update', {
+      method = 'POST',
+      headers = {
+        ['Access'] = 'OAuth ' .. access_token,
+      },
+      body = to_json({param1 = param1, param2 = param2}),
+    })
+
+    if err or res.status >= 400 then
+      return ngx.shared.stream_storage:rpush(errs_key,err)
+    end
+
+    local rtmp_url = from_json(res.body).rtmp_url
+
+    return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
+
   end
-
-  local rtmp_url = from_json(res.body).rtmp_url
 
   return rtmp_url, nil
 
@@ -149,21 +159,16 @@ function M.publish_stop(account, stream)
   local param1 = stream:get('field1')
   local param2 = stream:get('field2')
 
-  local res, err = httpc:request_uri('http://example.com/stop', {
-    method = 'POST',
-    headers = {
-      ['Access'] = 'OAuth ' .. access_token,
-    },
-    body = to_json({param1 = param1, param2 = param2}),
-  })
-
-  if err or res.status >= 400 then
-    return false, err
+  return function(dict_prefix)
+    local res, err = httpc:request_uri('http://example.com/stop', {
+      method = 'POST',
+      headers = {
+        ['Access'] = 'OAuth ' .. access_token,
+      },
+      body = to_json({param1 = param1, param2 = param2}),
+    })
+    ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
   end
-
-  local rtmp_url = from_json(res.body).rtmp_url
-
-  return rtmp_url, nil
 end
 
 function M.check_errors(account)
@@ -171,7 +176,9 @@ function M.check_errors(account)
 end
 
 function M.notify_update(account, stream)
-  return true,nil
+  return function(dict_prefix, err_key)
+    return true
+  end
 end
 
 return M
