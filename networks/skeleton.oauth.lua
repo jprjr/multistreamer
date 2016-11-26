@@ -145,6 +145,7 @@ function M.publish_start(account, stream)
     end
 
     local rtmp_url = from_json(res.body).rtmp_url
+    ngx.shared.stream_storage:set(dict_prefix .. 'http_url',http_url)
 
     return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
 
@@ -167,6 +168,7 @@ function M.publish_stop(account, stream)
       },
       body = to_json({param1 = param1, param2 = param2}),
     })
+    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
     ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
   end
 end

@@ -325,6 +325,7 @@ function M.publish_start(account, stream)
     ngx.shared.stream_storage:set(dict_prefix .. 'broadcast_id',broadcast.id)
     ngx.shared.stream_storage:set(dict_prefix .. 'stream_id',video_stream.id)
     ngx.shared.stream_storage:set(dict_prefix .. 'stream_status',video_stream.status.streamStatus)
+    ngx.shared.stream_storage:set(dict_prefix .. 'http_url','https://youtu.be/' .. broadcast.id)
 
     return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',
       video_stream.cdn.ingestionInfo.ingestionAddress .. '/' .. video_stream.cdn.ingestionInfo.streamName)
@@ -394,6 +395,7 @@ function M.publish_stop(account, stream)
     ngx.shared.stream_storage:delete(dict_prefix .. 'stream_id')
     ngx.shared.stream_storage:delete(dict_prefix .. 'broadcast_id')
     ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
+    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
     return true
   end
 end

@@ -103,6 +103,7 @@ function M.publish_start(account, stream)
     if err or res.status >= 400 then
       return ngx.shared.stream_storage:rpush(errs_key,err)
     end
+    ngx.shared.stream_storage:set(dict_prefix .. 'http_url', http_url)
 
     return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',from_json(res.body).rtmp_url)
   end
@@ -123,6 +124,7 @@ function M.publish_stop(account, stream)
       body = to_json({param1 = param1, param2 = param2}),
     })
 
+    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
     return ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
   end
 end

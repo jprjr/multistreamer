@@ -274,6 +274,7 @@ function M.publish_start(account, stream)
       end
     end
 
+    ngx.shared.stream_storage:set(dict_prefix .. 'http_url','https://twitch.tv/' .. account.channel)
     return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
 
   end
@@ -281,6 +282,8 @@ end
 
 function M.publish_stop(account, stream)
   return function(dict_prefix)
+    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
+    ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
     return true
   end
 end

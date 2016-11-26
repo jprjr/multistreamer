@@ -18,9 +18,15 @@ function M.create_form()
     },
     [2] = {
       type = 'text',
-      label = 'URL',
+      label = 'RTMP URL',
       key = 'url',
       required = true,
+    },
+    [3] = {
+      type = 'text',
+      label = 'Shareable URL',
+      key = 'http_url',
+      required = false,
     },
   }
 end
@@ -66,6 +72,7 @@ function M.save_account(user, account, params)
     })
   end
 
+  account:set('http_url',params.http_url)
   account:set('url',params.url)
   account:set('name',params.name)
 
@@ -74,14 +81,20 @@ end
 
 function M.publish_start(account, stream)
   local rtmp_url = account:get('url')
+  local http_url = account:get('http_url')
 
   return function(dict_prefix, errs_key)
+    if http_url then
+      ngx.shared.stream_storage:set(dict_prefix .. 'http_url',http_url)
+    end
     return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
   end
 end
 
+
 function M.publish_stop(account, stream)
   return function(dict_prefix)
+    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
     return ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
   end
 end

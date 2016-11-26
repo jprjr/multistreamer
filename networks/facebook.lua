@@ -318,12 +318,13 @@ function M.publish_start(account, stream)
       return ngx.shared.stream_storage:rpush(err_key, err)
     end
 
-    print('SHARED MEM: ' .. dict_prefix .. 'video_id = ' .. vid_info.id)
     ngx.shared.stream_storage:set(dict_prefix .. 'video_id',vid_info.id)
+    ngx.shared.stream_storage:set(dict_prefix .. 'http_url',vid_info.permalink_url)
 
     return ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',vid_info.stream_url)
   end
 end
+
 
 function M.publish_stop(account, stream)
   local account = account:get_all()
@@ -345,6 +346,7 @@ function M.publish_stop(account, stream)
     end
     ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
     ngx.shared.stream_storage:delete(dict_prefix .. 'video_id')
+    ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
     return true
   end
 end
