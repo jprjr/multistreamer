@@ -39,7 +39,7 @@ local Stream = Model:extend('streams', {
   end,
   get_keystore = function(self)
     if not self.keystore then
-      self.keystore = Keystore('keystore',nil,self.id)
+      self.keystore = Keystore(nil,self.id)
     end
     return self.keystore
   end,

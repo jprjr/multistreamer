@@ -9,7 +9,7 @@ local StreamAccount = Model:extend('streams_accounts', {
   },
   get_keystore = function(self)
     if not self.keystore then
-      self.keystore = Keystore('keystore',self.account_id, self.stream_id)
+      self.keystore = Keystore(self.account_id, self.stream_id)
     end
     return self.keystore
   end,

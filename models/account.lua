@@ -44,7 +44,7 @@ local Account  = Model:extend('accounts', {
   end,
   get_keystore = function(self)
     if not self.keystore then
-      self.keystore = Keystore('keystore',self.id)
+      self.keystore = Keystore(self.id)
     end
     return self.keystore
   end,

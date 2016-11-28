@@ -5,28 +5,21 @@ local insert = table.insert
 
 local Keystore = {}
 
-local function keystore_new(_, db_name, account_id, stream_id)
+local function keystore_new(_, account_id, stream_id)
   local m = {}
-  m.db_name = db_name
   m.account_id = account_id
   m.stream_id = stream_id
 
-  m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\'))' ..
-    ' as expires_in from ' .. m.db_name .. ' where '
-
   if m.account_id and m.stream_id then
-    m.query_string = m.query_string .. 'account_id = ? and stream_id = ? '
+    m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id = ? and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
+    m.query_all_string = 'key, value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   elseif not m.stream_id then
-    m.query_string = m.query_string .. 'account_id = ? and stream_id is NULL '
+    m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id is NULL and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
+    m.query_all_string = 'key, value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id = ? and stream_id is NULL and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   else
-    m.query_string = m.query_string .. 'account_id is NULL and stream_id = ? '
+    m.query_string = 'value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id is NULL and stream_id = ? and key = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
+    m.query_all_string = 'key, value, extract(epoch from expires_at - (now() at time zone \'UTC\')) as expires_in from keystore where account_id is NULL and stream_id = ? and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
   end
-
-  m.query_all_string = 'key, ' .. m.query_string
-  m.query_string = m.query_string .. 'and key=? '
-
-  m.query_string = m.query_string .. 'and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
-  m.query_all_string = m.query_all_string .. 'and (expires_at > (now() at time zone \'UTC\') or expires_at is null)'
 
   m.get_all = function(self)
     local r = {}
@@ -50,15 +43,15 @@ local function keystore_new(_, db_name, account_id, stream_id)
   m.get_keys = function(self)
     local res, err
     local keys = {}
-    if(self.stream_id and self.account_id) then
-      res, err = db.select('key from ' .. self.db_name .. ' where account_id = ? and stream_id = ?',
+    if(m.stream_id and m.account_id) then
+      res, err = db.select('key from keystore where account_id = ? and stream_id = ?',
         self.account_id,
         self.stream_id)
-    elseif self.stream_id then
-      res, err = db.select('key from ' .. self.db_name .. '  where account_id is NULL and stream_id=?',
+    elseif m.stream_id then
+      res, err = db.select('key from keystore where account_id is NULL and stream_id=?',
         self.stream_id)
     else
-      res, err = db.select('key from ' .. self.db_name .. '  where account_id is ? and account_id is NULL',
+      res, err = db.select('key from keystore where account_id is ? and account_id is NULL',
         self.stream_id)
     end
     if res then
@@ -95,7 +88,7 @@ local function keystore_new(_, db_name, account_id, stream_id)
       exp = db.NULL
     end
 
-    local res = db.update(self.db_name,{
+    local res = db.update('keystore',{
         value = value,
         updated_at = dt,
         expires_at = exp,
@@ -105,7 +98,7 @@ local function keystore_new(_, db_name, account_id, stream_id)
         key = key,
     })
     if res.affected_rows == 0 then
-        local res = db.insert(self.db_name,{
+        local res = db.insert('keystore',{
             account_id = self.account_id,
             stream_id = self.stream_id,
             key = key,
@@ -122,7 +115,7 @@ local function keystore_new(_, db_name, account_id, stream_id)
   end
 
   m.unset = function(self,key)
-    local res = db.delete(self.db_name,{
+    local res = db.delete('keystore',{
         stream_id = self.stream_id,
         account_id = self.account_id,
         key = key,
@@ -131,7 +124,7 @@ local function keystore_new(_, db_name, account_id, stream_id)
   end
 
   m.unset_all = function(self,key)
-    local res = db.delete(self.db_name,{
+    local res = db.delete('keystore',{
       stream_id = self.stream_id,
       account_id = self.account_id,
     })
