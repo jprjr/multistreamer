@@ -13,8 +13,6 @@ local posix = require'posix'
 local len = string.len
 local etlua = require'etlua'
 local insert = table.insert
-local whereami = require'whereami'
-local StreamModel = require'models.stream'
 
 local script_path = posix.realpath(arg[0])
 local streamer_dir = posix.dirname(posix.dirname(script_path))
@@ -65,6 +63,12 @@ if(arg[1] == 'run') then
   local whereami = require'whereami'
   local lua_bin = whereami()
   local lfs = require'lfs'
+  local db = require'lapis.db'
+  local sa_model = require'models.stream_account'
+
+  for i,v in pairs(sa_model:select()) do
+    v:update({ rtmp_url = db.NULL })
+  end
 
   config.lua_bin = lua_bin
   config.script_path = script_path;
@@ -143,6 +147,7 @@ elseif(arg[1] == 'push') then
     exit(1)
   end
 
+  local StreamModel = require'models.stream'
   local stream = StreamModel:find({uuid = arg[2]})
   local sas = stream:get_streams_accounts()
 

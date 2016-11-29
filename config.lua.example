@@ -51,18 +51,18 @@ config({'development','production'}, {
   -- besides just a true/false
   -- 'twitch' requires a client_id and client_secret
   networks = {
-    twitch = {
-      client_id = 'client_id',
-      client_secret = 'client_secret',
-    },
-    facebook = {
-      app_id = 'app_id',
-      app_secret = 'app_secret',
-    },
-    youtube = {
-      client_id = 'client_id',
-      client_secret = 'client_secret',
-    },
+    -- twitch = {
+    --   client_id = 'client_id',
+    --   client_secret = 'client_secret',
+    -- },
+    -- facebook = {
+    --   app_id = 'app_id',
+    --   app_secret = 'app_secret',
+    -- },
+    -- youtube = {
+    --   client_id = 'client_id',
+    --   client_secret = 'client_secret',
+    -- },
     rtmp = true,
   },
 
@@ -82,6 +82,13 @@ config({'development','production'}, {
   -- https://github.com/arut/nginx-rtmp-module/wiki/Directives#listen
   rtmp_listen = '1935',
 
+  -- nginx irc "listen" directive, see
+  -- https://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
+  irc_listen = '7000',
+
+  -- set the IRC hostname reported by the server
+  irc_hostname = 'localhost',
+
   -- number of worker processes
   worker_processes = 1,
 
@@ -91,6 +98,12 @@ config({'development','production'}, {
   -- see http://nginx.org/en/docs/http/ngx_http_auth_request_module.html
   -- see https://github.com/jprjr/ldap-auth-server for an LDAP implementation
   auth_endpoint = 'http://127.0.0.1:8080/',
+
+  -- redis host
+  redis_host = '127.0.0.1:6379',
+
+  -- prefix for redis keys
+  redis_prefix = 'multistreamer/',
 
   -- path to trusted ssl certificate store
   ssl_trusted_certificate = '/etc/ssl/certs/ca-certificates.crt',
@@ -105,11 +118,9 @@ config({'development','production'}, {
   -- defaults to $HOME/.multistreamer if not set
   -- work_dir = '/path/to/some/folder',
 
-  -- specify the size for shared memory, used by
-  -- network modules to store temporary data
-  -- defaults to "1m", see
-  -- https://github.com/openresty/lua-nginx-module#lua_shared_dict
-  stream_storage_size = "1m",
+  -- specify a host for redis, and a prefix for redis keys
+  redis_host = '127.0.0.1:6379',
+  redis_prefix = 'multistreamer/',
 
 })
 

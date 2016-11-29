@@ -284,7 +284,7 @@ function M.metadata_fields()
 
 end
 
-function M.publish_start(account, stream, dict_prefix)
+function M.publish_start(account, stream)
   local stream_o = stream
   local account = account:get_all()
   local stream = stream:get_all()
@@ -325,24 +325,27 @@ function M.publish_start(account, stream, dict_prefix)
     return false, to_json(err)
   end
 
-  ngx.shared.stream_storage:set(dict_prefix .. 'video_id',vid_info.id)
-
   stream_o:set('http_url','https://facebook.com' .. more_vid_info.permalink_url)
+  stream_o:set('video_id',vid_info.id)
 
   return vid_info.stream_url, nil
 end
 
-function M.publish_stop(account, stream, dict_prefix)
-  stream:unset('http_url')
+function M.publish_stop(account, stream)
+  local stream_o = stream
+
   local account = account:get_all()
   local stream = stream:get_all()
+
+  stream_o:unset('http_url')
+  stream_o:unset('video_id')
 
   local targets = from_json(account.targets)
   local target = targets[stream.target]
 
   local access_token = target.token
 
-  local video_id = ngx.shared.stream_storage:get(dict_prefix .. 'video_id')
+  local video_id = stream.video_id
   local fb_client = facebook_client(access_token)
 
   if(video_id) then
@@ -350,7 +353,7 @@ function M.publish_stop(account, stream, dict_prefix)
       end_live_video = 'true',
     })
   end
-  ngx.shared.stream_storage:delete(dict_prefix .. 'video_id')
+
   return true
 end
 
@@ -398,8 +401,45 @@ function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream, dict_prefix)
+function M.notify_update(account, stream)
   return true
+end
+
+function M.create_comment_funcs(account, stream, send)
+  local account = account:get_all()
+  local stream = stream:get_all()
+
+  local targets = from_json(account.targets)
+  local target = targets[stream.target]
+  local access_token = target.token
+
+  local video_id = stream.video_id
+  local fb_client = facebook_client(access_token)
+
+  local read_func = function()
+    local after = nil
+    while true do
+      local res, err = fb_client:get('/'..video_id ..'/comments', {
+        after = after })
+      if res then
+        if res.paging then after = res.paging.cursors.after end
+        for i,v in pairs(res.data) do
+          local msg = {
+            type = 'text',
+            from = v.from.name,
+            text = v.message,
+            network = M.name,
+          }
+          local ok, err = send(msg)
+        end
+      end
+      ngx.sleep(15)
+    end
+  end
+
+  local write_func = nil
+
+  return read_func, write_func
 end
 
 

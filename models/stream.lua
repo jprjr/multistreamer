@@ -3,6 +3,7 @@ local Keystore = require'models.keystore'
 local Account = require'models.account'
 local StreamAccount = require'models.stream_account'
 local format = string.format
+local slugify = require('lapis.util').slugify
 
 local Stream = Model:extend('streams', {
   timestamp = true,
@@ -65,14 +66,24 @@ end
 
 function Stream:save_stream(user,stream,params)
   local stream = stream
+  local slug = slugify(params.stream_name)
+  local slug_stream = Stream:find({ user_id = user.id, slug = slug })
   if not stream then
+    if slug_stream then
+      return false, 'Stream name conflicts with ' .. slug_stream.name
+    end
     stream = self:create({
       user_id = user.id,
-      name = params.stream_name
+      name = params.stream_name,
+      slug = slug
     })
   else
+    if slug_stream and slug_stream.id ~= stream.id then
+      return false, 'Stream name conflicts with ' .. slug_stream.name
+    end
     stream:update({
-      name = params.stream_name
+      name = params.stream_name,
+      slug = slug,
     })
   end
 

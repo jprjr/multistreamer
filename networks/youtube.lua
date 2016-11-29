@@ -246,7 +246,7 @@ function M.metadata_fields()
 
 end
 
-function M.publish_start(account, stream, dict_prefix)
+function M.publish_start(account, stream)
   local err = M.check_errors(account)
   if err then return false, err end
 
@@ -323,41 +323,33 @@ function M.publish_start(account, stream, dict_prefix)
     return false, to_json(err)
   end
 
-  local ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'broadcast_id',broadcast.id)
-  if not ok then return false, err end
-
-  ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'stream_id',video_stream.id)
-  if not ok then return false, err end
-
-  ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'stream_status',video_stream.status.streamStatus)
-  if not ok then return false, err end
-
-  local rtmp_url = video_stream.cdn.ingestionInfo.ingestionAddress .. '/' .. video_stream.cdn.ingestionInfo.streamName
   local http_url = 'https://youtu.be/' .. broadcast.id
 
   stream_o:set('http_url',http_url)
+  stream_o:set('broadcast_id',broadcast.id)
+  stream_o:set('stream_id',video_stream.id)
+  stream_o:set('stream_status',video_stream.status.streamStatus)
 
-  ok, err = ngx.shared.stream_storage:set(dict_prefix .. 'rtmp_url',rtmp_url)
-  if not ok then return false, err end
+  local rtmp_url = video_stream.cdn.ingestionInfo.ingestionAddress .. '/' .. video_stream.cdn.ingestionInfo.streamName
 
   return rtmp_url, nil
 end
 
-function M.notify_update(account, stream, dict_prefix)
+function M.notify_update(account, stream)
   local err = M.check_errors(account)
   if err then return false, err end
+  local stream_o = stream
 
   local account = account:get_all()
   local stream = stream:get_all()
 
-  local stream_status = ngx.shared.stream_storage:get(dict_prefix .. 'stream_status')
-  if stream_status == 'active' then
+  if stream.stream_status == 'active' then
     return true, nil
   end
 
   local access_token = account.access_token
-  local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
-  local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
+  local broadcast_id = stream.broadcast_id
+  local stream_id    = stream.stream_id
 
   local yt = youtube_client(access_token)
 
@@ -376,24 +368,28 @@ function M.notify_update(account, stream, dict_prefix)
       broadcastStatus = 'live',
       part = 'status',
     })
-    ngx.shared.stream_storage:set(dict_prefix .. 'stream_status','active')
+    stream_o:set('stream_status','active')
   end
   return true, nil
 end
 
-function M.publish_stop(account, stream, dict_prefix)
+function M.publish_stop(account, stream)
   local err = M.check_errors(account)
   if err then return false, err end
-
-  stream:unset('http_url')
+  local stream_o = stream
 
   local account = account:get_all()
   local stream = stream:get_all()
 
+  stream_o:unset('http_url')
+  stream_o:unset('broadcast_id')
+  stream_o:unset('stream_id')
+  stream_o:unset('stream_status')
+
   local access_token = account.access_token
 
-  local broadcast_id = ngx.shared.stream_storage:get(dict_prefix .. 'broadcast_id')
-  local stream_id = ngx.shared.stream_storage:get(dict_prefix .. 'stream_id')
+  local broadcast_id = stream.broadcast_id
+  local stream_id = stream.stream_id
 
   local yt = youtube_client(access_token)
 
@@ -403,11 +399,6 @@ function M.publish_stop(account, stream, dict_prefix)
     part = 'status',
   })
 
-  ngx.shared.stream_storage:delete(dict_prefix .. 'stream_status')
-  ngx.shared.stream_storage:delete(dict_prefix .. 'stream_id')
-  ngx.shared.stream_storage:delete(dict_prefix .. 'broadcast_id')
-  ngx.shared.stream_storage:delete(dict_prefix .. 'rtmp_url')
-  ngx.shared.stream_storage:delete(dict_prefix .. 'http_url')
   return true
 end
 
@@ -445,6 +436,10 @@ function M.check_errors(account)
   account:set('access_token',creds.access_token,creds.expires_in)
 
   return false,nil
+end
+
+function M.create_comment_funcs(account, stream, send)
+  return nil,nil
 end
 
 

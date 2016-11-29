@@ -37,6 +37,7 @@ create table if not exists streams (
   uuid char(36),
   user_id integer references users(id),
   name varchar(255) not null,
+  slug varchar(255) not null,
   created_at timestamp without time zone NOT NULL,
   updated_at timestamp without time zone NOT NULL,
   primary key(id),
