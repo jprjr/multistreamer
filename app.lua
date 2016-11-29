@@ -230,6 +230,10 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
+    if self.params.call == 'play' then
+      return plain_err_out(self,'OK',200)
+    end
+
     local stream, sas, err = get_all_streams_accounts(self.params.name)
     if not stream then
       return plain_err_out(self,err)
