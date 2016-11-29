@@ -103,7 +103,7 @@ config({'development','production'}, {
 
   -- specify the run directory to hold temp files etc,
   -- defaults to $HOME/.multistreamer if not set
-  workdir = '/path/to/some/folder',
+  -- work_dir = '/path/to/some/folder',
 
   -- specify the size for shared memory, used by
   -- network modules to store temporary data
