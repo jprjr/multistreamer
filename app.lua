@@ -2,6 +2,7 @@ local lapis = require'lapis'
 local app = lapis.Application()
 local config = require('lapis.config').get()
 local db = require'lapis.db'
+local redis = require'resty.redis'
 
 local User = require'models.user'
 local Account = require'models.account'
@@ -12,6 +13,7 @@ local SharedAccount = require'models.shared_account'
 local respond_to = lapis.application.respond_to
 local encode_with_secret = lapis.application.encode_with_secret
 local decode_with_secret = lapis.application.decode_with_secret
+local to_json = require('lapis.util').to_json
 
 local tonumber = tonumber
 local length = string.len
@@ -20,6 +22,10 @@ local sort = table.sort
 
 app:enable('etlua')
 app.layout = require'views.layout'
+
+if not config.redis_prefix or length(config.redis_prefix) == 0 then
+  config.redis_prefix = 'multistreamer/'
+end
 
 app:before_filter(function(self)
   self.networks = networks
@@ -213,13 +219,21 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     for _,v in pairs(sas) do
       local account = v[1]
       local sa = v[2]
-      local dict_prefix = stream.id .. '-' .. account.id .. '-'
-      local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore(),dict_prefix)
-      if err then
-        plain_err_out(self,err)
+      local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
+      if (not rtmp_url) or err then
+        return plain_err_out(self,err)
       end
       sa:update({rtmp_url = rtmp_url})
     end
+
+    local red = redis:new()
+    red:connect(config.redis_host)
+    red:publish(config.redis_prefix .. 'streams',to_json(
+      { status = 'live',
+        worker = ngx.worker.pid(),
+        id = stream.id,
+      }
+    ))
 
     return plain_err_out(self,'OK',200)
  end,
@@ -238,16 +252,13 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     if not stream then
       return plain_err_out(self,err)
     end
-    local errs_key = stream.id .. '-update-errs'
-    local funcs = {}
 
     for _,v in pairs(sas) do
       local account = v[1]
       local sa = v[2]
-      local dict_prefix = stream.id .. '-' .. account.id .. '-'
-      local ok, err = account.network.notify_update(account:get_keystore(),sa:get_keystore(),dict_prefix)
+      local ok, err = account.network.notify_update(account:get_keystore(),sa:get_keystore())
       if err then
-        plain_err_out(self,err)
+        return plain_err_out(self,err)
       end
     end
 
@@ -261,15 +272,21 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
     return plain_err_out(self,err)
   end
 
-  local funcs = {}
+  local red = redis:new()
+  red:connect(config.redis_host)
+  red:publish(config.redis_prefix .. 'streams',to_json(
+    { status = 'stopped',
+      worker = ngx.worker.pid(),
+      id = stream.id,
+    }
+  ))
+
   for _,v in pairs(sas) do
     local account = v[1]
     local sa = v[2]
-    local dict_prefix = stream.id .. '-' .. account.id .. '-'
 
     sa:update({rtmp_url = db.NULL})
-
-    account.network.publish_stop(account:get_keystore(),sa:get_keystore(),dict_prefix)
+    account.network.publish_stop(account:get_keystore(),sa:get_keystore())
   end
 
   return plain_err_out(self,'OK',200)

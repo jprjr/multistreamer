@@ -10,6 +10,9 @@ It also allows for updating their stream's metadata (stream title,
 description, etc) from a single page, instead of logging into multiple
 services.
 
+Additionally, it provides an IRC server, where users can view chat messages
+and comments from multiple services in a single location.
+
 
 ## Table of Contents
 
@@ -29,17 +32,17 @@ services.
   + [`bin/multistreamer` usage:](#binmultistreamer-usage)
   + [Alternative install options:](#alternative-install-options)
     - [Remove Bash dependency](#remove-bash-dependency)
-    - [Remove some module dependencies](#remove-some-module-dependencies)
 * [Wishlist](#wishlist)
 * [Licensing](#licensing)
 
 ## Requirements
 
-* nginx with some modules:
+* nginx/OpenResty with some modules:
   * [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module)
   * [lua-nginx-module](https://github.com/openresty/lua-nginx-module)
-  * note: the default OpenResty bundle does not include the rtmp module, but
-    this can be added with `--add-module`, see
+  * [stream-lua-nginx-module](https://github.com/openresty/stream-lua-nginx-module)
+  * note: the default OpenResty bundle does not include the rtmp module or the
+    TCP lua module - these can be be added with `--add-module`, see
     [http://openresty.org/en/installation.html](http://openresty.org/en/installation.html)
 * ffmpeg
 * lua or luajit and luarocks
@@ -56,8 +59,14 @@ includes the Lua module (and the Lua module's requirements).
 mkdir openresty-build && cd openresty-build
 curl -R -L https://openresty.org/download/openresty-1.11.2.2.tar.gz | tar xz
 curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.1.10.tar.gz | tar xz
+curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/e527417c5d04da0c26c12cf4d8a0ef0f1e36e051.tar.gz | tar xz
 cd openresty-1.11.2.2
-./configure --prefix=/opt/openresty-rtmp --add-module=../nginx-rtmp-module-1.1.10
+./configure \
+  --prefix=/opt/openresty-rtmp \
+  --with-stream \
+  --with-stream_ssl_module \
+  --add-module=../nginx-rtmp-module-1.1.10 \
+  --add-module=../stream-lua-nginx-module-e527417c5d04da0c26c12cf4d8a0ef0f1e36e051
 make
 sudo make install
 ```
@@ -70,6 +79,7 @@ curl -R -L http://nginx.org/download/nginx-1.10.2.tar.gz | tar xz
 curl -R -L https://github.com/simpl/ngx_devel_kit/archive/v0.3.0.tar.gz | tar xz
 curl -R -L https://github.com/openresty/lua-nginx-module/archive/v0.10.7.tar.gz | tar xz
 curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.1.10.tar.gz | tar xz
+curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/e527417c5d04da0c26c12cf4d8a0ef0f1e36e051.tar.gz | tar xz
 cd nginx-1.10.2
 export LUAJIT_LIB=$(pkg-config --variable=libdir luajit)
 export LUAJIT_INC=$(pkg-config --variable=includedir luajit)
@@ -81,9 +91,12 @@ export LUAJIT_INC=$(pkg-config --variable=includedir luajit)
   --with-http_ssl_module \
   --with-pcre \
   --with-pcre-jit \
+  --with-stream \
+  --with-stream_ssl_module \
   --add-module=../ngx_devel_kit-0.3.0 \
   --add-module=../lua-nginx-module-0.10.7 \
-  --add-module=../nginx-rtmp-module-1.1.10
+  --add-module=../nginx-rtmp-module-1.1.10 \
+  --add-module=../stream-lua-nginx-module-e527417c5d04da0c26c12cf4d8a0ef0f1e36e051
 make
 sudo make install
 ```
@@ -102,6 +115,11 @@ postgres=# create user multistreamer with password 'multistreamer';
 postgres=# create database multistreamer with owner multistreamer;
 postgres=# \q
 ```
+
+### Setup Redis
+
+I'm not going to write up instructions for setting up Redis - this is more
+of a checklist item.
 
 ### Setup Authentication Server
 
@@ -288,19 +306,6 @@ be sure to set the following environment variables:
 * `LUA_PACKAGE_PATH` - optional
 * `LUA_PACKAGE_CPATH` - optional
 
-#### Remove some module dependencies
-
-I don't know if I recommend this, but you can remove the `luafilesystem` and
-`whereami` dependencies by running nginx directly.
-
-Copy the `res/nginx.conf` file somewhere, and fill it out manually. Then, you
-can run nginx with something like:
-
-```bash
-cd /path/to/multistreamer
-exec nginx -p /some/directory/ -c /path/to/nginx.conf
-```
-
 ## Wishlist
 
 Here's some features I'm hoping to add:
@@ -317,3 +322,7 @@ for more details.
 This project includes a copy of Pure.css (`static/css/pure-min.css`),
 which is licensed under a BSD-style license. Pure.css license is available
 as LICENSE-purecss.
+
+This project includes a copy of lua-resty-redis (`resty/redis.lua`),
+which is licensed under a BSD license. The license for lua-resty-redis is
+available as LICENSE-lua-resty-redis

@@ -240,7 +240,7 @@ function M.register_oauth(params)
   return account, nil
 end
 
-function M.publish_start(account, stream, dict_prefix)
+function M.publish_start(account, stream)
   local endpoints, err = update_ingest_endpoints(account)
 
   local stream_o = stream
@@ -278,7 +278,7 @@ function M.publish_start(account, stream, dict_prefix)
   return rtmp_url, nil
 end
 
-function M.publish_stop(account, stream, dict_prefix)
+function M.publish_stop(account, stream)
   stream:unset('http_url')
 
   return true
@@ -288,8 +288,12 @@ function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream, dict_prefix)
+function M.notify_update(account, stream)
   return true
+end
+
+function M.create_comment_funcs(account, stream, send)
+  return nil, nil
 end
 
 return M

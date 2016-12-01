@@ -79,7 +79,7 @@ function M.save_account(user, account, params)
   return account, nil
 end
 
-function M.publish_start(account, stream, dict_prefix)
+function M.publish_start(account, stream)
   local rtmp_url = account:get('url')
   local http_url = account:get('http_url')
 
@@ -89,7 +89,7 @@ function M.publish_start(account, stream, dict_prefix)
   return rtmp_url, nil
 end
 
-function M.publish_stop(account, stream, dict_prefix)
+function M.publish_stop(account, stream)
   stream:unsert('http_url')
   return true, nil
 end
@@ -98,8 +98,12 @@ function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream, dict_prefix)
+function M.notify_update(account, stream)
   return true
+end
+
+function M.create_comment_funcs(account, stream, send)
+  return nil,nil
 end
 
 return M

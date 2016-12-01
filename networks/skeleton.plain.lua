@@ -89,7 +89,7 @@ function M.metadata_fields()
 
 end
 
-function M.publish_start(account, stream, dict_prefix)
+function M.publish_start(account, stream)
   local some_account_key = account:get('field1')
   local param1 = stream:get('field1')
   local param2 = stream:get('field2')
@@ -131,6 +131,10 @@ end
 
 function M.notify_update(account)
   return true
+end
+
+function M.create_comment_funcs(account, stream, send)
+  return nil,nil
 end
 
 return M
