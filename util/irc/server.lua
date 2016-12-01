@@ -130,7 +130,7 @@ function IRCServer:run()
       local res, err = red:read_reply()
       if err and err ~= 'timeout' then
         ngx.log(ngx.ERR,'[IRC] Redis disconnected!')
-         self.ready = false
+        self.ready = false
         return false
       end
       if res then
@@ -155,7 +155,7 @@ function IRCServer:run()
         elseif partial then
           msg = irc.parse_line(partial)
         end
-        if err == 'closed' then
+        if err and err == 'closed' then
           return
         end
         if not err or err ~= 'timeout' then
@@ -164,9 +164,6 @@ function IRCServer:run()
             ngx.log(ngx.ERR,'[IRC] ' .. err)
             return
           end
-        elseif err then
-          ngx.log(ngx.ERR,'[IRC] ' .. err)
-          return
         end
       end
     end)
