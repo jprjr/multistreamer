@@ -162,6 +162,7 @@ end
 
 function IRC.format_line(...)
   local msg = ''
+
   for i,v in ipairs({...}) do
     if i == #{...} and (type(v) == 'string' and v:find(' ')) then
       v = ':' .. v
@@ -169,7 +170,9 @@ function IRC.format_line(...)
     if i > 1 then
       v = ' ' .. v
     end
-    msg = msg .. v
+    if v ~= nil then
+      msg = msg .. v
+    end
   end
   return msg
 end

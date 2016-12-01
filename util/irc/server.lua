@@ -105,9 +105,13 @@ function IRCServer.new(socket,user,parentServer)
   server.clientFunctions = {
     ['LIST'] = IRCServer.clientList,
     ['JOIN'] = IRCServer.clientJoinRoom,
+    ['PART'] = IRCServer.clientPartRoom,
     ['PING'] = IRCServer.clientPing,
     ['PRIVMSG'] = IRCServer.clientMessage,
+    ['MODE'] = IRCServer.clientMode,
     ['QUIT'] = IRCServer.clientQuit,
+    ['WHO'] = IRCServer.clientWho,
+    ['WHOIS'] = IRCServer.clientWhois,
   }
   setmetatable(server,IRCServer)
   return server
@@ -266,6 +270,13 @@ function IRCServer:processIrcUpdate(update)
         self:sendRoomJoin(to,update.nick,update.room)
       end
     end
+  elseif update.event == 'part' then
+    self.rooms[update.room].users[update.nick] = false
+    for to,_ in pairs(self.rooms[update.room].users) do
+      if self.users[to].socket then
+        self:sendRoomPart(to,update.nick,update.room,update.message)
+      end
+    end
   elseif update.event == 'login' then
     if not self.users[update.nick] then
       self.users[update.nick] = {
@@ -312,7 +323,10 @@ function IRCServer:userList(room)
   local ulist = ''
   for u,_ in pairs(self.rooms[room].users) do
     count = count + 1
-    ulist = ulist .. ' @'..u
+    if u == 'root' then
+      u = '@'..u
+    end
+    ulist = ulist .. ' '..u
   end
   return count, ulist
 end
@@ -338,6 +352,93 @@ function IRCServer:listRooms(nick,rooms)
   return true, nil
 end
 
+function IRCServer:clientWhois(nick,msg)
+  local nicks = msg.args[1]:split(',')
+  for _,n in ipairs(nicks) do
+    if self.users[n] then
+      local ok, err = self:sendClientFromServer(
+        nick,'311',n,self.users[n].user.username,
+        config.irc_hostname,'*',self.users[n].user.realname)
+      if not ok then return false, err end
+      local chanlist = ''
+      local i = 1
+      for r,room in pairs(self.rooms) do
+        if room.users[n] then
+          if i > 1 then chanlist = chanlist .. ' ' end
+          chanlist = chanlist .. '#'..r
+          i = i + 1
+        end
+      end
+      ok, err = self:sendClientFromServer(
+        nick,'319',n,chanlist)
+      if not ok then return false, err end
+      ok, err = self:sendClientFromServer(
+        nick,'312',n,config.irc_hostname,'Unknown')
+      if not ok then return false, err end
+      ok, err = self:sendClientFromServer(
+        nick,'318',n,'End of /WHOIS list')
+      if not ok then return false, err end
+    end
+  end
+  return true,nil
+end
+
+
+function IRCServer:clientWho(nick,msg)
+  local target = msg.args[1]
+  if not target then
+    return self:sendClientFromServer(
+      nick,
+      '461',
+      'WHO',
+      'Not enough parameters')
+  end
+  users = nil
+
+  if target:sub(1,1) == '#' then
+    target = target:sub(2)
+    if self.rooms[target] then
+      users = self.rooms[target].users
+    else
+      return self:sendClientFromServer(
+        nick,
+        '403',
+        '#'..target,
+        'No such channel')
+    end
+  else
+    -- just silently swallow it up
+    return true, nil
+  end
+  for u,_ in pairs(users) do
+    local ok, err = self:sendClientFromServer(
+      nick,
+      '352',
+      '#' .. target,
+      self.users[u].user.username,
+      config.irc_hostname,
+      config.irc_hostname,
+      u,
+      'H',
+      '0 '..self.users[u].user.realname
+    )
+    if not ok then return false, err end
+  end
+  return self:sendClientFromServer(
+    nick,
+    '315',
+    '#'..target,
+    'End of /WHO list')
+end
+
+function IRCServer:clientMode(nick,msg)
+  local target = msg.args[1]
+  if not msg.args[2] then
+    return self:sendClientFromServer(nick,'324',target,'+on')
+  end
+  return self:sendClientFromServer(nick,'482',target,'Not an op')
+end
+
 function IRCServer:clientJoinRoom(nick,msg)
   local room = msg.args[1]
   if not room then return self:sendClientFromServer(nick,'403','Channel does not exist') end
@@ -354,6 +455,22 @@ function IRCServer:clientJoinRoom(nick,msg)
   })
   if not ok then return false, err end
 
+  return true,nil
+end
+
+function IRCServer:clientPartRoom(nick,msg)
+  local rooms = msg.args[1]:split(',')
+  for i,room in ipairs(rooms) do
+    if room:sub(1,1) == '#' then
+      room = room:sub(2)
+    end
+    redis_publish('irc:events', {
+      event = 'part',
+      nick = nick,
+      room = room,
+      message = msg.args[2],
+    })
+  end
   return true,nil
 end
 
@@ -381,8 +498,8 @@ function IRCServer:clientPing(nick,msg)
   return self:sendFromServer(nick,'PONG',msg.args[1])
 end
 
-function IRCServer:sendRoomPart(to,from,room)
-  local ok, err = self:sendFromClient(to,from,'PART','#'..room)
+function IRCServer:sendRoomPart(to,from,room,message)
+  local ok, err = self:sendFromClient(to,from,'PART','#'..room,message)
   if not ok then return false, err end
   return true,nil
 end
@@ -468,9 +585,9 @@ function IRCServer:processClientMessage(nick,msg)
   if not msg or not msg.command then
     return false, 'command not given'
   end
-  local func = self.clientFunctions[msg.command]
+  local func = self.clientFunctions[msg.command:upper()]
   if not func then
-    return self:sendClientFromServer(nick,'482','Not implemented')
+    return true,nil
   end
   return func(self,nick,msg)
 end
@@ -622,9 +739,9 @@ function IRCServer.startClient(sock,server)
   end
   if user then
     insert(send_buffer,':{hostname} 001 {nick} :Welcome {nick}!{user}@{hostname}')
-    insert(send_buffer,':{hostname} 002 {nick} :Your host is {hostname} running version 0')
-    insert(send_buffer,':{hostname} 003 {nick} :This server was created sometime')
-    insert(send_buffer,':{hostname} 004 {nick} {hostname} 0 s@ on')
+    insert(send_buffer,':{hostname} 002 {nick} :Your host is {hostname}, running version 0.0.1')
+    insert(send_buffer,':{hostname} 003 {nick} :This server was created ' .. date(start_time):fmt('%a %b %d %Y at %H:%M:%S UTC'))
+    insert(send_buffer,':{hostname} 004 {nick} :{hostname} multistreamer 0.0.1 o no')
     drain_buffer()
     local u = {
       id = user.id,
