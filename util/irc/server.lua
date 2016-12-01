@@ -281,7 +281,7 @@ function IRCServer:processIrcUpdate(update)
     for r,room in pairs(self.rooms) do
       if room.users[update.nick] then
         for u,user in pairs(room.users) do
-          if self.users[u].socket then
+          if self.users[u] and self.users[u].socket then
             self:sendRoomPart(u,update.nick,r)
           end
         end
