@@ -88,6 +88,7 @@ function ChatMgr:handleStreamUpdate(msg)
         local function relay(msg)
           msg.account_id = acc.id
           msg.stream_id = stream.id
+          msg.network = acc.network.name,
           redis_publish('comments',msg)
         end
         local read_func, write_func = acc.network.create_comment_funcs(

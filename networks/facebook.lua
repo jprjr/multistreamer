@@ -428,7 +428,6 @@ function M.create_comment_funcs(account, stream, send)
             type = 'text',
             from = v.from.name,
             text = v.message,
-            network = M.name,
           }
           local ok, err = send(msg)
         end
