@@ -33,7 +33,7 @@ and comments from multiple services in a single location.
   + [`bin/multistreamer` usage:](#binmultistreamer-usage)
   + [Alternative install options:](#alternative-install-options)
     - [Remove Bash dependency](#remove-bash-dependency)
-* [Wishlist](#wishlist)
+* [Roadmap](#roadmap)
 * [Licensing](#licensing)
 
 ## Requirements
@@ -355,13 +355,24 @@ be sure to set the following environment variables:
 * `LUA_PACKAGE_PATH` - optional
 * `LUA_PACKAGE_CPATH` - optional
 
-## Wishlist
+## Roadmap
 
-Here's some features I'm hoping to add:
+Until this hits version 1.0.0 everything is up in the air.
 
-* More networks
-* Unified Chat Interface - allow a user to view all comments/chat/messages/etc in a single location
-  * maybe as an IRC interface with a Lua TCP module?
+I'll mark a 1.0.0 release when:
+
+* I have read/write chat support for Twitch, Facebook, and YouTube
+  * this includes emotes, like Facebook 'likes'
+
+From there, I'll version as follows: `MAJOR.MINOR.PATCH`
+
+Major releases if upgrading requires configuration changes or altering the
+database.
+
+Minor releases for new features that don't require intervention from the
+user.
+
+Patch releases for bug fixes etc.
 
 ## Licensing
 
