@@ -301,6 +301,22 @@ we would on another IRC room.
 In the screenshot, I'm streaming to Twitch and to Facebook, and I'm leaving some
 comments on the live video on Facebook.
 
+Not all networks implement this functionality yet - please see the Wiki for
+details.
+
+Additionally, I'm planning on enabling posting chats/comments from the IRC room.
+My idea right now: if a user addresses a bot, their message gets relayed to
+the streaming service. ie, in the below screenshot, I could write:
+
+* `facebook-john-regan: Hey this is coming from IRC` or
+* `@facebook-john-regan Hey this is coming from IRC` or
+* `facebook-john-regan Hey this is coming from IRC`
+
+and the message would be posted to the video/chatroom/whatever.
+
+I'm also thinking of making the `root` user capable of posting messages to
+all services at the same time, so addressing it will cross-post a message.
+
 ![screenshot](misc/irc-screenshot.png)
 
 ## Reference
