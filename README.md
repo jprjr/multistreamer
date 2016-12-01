@@ -28,6 +28,7 @@ and comments from multiple services in a single location.
 * [Usage](#usage)
   + [Start the server](#start-the-server)
   + [Web Usage](#web-usage)
+  + [IRC Usage](#irc-usage)
 * [Reference](#reference)
   + [`bin/multistreamer` usage:](#binmultistreamer-usage)
   + [Alternative install options:](#alternative-install-options)
@@ -269,6 +270,38 @@ video to the different accounts.
 Once the user stops pushing video, `multistreamer` will take any needed
 shutdown/stop actions - like ending the Facebook Live Video.
 
+### IRC Usage
+
+Users can connect to Multistreamer with an IRC client, and view their
+stream's comments and messages.
+
+The IRC server supports (and only supports) SASL authentication with the 'PLAIN'
+method. This means passwords are sent in the clear, you should place some kind
+of SSL terminator in front of Multistreamer, like stunnel or haproxy.
+
+Once a user has logged into the IRC interface, they'll see a list of rooms
+representing all user's streams on the system. The room names
+use the format `(username)-(streamname)`
+
+Whenever a stream goes live, an IRC bot will join the room - this bot represents
+an actual account being streamed to. It's username will use the format
+`(network-name)-(account-name)`.
+
+Whenever a new comment/chat/etc comes in, the bot will relay it to the room,
+with the format `(Commenter/Chatter Name) (Message).`
+
+When the stream ends, the bots will leave the room.
+
+Attached is a screenshot of HexChat. I'm the user `john`, and my stream is named
+`Awesome`, so I'm in the room `#john-awesome`
+
+There's another user connected, `test` - we can chat back and forth like
+we would on another IRC room.
+
+In the screenshot, I'm streaming to Twitch and to Facebook, and I'm leaving some
+comments on the live video on Facebook.
+
+![screenshot](misc/irc-screenshot.png)
 
 ## Reference
 
