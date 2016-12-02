@@ -39,14 +39,14 @@ end
 if not config.public_http_url then
   config.public_http_url = 'http://127.0.0.1:8081'
 end
-if not config.publc_rtmp_url then
-  config.public_rtmp_url = 'http://127.0.0.1:1935'
+if not config.public_rtmp_url then
+  config.public_rtmp_url = 'rtmp://127.0.0.1:1935'
 end
 if not config.private_http_url then
   config.private_http_url = 'http://127.0.0.1:8081'
 end
-if not config.publc_rtmp_url then
-  config.private_rtmp_url = 'http://127.0.0.1:1935'
+if not config.private_rtmp_url then
+  config.private_rtmp_url = 'rtmp://127.0.0.1:1935'
 end
 
 config.http_prefix = config.http_prefix:gsub('/+$','')
