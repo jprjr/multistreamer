@@ -97,7 +97,11 @@ function M.get_oauth_url(user)
       state = encode_base64(encode_with_secret({ id = user.id })),
       redirect_uri = M.redirect_uri,
       client_id = config.networks[M.name].client_id,
-      scope = 'https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/userinfo.email',
+      scope = concat({
+        'https://www.googleapis.com/auth/youtube.force-ssl',
+        'https://www.googleapis.com/auth/youtube.upload',
+        'https://www.googleapis.com/auth/userinfo.email',
+      },' '),
       response_type = 'code',
       approval_prompt = 'force',
       access_type = 'offline',
