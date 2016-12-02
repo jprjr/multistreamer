@@ -433,7 +433,10 @@ function M.create_comment_funcs(account, stream, send)
         for i,v in pairs(res.data) do
           local msg = {
             type = 'text',
-            from = v.from.name,
+            from = {
+              name = v.from.name,
+              id = v.from.id,
+            },
             text = v.message,
           }
           local ok, err = send(msg)

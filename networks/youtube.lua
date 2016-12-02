@@ -467,7 +467,10 @@ function M.create_comment_funcs(account, stream, send)
         for i,v in ipairs(res.items) do
           send({
             type = 'text',
-            from = v.authorDetails.displayName,
+            from = {
+              name = v.authorDetails.displayName,
+              id = v.authorDetails.channelId,
+            },
             text = v.snippet.textMessageDetails.messageText,
           })
         end

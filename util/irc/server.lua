@@ -276,7 +276,7 @@ function IRCServer:processCommentUpdate(update)
   for u,user in pairs(self.rooms[roomname].users) do
     if self.users[u].socket then
       if update.type == 'text' then
-        self:sendPrivMessage(u,username,'#'..roomname,'(' .. update.from ..') '..update.text)
+        self:sendPrivMessage(u,username,'#'..roomname,'(' .. update.from.name ..') '..update.text)
       end
     end
   end
