@@ -17,6 +17,9 @@ local insert = table.insert
 local concat = table.concat
 local sort = table.sort
 local db = require'lapis.db'
+local pairs = pairs
+local ipairs = ipairs
+local ceil = math.ceil
 
 local M = {}
 
@@ -332,6 +335,7 @@ function M.publish_start(account, stream)
 
   stream_o:set('http_url',http_url)
   stream_o:set('broadcast_id',broadcast.id)
+  stream_o:set('chat_id',broadcast.snippet.liveChatId)
   stream_o:set('stream_id',video_stream.id)
   stream_o:set('stream_status',video_stream.status.streamStatus)
 
@@ -389,6 +393,7 @@ function M.publish_stop(account, stream)
   stream_o:unset('http_url')
   stream_o:unset('broadcast_id')
   stream_o:unset('stream_id')
+  stream_o:unset('chat_id')
   stream_o:unset('stream_status')
 
   local access_token = account.access_token
@@ -444,7 +449,34 @@ function M.check_errors(account)
 end
 
 function M.create_comment_funcs(account, stream, send)
-  return nil,nil
+  local account = account:get_all()
+  local stream = stream:get_all()
+
+  local yt = youtube_client(account.access_token)
+
+  local read_func = function()
+    local nextToken = nil
+    while true do
+      local res, err = yt:get('/liveChat/messages',{
+        liveChatId = stream.chat_id,
+        part = 'id,snippet,authorDetails',
+        pageToken = nextToken,
+      })
+      if res then
+        if res.nextToken then nextToken = res.nextToken end
+        for i,v in ipairs(res.items) do
+          send({
+            type = 'text',
+            from = v.authorDetails.displayName,
+            text = v.snippet.textMessageDetails.messageText,
+          })
+        end
+      end
+      ngx.sleep(ceil((res.pollingIntervalMillis/1000)))
+    end
+  end
+
+  return read_func, nil
 end
 
 
