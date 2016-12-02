@@ -11,7 +11,8 @@ description, etc) from a single page, instead of logging into multiple
 services.
 
 Additionally, it provides an IRC interface, where users can read/write
-comments and messages in a single location. Please see the [[wiki]] for
+comments and messages in a single location. Please see the
+[wiki](https://github.com/jprjr/multistreamer/wiki) for
 details on which services support which features.
 
 Fun, unintentional side effect: you can use this to push video to your
