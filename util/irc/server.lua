@@ -7,6 +7,8 @@ local from_json = require('lapis.util').from_json
 local User = require'models.user'
 local Stream = require'models.stream'
 local Account = require'models.account'
+local string = require'util.string'
+
 local insert = table.insert
 local remove = table.remove
 local char = string.char
@@ -23,19 +25,6 @@ local redis = require'helpers.redis'
 local endpoint = redis.endpoint
 local publish = redis.publish
 local subscribe = redis.subscribe
-
-function string:split(inSplitPattern)
-  local res = {}
-  local start = 1
-  local splitStart, splitEnd = self:find(inSplitPattern,start)
-  while splitStart do
-    insert(res, sub(self,start,splitStart-1))
-    start = splitEnd + 1
-    splitStart, splitEnd = self:find(inSplitPattern, start)
-  end
-  insert(res, self:sub(start) )
-  return res
-end
 
 local IRCServer = {}
 IRCServer.__index = IRCServer

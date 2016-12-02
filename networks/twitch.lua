@@ -11,7 +11,10 @@ local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
 local format = string.format
 local insert = table.insert
+local concat = table.concat
 local sort = table.sort
+local tonumber = tonumber
+local IRCClient = require'util.irc.client'
 
 local Account = require'models.account'
 
@@ -20,8 +23,8 @@ local M = {}
 M.displayname = 'Twitch'
 M.allow_sharing = true
 
-M.read_comments = false
-M.write_comments = false
+M.read_comments = true
+M.write_comments = true
 
 local api_uri = 'https://api.twitch.tv/kraken'
 local twitch_config = config.networks.twitch
@@ -295,8 +298,91 @@ function M.notify_update(account, stream)
   return true
 end
 
+local function emojify(message,emotes)
+  local msgTable = message:to_table()
+  local emotes = emotes:split('/')
+  for i,v in ipairs(emotes) do
+    local t = v:find(':')
+    if t then
+      local emote = v:sub(1,t-1)
+      local ranges = v:sub(t+1):split(',')
+      for _,r in ipairs(ranges) do
+        local b,e = r:match('(%d+)-(%d+)')
+        b = tonumber(b) + 1
+        e = tonumber(e) + 1
+        local alt_text = message:sub(b,e)
+        for i=b,e,1 do
+          msgTable[i] = nil
+        end
+        msgTable[b] = string.format('![%s](http://static-cdn.jtvnw.net/emoticons/v1/%s/3.0)',alt_text,emote)
+      end
+    end
+  end
+  local keys = {}
+  local outmsg = {}
+  for k,v in pairs(msgTable) do
+    insert(keys,k)
+  end
+  sort(keys)
+  for i,k in ipairs(keys) do
+    insert(outmsg,msgTable[k])
+  end
+  return table.concat(outmsg,'')
+end
+
 function M.create_comment_funcs(account, stream, send)
-  return nil, nil
+  local account = account:get_all()
+  local stream = stream:get_all()
+
+  local irc = IRCClient.new()
+  local nick = account.channel:lower()
+  local channel = '#' .. nick
+
+  local function irc_connect()
+    local ok, err
+    ok, err = irc:connect('irc.chat.twitch.tv',6667)
+    if not ok then
+      ngx.log(ngx.ERR,err)
+      return false,err
+    end
+    ok, err = irc:login(nick,nil,nil,'oauth:'..account.token)
+    if not ok then
+      ngx.log(ngx.ERR,err)
+      return false,err
+    end
+    irc:join(channel)
+    irc:capreq('twitch.tv/tags')
+    return true, nil
+  end
+
+  if not irc_connect() then return nil,nil end
+
+  local read_func = function()
+    local running = true
+    irc:onEvent('message',function(data)
+      if data.to ~= channel then return nil end
+      send({
+        type = 'text',
+        from = {
+          name = data.tags['display-name'],
+          id = data.tags['user-id'],
+        },
+        text = data.message,
+        markdown = emojify(data.message,data.tags.emotes),
+      })
+    end)
+    while running do
+      local ok, err = irc:cruise()
+      if not irc_connect then running = false end
+    end
+    return false, nil
+  end
+
+  local write_func = function(message)
+    irc:message(channel,message)
+  end
+
+  return read_func, write_func
 end
 
 return M
