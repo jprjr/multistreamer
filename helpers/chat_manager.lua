@@ -43,79 +43,88 @@ ChatMgr.__index = ChatMgr
 ChatMgr.new = function()
   local t = {}
   t.streams = {}
+  t.messageFuncs = {
+    [config.redis_prefix .. 'stream:start'] = ChatMgr.handleStreamStart,
+    [config.redis_prefix .. 'stream:end'] = ChatMgr.handleStreamEnd,
+  }
   setmetatable(t,ChatMgr)
   return t
 end
 
 function ChatMgr:run()
   local running = true
-  local ok, red = redis_subscribe('streams')
+  local ok, red = redis_subscribe('stream:start')
   if not ok then
     ngx.log(ngx.ERR,'[Chat Manager] Unable to connect to redis: ' .. red)
     ngx.exit(ngx.ERROR)
   end
+  redis_subscribe('stream:end',red)
   while(running) do
     local res, err = red:read_reply()
     if err and err ~= 'timeout' then
       ngx.log(ngx.ERR,'[Chat Manager] Redis Disconnected!')
       ngx.exit(ngx.ERROR)
     end
-    if res then self:routeMessage(res) end
+    if res then
+      local func = self.messageFuncs[res[2]]
+      if func then
+        func(self,from_json(res[3]))
+      end
+    end
   end
 end
 
-function ChatMgr:routeMessage(msg)
-  if msg[2] == config.redis_prefix .. 'streams' then
-    self:handleStreamUpdate(from_json(msg[3]))
+
+function ChatMgr:handleStreamStart(msg)
+  if msg.worker ~= ngx.worker.pid() then
+    return nil
+  end
+  local stream = Stream:find({id = msg.id})
+  if not stream then
+    return nil
+  end
+  self.streams[stream.id] = {}
+
+  for _,sa in pairs(stream:get_streams_accounts()) do
+    local acc = sa:get_account()
+    acc.network = networks[acc.network]
+    self.streams[stream.id][acc.id] = {}
+    local function relay(msg)
+      msg.account_id = acc.id
+      msg.stream_id = stream.id
+      msg.network = acc.network.name,
+      redis_publish('comment:in',msg)
+    end
+    local read_func, write_func = acc.network.create_comment_funcs(
+      acc:get_keystore(),
+      sa:get_keystore(),
+      relay)
+    if read_func then
+      self.streams[stream.id][acc.id].read_thread = ngx.thread.spawn(read_func)
+    end
+    if write_func then
+      self.streams[stream.id][acc.id].send = write_func
+    end
   end
 end
 
-function ChatMgr:handleStreamUpdate(msg)
-  if msg.status == 'live' or msg.status == 'stopped' then
-    if msg.worker ~= ngx.worker.pid() then
-      return nil
-    end
-    local stream = Stream:find({id = msg.id})
-    if not stream then return nil end
+function ChatMgr:handleStreamEnd(msg)
+  local stream = Stream:find({id = msg.id})
+  if not stream then
+    return nil
+  end
 
-    if msg.status == 'live' then
-      self.streams[msg.id] = {}
+  for _,sa in pairs(stream:get_streams_accounts()) do
+    local acc = sa:get_account()
 
-      for _,sa in pairs(stream:get_streams_accounts()) do
-        local acc = sa:get_account()
-        acc.network = networks[acc.network]
-        self.streams[msg.id][acc.id] = {}
-        local function relay(msg)
-          msg.account_id = acc.id
-          msg.stream_id = stream.id
-          msg.network = acc.network.name,
-          redis_publish('comments',msg)
-        end
-        local read_func, write_func = acc.network.create_comment_funcs(
-          acc:get_keystore(),
-          sa:get_keystore(),
-          relay)
-        if read_func then
-          self.streams[msg.id][acc.id].read_thread = ngx.thread.spawn(read_func)
-        end
-        if write_func then
-          self.streams[msg.id][acc.id].send = write_func
-        end
+    if self.streams[stream.id] and self.streams[stream.id][acc.id] then
+      if self.streams[stream.id][acc.id].read_thread then
+        local ok, err = ngx.thread.kill(self.streams[stream.id][acc.id].read_thread)
       end
-    elseif msg.status == 'stopped' then
-      for _,sa in pairs(stream:get_streams_accounts()) do
-        local acc = sa:get_account()
-
-        if self.streams[msg.id] and self.streams[msg.id][acc.id] then
-          if self.streams[msg.id][acc.id].read_thread then
-            local ok, err = ngx.thread.kill(self.streams[msg.id][acc.id].read_thread)
-          end
-          self.streams[msg.id][acc.id] = nil
-        end
-      end
-      self.streams[msg.id] = nil
+      self.streams[stream.id][acc.id] = nil
     end
   end
+  self.streams[stream.id] = nil
 end
 
 return ChatMgr

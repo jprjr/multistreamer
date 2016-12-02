@@ -113,6 +113,12 @@ function IRCServer.new(socket,user,parentServer)
     ['WHO'] = IRCServer.clientWho,
     ['WHOIS'] = IRCServer.clientWhois,
   }
+  server.redisFunctions = {
+    [config.redis_prefix .. 'stream:start'] = IRCServer.processStreamStart,
+    [config.redis_prefix .. 'stream:end'] = IRCServer.processStreamEnd,
+    [config.redis_prefix .. 'comment:in'] = IRCServer.processCommentUpdate,
+    [config.redis_prefix .. 'irc:events'] = IRCServer.processIrcUpdate,
+  }
   setmetatable(server,IRCServer)
   return server
 end
@@ -124,8 +130,9 @@ function IRCServer:run()
   if not ok then
     ngx.exit(ngx.ERROR)
   end
-  redis_subscribe('streams',red)
-  redis_subscribe('comments',red)
+  redis_subscribe('stream:start',red)
+  redis_subscribe('stream:end',red)
+  redis_subscribe('comment:in',red)
 
   self.ready = true
 
@@ -138,14 +145,10 @@ function IRCServer:run()
         return false
       end
       if res then
-          local update = from_json(res[3])
-          if(res[2] == config.redis_prefix .. 'irc:events') then
-            self:processIrcUpdate(update)
-          elseif(res[2] == config.redis_prefix .. 'streams') then
-            self:processStreamUpdate(update)
-          elseif(res[2] == config.redis_prefix .. 'comments') then
-            self:processCommentUpdate(update)
-          end
+        local func = self.redisFunctions[res[2]]
+        if func then
+          func(self,from_json(res[3]))
+        end
       end
     end
   end)
@@ -207,6 +210,52 @@ function IRCServer:getState()
     users = from_json(to_json(self.users)),
     rooms = from_json(to_json(self.rooms)),
   }
+end
+
+function IRCServer:processStreamStart(update)
+  local stream = Stream:find({ id = update.id })
+  local sas = stream:get_streams_accounts()
+  local user = stream:get_user()
+  for _,sa in pairs(sas) do
+    local account = sa:get_account()
+    account.network = networks[account.network]
+    local accountUsername = slugify(account.network.name)..'-'..slugify(account.name)
+    local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
+    if not self.users[accountUsername] then
+      self.users[accountUsername] = {
+        user = {
+          nick = accountUsername,
+          username = accountUsername,
+          realname = accountUsername
+        }
+      }
+    end
+    self.rooms[roomName].users[accountUsername] = true
+    for u,user in pairs(self.rooms[roomName].users) do
+      if self.users[u].socket then
+        self:sendRoomJoin(u,accountUsername,roomName)
+      end
+    end
+  end
+end
+
+function IRCServer:processStreamEnd(update)
+  local stream = Stream:find({ id = update.id })
+  local sas = stream:get_streams_accounts()
+  local user = stream:get_user()
+  for _,sa in pairs(sas) do
+    local account = sa:get_account()
+    account.network = networks[account.network]
+    local accountUsername = slugify(account.network.name)..'-'..slugify(account.name)
+    local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
+
+    for u,user in pairs(self.rooms[roomName].users) do
+      if self.users[u].socket then
+        self:sendRoomPart(u,accountUsername,roomName)
+      end
+    end
+    self.rooms[roomName].users[accountUsername] = nil
+  end
 end
 
 function IRCServer:processStreamUpdate(update)

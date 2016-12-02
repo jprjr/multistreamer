@@ -226,14 +226,13 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
       sa:update({rtmp_url = rtmp_url})
     end
 
+    -- just going to ignore any errors
     local red = redis:new()
     red:connect(config.redis_host)
-    red:publish(config.redis_prefix .. 'streams',to_json(
-      { status = 'live',
-        worker = ngx.worker.pid(),
-        id = stream.id,
-      }
-    ))
+    red:publish(config.redis_prefix .. 'stream:start',to_json({
+      worker = ngx.worker.pid(),
+      id = stream.id,
+    }))
 
     return plain_err_out(self,'OK',200)
  end,
@@ -274,12 +273,9 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
 
   local red = redis:new()
   red:connect(config.redis_host)
-  red:publish(config.redis_prefix .. 'streams',to_json(
-    { status = 'stopped',
-      worker = ngx.worker.pid(),
-      id = stream.id,
-    }
-  ))
+  red:publish(config.redis_prefix .. 'stream:end',to_json({
+    id = stream.id,
+  }))
 
   for _,v in pairs(sas) do
     local account = v[1]
