@@ -13,6 +13,9 @@ services.
 Additionally, it provides an IRC server, where users can view chat messages
 and comments from multiple services in a single location.
 
+Fun, unintentional side effect: you can use this to push video to your
+personal Facebook profile, instead of using the phone app. This isn't
+available via the regular Facebook web interface, as far as I know. :)
 
 ## Table of Contents
 
