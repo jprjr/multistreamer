@@ -1,7 +1,6 @@
 local irc = require'util.irc'
-local config = require('lapis.config').get()
+local config = require'helpers.config'
 local date = require'date'
-local redis = require'resty.redis'
 local slugify = require('lapis.util').slugify
 local to_json = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
@@ -19,6 +18,11 @@ if not unpack then
   unpack = table.unpack
 end
 
+local redis = require'helpers.redis'
+local endpoint = redis.endpoint
+local publish = redis.publish
+local subscribe = redis.subscribe
+
 function string:split(inSplitPattern)
   local res = {}
   local start = 1
@@ -31,39 +35,6 @@ function string:split(inSplitPattern)
   insert(res, self:sub(start) )
   return res
 end
-
-
-if not config.redis_prefix or string.len(config.redis_prefix) == 0 then
-  config.redis_prefix = 'multistreamer/'
-end
-
-local function redis_publish(endpoint,message)
-  local red = redis.new()
-  local ok, err = red:connect(config.redis_host)
-  if not ok then
-    ngx.log(ngx.ERR,'[IRC] Unable to connect to redis: ' .. err)
-    return false, err
-  end
-  local ok, err = red:publish(config.redis_prefix .. endpoint, to_json(message))
-  if not ok then return false, err end
-  return true, nil
-end
-
-local function redis_subscribe(endpoint,red)
-  local red = red
-  if not red then
-    red = redis.new()
-    local ok, err = red:connect(config.redis_host)
-    if not ok then
-      ngx.log(ngx.ERR,'[IRC] Unable to connect to redis: ' .. err)
-      return false, err
-    end
-  end
-  local ok, err = red:subscribe(config.redis_prefix .. endpoint)
-  if not ok then return false, err end
-  return true, red
-end
-
 
 local IRCServer = {}
 IRCServer.__index = IRCServer
@@ -81,7 +52,7 @@ function IRCServer.new(socket,user,parentServer)
     server.users[user.nick].user = user
     server.users[user.nick].socket = socket
 
-    redis_publish('irc:events', {
+    publish('irc:events', {
       event = 'login',
       nick = user.nick,
       username = user.username,
@@ -114,10 +85,10 @@ function IRCServer.new(socket,user,parentServer)
     ['WHOIS'] = IRCServer.clientWhois,
   }
   server.redisFunctions = {
-    [config.redis_prefix .. 'stream:start'] = IRCServer.processStreamStart,
-    [config.redis_prefix .. 'stream:end'] = IRCServer.processStreamEnd,
-    [config.redis_prefix .. 'comment:in'] = IRCServer.processCommentUpdate,
-    [config.redis_prefix .. 'irc:events'] = IRCServer.processIrcUpdate,
+    [endpoint('stream:start')] = IRCServer.processStreamStart,
+    [endpoint('stream:end')] = IRCServer.processStreamEnd,
+    [endpoint('comment:in')] = IRCServer.processCommentUpdate,
+    [endpoint('irc:events')] = IRCServer.processIrcUpdate,
   }
   setmetatable(server,IRCServer)
   return server
@@ -126,13 +97,13 @@ end
 function IRCServer:run()
   local running = true
 
-  local ok, red = redis_subscribe('irc:events')
+  local ok, red = subscribe('irc:events')
   if not ok then
     ngx.exit(ngx.ERROR)
   end
-  redis_subscribe('stream:start',red)
-  redis_subscribe('stream:end',red)
-  redis_subscribe('comment:in',red)
+  subscribe('stream:start',red)
+  subscribe('stream:end',red)
+  subscribe('comment:in',red)
 
   self.ready = true
 
@@ -497,7 +468,7 @@ function IRCServer:clientJoinRoom(nick,msg)
   if not self.rooms[room] then
     return self:sendClientFromServer(nick,'403','Channel does not exist')
   end
-  local ok, err = redis_publish('irc:events', {
+  local ok, err = publish('irc:events', {
     event = 'join',
     nick = nick,
     room = room
@@ -513,7 +484,7 @@ function IRCServer:clientPartRoom(nick,msg)
     if room:sub(1,1) == '#' then
       room = room:sub(2)
     end
-    redis_publish('irc:events', {
+    publish('irc:events', {
       event = 'part',
       nick = nick,
       room = room,
@@ -535,7 +506,7 @@ function IRCServer:clientMessage(nick,msg)
       return self:sendClientFromServer(nick,'401','No such nick')
     end
   end
-  return redis_publish('irc:events',{
+  return publish('irc:events',{
     event = 'message',
     nick = nick,
     target = msg.args[1],
@@ -624,7 +595,7 @@ end
 
 function IRCServer:endClient(user)
   self.users[user.nick] = nil
-  redis_publish('irc:events',{
+  publish('irc:events',{
     event = 'logout',
     nick = user.nick,
   })

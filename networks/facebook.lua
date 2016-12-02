@@ -1,4 +1,5 @@
-local config = require('lapis.config').get()
+local ngx = ngx
+local config = require'helpers.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
 local decode_base64 = require('lapis.util.encoding').decode_base64
@@ -39,16 +40,22 @@ local function facebook_client(access_token)
       uri = uri .. '?' .. encode_query_string(params)
     end
 
+    if body then
+      ngx.log(ngx.DEBUG,body)
+    end
+
     local res, err = self.httpc:request_uri(uri, {
       method = method,
       headers = headers,
       body = body,
     })
     if err then
+      ngx.log(ngx.DEBUG,err)
       return false, err
     end
 
     if res.status >= 400 then
+      ngx.log(ngx.DEBUG,res.body)
       return false, res.body
     end
 

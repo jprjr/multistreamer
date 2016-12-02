@@ -1,6 +1,6 @@
 local Account = require'models.account'
 
-local config = require('lapis.config').get()
+local config = require'helpers.config'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
 

@@ -40,34 +40,32 @@ if(not arg[1] or not commands[arg[1]]) then
 end
 
 
-local config = require('lapis.config').get()
+local config = require'helpers.config'
 
-if not config.rtmp_prefix then
-  config.rtmp_prefix = 'multistreamer'
-end
-
-if not config.http_prefix then
-  print('error: no http_prefix set in config.lua')
+if not config.auth_endpoint then
+  print('Error: auth_endpoint not set in config')
   exit(1)
 end
+
+if not config.secret or config.secret == 'CHANGEME' then
+  print('Error: secret not set or still at default')
+  exit(1)
+end
+
 config.multistreamer_env = multistreamer_env
-
-config.http_prefix = config.http_prefix:gsub('/+$','')
-config.public_http_url = config.public_http_url:gsub('/+$','')
-config.public_rtmp_url = config.public_rtmp_url:gsub('/+$','')
-config.private_http_url = config.private_http_url:gsub('/+$','')
-config.private_rtmp_url = config.private_rtmp_url:gsub('/+$','')
-
 
 if(arg[1] == 'run') then
   local whereami = require'whereami'
   local lua_bin = whereami()
   local lfs = require'lfs'
-  local db = require'lapis.db'
-  local sa_model = require'models.stream_account'
 
-  for i,v in pairs(sa_model:select()) do
-    v:update({ rtmp_url = db.NULL })
+  if not config.nginx then
+    print('Error: path to nginx not set')
+    exit(1)
+  end
+  if not config.ffmpeg then
+    print('Error: path to ffmpeg not set')
+    exit(1)
   end
 
   config.lua_bin = lua_bin
@@ -85,23 +83,12 @@ if(arg[1] == 'run') then
     lfs.mkdir(config.work_dir .. '/logs')
   end
 
-  if not config.http_listen then
-     config.http_listen = '127.0.0.1:8080'
-  end
-  if not config.rtmp_listen then
-     config.rtmp_listen = '127.0.0.1:1935'
-  end
-
   if not config.worker_processes then
     config.worker_processes = 1
   end
 
   if not config.log_level then
     config.log_level = 'error'
-  end
-
-  if not config.stream_storage_size then
-    config.stream_storage_size = '1m'
   end
 
   config.streamer_dir = streamer_dir

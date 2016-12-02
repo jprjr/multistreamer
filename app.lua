@@ -1,8 +1,9 @@
 local lapis = require'lapis'
 local app = lapis.Application()
-local config = require('lapis.config').get()
+local config = require'helpers.config'
 local db = require'lapis.db'
-local redis = require'resty.redis'
+local redis = require'helpers.redis'
+local publish = redis.publish
 
 local User = require'models.user'
 local Account = require'models.account'
@@ -22,10 +23,6 @@ local sort = table.sort
 
 app:enable('etlua')
 app.layout = require'views.layout'
-
-if not config.redis_prefix or length(config.redis_prefix) == 0 then
-  config.redis_prefix = 'multistreamer/'
-end
 
 app:before_filter(function(self)
   self.networks = networks
@@ -170,11 +167,7 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       return a.network.displayname < b.network.displayname
     end)
     self.public_rtmp_url = config.public_rtmp_url
-    if not config.rtmp_prefix or length(config.rtmp_prefix) == 0 then
-      self.rtmp_prefix = 'multistreamer'
-    else
-      self.rtmp_prefix = config.rtmp_prefix
-    end
+    self.rtmp_prefix = config.rtmp_prefix
   end,
   GET = function(self)
     return { render = 'metadata' }
@@ -227,12 +220,10 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     end
 
     -- just going to ignore any errors
-    local red = redis:new()
-    red:connect(config.redis_host)
-    red:publish(config.redis_prefix .. 'stream:start',to_json({
+    publish('stream:start',{
       worker = ngx.worker.pid(),
       id = stream.id,
-    }))
+    })
 
     return plain_err_out(self,'OK',200)
  end,
@@ -271,11 +262,9 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
     return plain_err_out(self,err)
   end
 
-  local red = redis:new()
-  red:connect(config.redis_host)
-  red:publish(config.redis_prefix .. 'stream:end',to_json({
+  publish('stream:end',{
     id = stream.id,
-  }))
+  })
 
   for _,v in pairs(sas) do
     local account = v[1]

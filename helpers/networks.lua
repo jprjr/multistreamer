@@ -1,4 +1,4 @@
-local config = require('lapis.config').get()
+local config = require'helpers.config'
 local table_insert = table.insert
 local table_sort = table.sort
 local pairs = pairs

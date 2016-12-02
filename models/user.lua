@@ -1,5 +1,5 @@
 local Model = require('lapis.db.model').Model
-local config = require('lapis.config').get()
+local config = require'helpers.config'
 local http = require'resty.http'
 local encode_base64 = ngx.encode_base64
 local hmac_sha1 = ngx.hmac_sha1

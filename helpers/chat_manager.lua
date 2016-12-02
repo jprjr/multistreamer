@@ -1,41 +1,13 @@
 local ngx = ngx
-local redis = require'resty.redis'
-local config = require('lapis.config').get()
+local config = require'helpers.config'
+local redis = require'helpers.redis'
+local endpoint = redis.endpoint
+local publish = redis.publish
+local subscribe = redis.subscribe
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local Stream = require'models.stream'
 local setmetatable = setmetatable
-
-if not config.redis_prefix or string.len(config.redis_prefix) == 0 then
-  config.redis_prefix = 'multistreamer/'
-end
-
-local function redis_publish(endpoint,message)
-  local red = redis.new()
-  local ok, err = red:connect(config.redis_host)
-  if not ok then
-    ngx.log(ngx.ERR,'[Chat Manager] Unable to connect to redis: ' .. err)
-    return false, err
-  end
-  local ok, err = red:publish(config.redis_prefix .. endpoint, to_json(message))
-  if not ok then return false, err end
-  return true, nil
-end
-
-local function redis_subscribe(endpoint,red)
-  local red = red
-  if not red then
-    red = redis.new()
-    local ok, err = red:connect(config.redis_host)
-    if not ok then
-      ngx.log(ngx.ERR,'[Chat Manager] Unable to connect to redis: ' .. err)
-      return false, err
-    end
-  end
-  local ok, err = red:subscribe(config.redis_prefix .. endpoint)
-  if not ok then return false, err end
-  return true, red
-end
 
 local ChatMgr = {}
 ChatMgr.__index = ChatMgr
@@ -44,8 +16,8 @@ ChatMgr.new = function()
   local t = {}
   t.streams = {}
   t.messageFuncs = {
-    [config.redis_prefix .. 'stream:start'] = ChatMgr.handleStreamStart,
-    [config.redis_prefix .. 'stream:end'] = ChatMgr.handleStreamEnd,
+    [endpoint('stream:start')] = ChatMgr.handleStreamStart,
+    [endpoint('stream:end')] = ChatMgr.handleStreamEnd,
   }
   setmetatable(t,ChatMgr)
   return t
@@ -53,12 +25,12 @@ end
 
 function ChatMgr:run()
   local running = true
-  local ok, red = redis_subscribe('stream:start')
+  local ok, red = subscribe('stream:start')
   if not ok then
     ngx.log(ngx.ERR,'[Chat Manager] Unable to connect to redis: ' .. red)
     ngx.exit(ngx.ERROR)
   end
-  redis_subscribe('stream:end',red)
+  subscribe('stream:end',red)
   while(running) do
     local res, err = red:read_reply()
     if err and err ~= 'timeout' then
@@ -93,7 +65,7 @@ function ChatMgr:handleStreamStart(msg)
       msg.account_id = acc.id
       msg.stream_id = stream.id
       msg.network = acc.network.name,
-      redis_publish('comment:in',msg)
+      publish('comment:in',msg)
     end
     local read_func, write_func = acc.network.create_comment_funcs(
       acc:get_keystore(),
