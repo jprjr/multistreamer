@@ -18,6 +18,7 @@ ChatMgr.new = function()
   t.messageFuncs = {
     [endpoint('stream:start')] = ChatMgr.handleStreamStart,
     [endpoint('stream:end')] = ChatMgr.handleStreamEnd,
+    [endpoint('comment:out')] = ChatMgr.handleCommentOut,
   }
   setmetatable(t,ChatMgr)
   return t
@@ -31,6 +32,7 @@ function ChatMgr:run()
     ngx.exit(ngx.ERROR)
   end
   subscribe('stream:end',red)
+  subscribe('comment:out',red)
   while(running) do
     local res, err = red:read_reply()
     if err and err ~= 'timeout' then
@@ -78,6 +80,15 @@ function ChatMgr:handleStreamStart(msg)
       self.streams[stream.id][acc.id].send = write_func
     end
   end
+end
+
+function ChatMgr:handleCommentOut(msg)
+  if not msg.stream_id or not msg.account_id then return end
+  if self.streams[msg.stream_id] and
+     self.streams[msg.stream_id][msg.account_id] and
+     self.streams[msg.stream_id][msg.account_id].send then
+   self.streams[msg.stream_id][msg.account_id].send(msg.text)
+ end
 end
 
 function ChatMgr:handleStreamEnd(msg)

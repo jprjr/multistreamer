@@ -198,7 +198,8 @@ function IRCServer:processStreamStart(update)
           nick = accountUsername,
           username = accountUsername,
           realname = accountUsername
-        }
+        },
+        account_id = account.id,
       }
     end
     self.rooms[roomName].users[accountUsername] = true
@@ -501,6 +502,7 @@ function IRCServer:clientMessage(nick,msg)
     if not self.rooms[target] then
       return self:sendClientFromServer(nick,'403','Channel does not exist')
     end
+    self:relayMessage(nick,target,msg.args[2])
   else
     if not self.users[target] then
       return self:sendClientFromServer(nick,'401','No such nick')
@@ -512,6 +514,28 @@ function IRCServer:clientMessage(nick,msg)
     target = msg.args[1],
     message = msg.args[2],
   })
+end
+
+function IRCServer:relayMessage(nick,room,message)
+  if(message:sub(1,1) == '@') then
+    message = message:sub(2)
+  end
+  local i = message:find(' ')
+  if not i then return end
+  local username = message:sub(1,i-1)
+  username = username:gsub('[^a-z]$','')
+  local msg = message:sub(i+1)
+  if msg:len() == 0 then return end
+
+  if self.users[username] and self.users[username].account_id and self.rooms[room].users[username] == true then
+    local stream_id = self.rooms[room].stream_id
+    local account_id = self.users[username].account_id
+    publish('comment:out', {
+      stream_id = stream_id,
+      account_id = account_id,
+      text = msg,
+    })
+  end
 end
 
 function IRCServer:clientPing(nick,msg)
