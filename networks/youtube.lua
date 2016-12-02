@@ -14,6 +14,7 @@ local str = require'resty.string'
 local date = require'date'
 
 local insert = table.insert
+local concat = table.concat
 local sort = table.sort
 local db = require'lapis.db'
 
