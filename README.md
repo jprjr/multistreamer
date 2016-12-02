@@ -10,12 +10,16 @@ It also allows for updating their stream's metadata (stream title,
 description, etc) from a single page, instead of logging into multiple
 services.
 
-Additionally, it provides an IRC server, where users can view chat messages
-and comments from multiple services in a single location.
+Additionally, it provides an IRC interface, where users can read/write
+comments and messages in a single location. Please see the [[wiki]] for
+details on which services support which features.
 
 Fun, unintentional side effect: you can use this to push video to your
 personal Facebook profile, instead of using the phone app. This isn't
 available via the regular Facebook web interface, as far as I know. :)
+
+Please note: you're responsible for ensuring you're not violating each
+service's Terms of Service via simulcasting.
 
 ## Table of Contents
 
@@ -24,6 +28,7 @@ available via the regular Facebook web interface, as far as I know. :)
   + [Install OpenResty with RTMP](#install-openresty-with-rtmp)
   + [Alternative: Install nginx with Lua and rtmp](#alternative-install-nginx-with-lua-and-rtmp)
   + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
+  + [Setup Redis](#setup-redis)
   + [Setup Authentication Server](#setup-authentication-server)
   + [Clone and setup](#clone-and-setup)
   + [Install Lua modules](#install-lua-modules)
