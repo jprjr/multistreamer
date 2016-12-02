@@ -23,6 +23,9 @@ local M = {}
 M.displayname = 'Facebook'
 M.allow_sharing = false
 
+M.read_comments = true
+M.write_comments = false
+
 local graph_root = 'https://graph.facebook.com/v2.8'
 
 local function facebook_client(access_token)

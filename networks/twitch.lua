@@ -20,6 +20,9 @@ local M = {}
 M.displayname = 'Twitch'
 M.allow_sharing = true
 
+M.read_comments = false
+M.write_comments = false
+
 local api_uri = 'https://api.twitch.tv/kraken'
 local twitch_config = config.networks.twitch
 

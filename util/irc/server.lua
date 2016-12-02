@@ -17,6 +17,7 @@ local unpack = unpack
 if not unpack then
   unpack = table.unpack
 end
+local networks = networks
 
 local redis = require'helpers.redis'
 local endpoint = redis.endpoint
@@ -200,6 +201,7 @@ function IRCServer:processStreamStart(update)
           realname = accountUsername
         },
         account_id = account.id,
+        network = account.network,
       }
     end
     self.rooms[roomName].users[accountUsername] = true
@@ -528,13 +530,22 @@ function IRCServer:relayMessage(nick,room,message)
   if msg:len() == 0 then return end
 
   if self.users[username] and self.users[username].account_id and self.rooms[room].users[username] == true then
-    local stream_id = self.rooms[room].stream_id
-    local account_id = self.users[username].account_id
-    publish('comment:out', {
-      stream_id = stream_id,
-      account_id = account_id,
-      text = msg,
-    })
+    if self.users[username].network.write_comments then
+      local stream_id = self.rooms[room].stream_id
+      local account_id = self.users[username].account_id
+      publish('comment:out', {
+        stream_id = stream_id,
+        account_id = account_id,
+        text = msg,
+      })
+    else
+      publish('irc:events',{
+        event = 'message',
+        nick = username,
+        target = '#' .. room,
+        message = nick .. ': not supported',
+      })
+    end
   end
 end
 

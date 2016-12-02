@@ -26,6 +26,9 @@ local M = {}
 M.displayname = 'YouTube'
 M.allow_sharing = true
 
+M.read_comments = true
+M.write_comments = true
+
 local api_uri = 'https://www.googleapis.com/youtube/v3'
 
 local function google_client(base_url,access_token)
@@ -479,7 +482,26 @@ function M.create_comment_funcs(account, stream, send)
     end
   end
 
-  return read_func, nil
+  local write_func = function(text)
+    local res, err = yt:post('/liveChat/messags',{
+      part = 'snippet',
+      liveChatId = stream.chat_id,
+    }, {
+      snippet = {
+        liveChatId = stream.chat_id,
+        type = 'textMessageEvent',
+        textMessageDetails = {
+          messageText = text,
+        },
+      }
+    })
+    if err then
+      return false, err
+    end
+    return true, nil
+  end
+
+  return read_func, write_func
 end
 
 
