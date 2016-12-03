@@ -22,6 +22,8 @@ available via the regular Facebook web interface, as far as I know. :)
 Please note: you're responsible for ensuring you're not violating each
 service's Terms of Service via simulcasting.
 
+I have a YouTube video with an overview here: https://youtu.be/rjaTaHm4WkA
+
 ## Table of Contents
 
 * [Requirements](#requirements)
@@ -327,34 +329,14 @@ an actual account being streamed to. It's username will use the format
 `(network-name)-(account-name)`.
 
 Whenever a new comment/chat/etc comes in, the bot will relay it to the room,
-with the format `(Commenter/Chatter Name) (Message).`
+with the format `(username)-(network-name) (message)`
+
+I can post messages/comments to my streams by addressing the bots.
 
 When the stream ends, the bots will leave the room.
 
-Attached is a screenshot of HexChat. I'm the user `john`, and my stream is named
+Attached is a screenshot of Adium. I'm the user `john`, and my stream is named
 `Awesome`, so I'm in the room `#john-awesome`
-
-There's another user connected, `test` - we can chat back and forth like
-we would on another IRC room.
-
-In the screenshot, I'm streaming to Twitch and to Facebook, and I'm leaving some
-comments on the live video on Facebook.
-
-Not all networks implement this functionality yet - please see the Wiki for
-details.
-
-Additionally, I'm planning on enabling posting chats/comments from the IRC room.
-My idea right now: if a user addresses a bot, their message gets relayed to
-the streaming service. ie, in the below screenshot, I could write:
-
-* `facebook-john-regan: Hey this is coming from IRC` or
-* `@facebook-john-regan Hey this is coming from IRC` or
-* `facebook-john-regan Hey this is coming from IRC`
-
-and the message would be posted to the video/chatroom/whatever.
-
-I'm also thinking of making the `root` user capable of posting messages to
-all services at the same time, so addressing it will cross-post a message.
 
 ![screenshot](misc/irc-screenshot.png)
 
