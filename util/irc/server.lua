@@ -266,9 +266,12 @@ function IRCServer:processCommentUpdate(update)
   local roomname = slugify(user.username) .. '-' .. stream.slug
 
   for u,user in pairs(self.rooms[roomname].users) do
+    local r = '#' .. roomname
     if self.users[u].socket then
       if update.type == 'text' then
-        self:sendPrivMessage(u,username,'#'..roomname,'(' .. update.from.name ..') '..update.text)
+        self:sendPrivMessage(u,username,r,'(' .. update.from.name ..') '..update.text)
+      elseif update.type == 'emote' then
+        self:sendPrivMessage(u,username,r,char(1)..'ACTION ' ..update.from.name .. ' '..update.text ..char(1))
       end
     end
   end

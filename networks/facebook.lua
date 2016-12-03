@@ -77,6 +77,15 @@ local function facebook_client(access_token)
     return self:request('POST',endpoint,nil,headers,encode_query_string(params))
   end
 
+  f.batch = function(self,requests,headers)
+    local params = {
+      access_token = self.access_token,
+      include_headers = 'false',
+      batch = to_json(requests),
+    }
+    return self:post('/',params,headers)
+  end
+
   return f
 end
 
@@ -415,6 +424,24 @@ function M.notify_update(account, stream)
   return true
 end
 
+local emotes = {
+  ['LIKE'] = 'likes this',
+  ['LOVE'] = 'loves this',
+  ['WOW']  = 'is wowed by this',
+  ['HAHA'] = 'is laughing at this',
+  ['SAD']  = 'is saddened by this',
+  ['ANGRY'] = 'is made angry by this',
+  ['THANKFUL'] = 'is thankful for this',
+}
+
+local function textify(emote)
+  local text = emotes[emote]
+  if not text then
+    text = 'hit some kind of new reaction button that I don\'t know about'
+  end
+  return text
+end
+
 function M.create_comment_funcs(account, stream, send)
   local account = account:get_all()
   local stream = stream:get_all()
@@ -427,22 +454,45 @@ function M.create_comment_funcs(account, stream, send)
   local fb_client = facebook_client(access_token)
 
   local read_func = function()
-    local after = nil
+    local afterComment = nil
+    local afterReaction = nil
     while true do
-      local res, err = fb_client:get('/'..video_id ..'/comments', {
-        after = after })
-      if res then
-        if res.paging then after = res.paging.cursors.after end
-        for i,v in pairs(res.data) do
-          local msg = {
+      local res, err = fb_client:batch({
+        {
+          method = 'GET',
+          relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment}),
+        },
+        {
+          method = 'GET',
+          relative_url = video_id .. '/reactions?' .. encode_query_string({after = afterReaction}),
+        }
+      })
+      if res[1].code == 200 then
+        local body = from_json(res[1].body)
+        if body.paging then afterComment = body.paging.cursors.after end
+        for i,v in pairs(body.data) do
+          send({
             type = 'text',
             from = {
               name = v.from.name,
               id = v.from.id,
             },
             text = v.message,
-          }
-          local ok, err = send(msg)
+          })
+        end
+      end
+      if res[2].code == 200 then
+        local body = from_json(res[2].body)
+        if body.paging then afterReaction = body.paging.cursors.after end
+        for i,v in pairs(body.data) do
+          send({
+            type = 'emote',
+            from = {
+              name = v.name,
+              id = v.id,
+            },
+            text = textify(v.type)
+          })
         end
       end
       ngx.sleep(6)
