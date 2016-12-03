@@ -43,11 +43,16 @@ config({'development','production'}, {
   private_http_url = 'http://127.0.0.1:8081',
   private_rtmp_url = 'rtmp://127.0.0.1:1935',
 
-  -- setup your public (display) IRC hostname
+  -- setup your public IRC hostname, for the web
+  -- interface
   public_irc_hostname = 'example.com',
   -- setup your public IRC port, to report in the
   -- web interface
   public_irc_port = '7000',
+  -- set to true if you've setup an SSL terminator in front
+  -- of multistreamer
+  public_irc_ssl = true,
+  
 
   -- configure streaming networks/services
   -- you'll need to register a new app with each

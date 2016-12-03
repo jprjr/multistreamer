@@ -48,6 +48,15 @@ end
 if not config.private_rtmp_url then
   config.private_rtmp_url = 'rtmp://127.0.0.1:1935'
 end
+if not config.public_irc_hostname then
+  config.public_irc_hostname = 'localhost'
+end
+if not config.public_irc_hostname then
+  config.public_irc_port = '6667'
+end
+if not config.public_irc_ssl then
+  config.public_irc_ssl = false
+end
 
 config.http_prefix = config.http_prefix:gsub('/+$','')
 config.public_http_url = config.public_http_url:gsub('/+$','')

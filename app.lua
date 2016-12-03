@@ -31,6 +31,9 @@ app:before_filter(function(self)
     self.status_msg = self.session.status_msg
     self.session.status_msg = nil
   end
+  self.public_irc_hostname = config.public_irc_hostname
+  self.public_irc_port = config.public_irc_port
+  self.public_irc_ssl = config.public_irc_ssl
 end)
 
 local function err_out(req, err)

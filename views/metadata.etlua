@@ -2,6 +2,7 @@
 
 <p><strong>RTMP URL</strong> <code><%= public_rtmp_url %>/<%= rtmp_prefix %></code></p>
 <p><strong>Stream Key</strong> <button id="showBtn" type="button" class="pure-button">Show</button> <code id="stream-key"><%= stream.uuid %></code></p>
+<p><strong>IRC Room</strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass">Join</a></p>
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('metadata-edit')..stream.id %>" enctype="multipart/form-data">
 
