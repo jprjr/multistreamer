@@ -1,0 +1,10 @@
+[Unit]
+description=multistreamer
+After=network.target
+
+[Service]
+ExecStart=/opt/multistreamer/bin/multistreamer -e prod run
+User=multistreamer
+
+[Install]
+WantedBy=multi-user.target
