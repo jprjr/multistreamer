@@ -119,8 +119,10 @@ function IRCServer:run()
         local data, err, partial = self.socket:receive('*l')
         local msg
         if data then
+          ngx.log(ngx.DEBUG,data)
           msg = irc.parse_line(data)
         elseif partial then
+          ngx.log(ngx.DEBUG,partial)
           msg = irc.parse_line(partial)
         end
         if err and err == 'closed' then
@@ -642,6 +644,7 @@ end
 function IRCServer:sendFromClient(to,from,...)
   local full_from = from .. '!' .. from .. '@' .. config.irc_hostname
   local msg = irc.format_line(':'..full_from,...)
+  ngx.log(ngx.DEBUG,msg)
   local bytes, err = self.users[to].socket:send(msg .. '\r\n')
   if not bytes then
     return false, err
@@ -658,6 +661,7 @@ end
 function IRCServer:sendFromServer(nick,...)
   local msg = irc.format_line(':' .. config.irc_hostname,...)
   if self.users[nick].socket then
+    ngx.log(ngx.DEBUG,msg)
     local bytes, err = self.users[nick].socket:send(msg .. '\r\n')
     if not bytes then
       return false, err
