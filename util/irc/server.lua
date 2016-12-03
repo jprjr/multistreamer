@@ -802,6 +802,10 @@ function IRCServer.startClient(sock,server)
     insert(send_buffer,':{hostname} 002 {nick} :Your host is {hostname}, running version 1.0.0')
     insert(send_buffer,':{hostname} 003 {nick} :This server was created ' .. date(start_time):fmt('%a %b %d %Y at %H:%M:%S UTC'))
     insert(send_buffer,':{hostname} 004 {nick} :{hostname} multistreamer 1.0.0 o o')
+    insert(send_buffer,':{hostname} 375 {nick} :- {hostname} Message of the day -')
+    insert(send_buffer,':{hostname} 372 {nick} :- MOTD goes here')
+    insert(send_buffer,':{hostname} 376 {nick} :End of MOTD')
+
     drain_buffer()
     local u = {
       id = user.id,
