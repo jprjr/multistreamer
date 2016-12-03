@@ -43,6 +43,7 @@ service's Terms of Service via simulcasting.
   + [Alternative install options:](#alternative-install-options)
     - [Remove Bash dependency](#remove-bash-dependency)
 * [Roadmap](#roadmap)
+* [Versioning](#versioning)
 * [Licensing](#licensing)
 
 ## Requirements
@@ -366,22 +367,30 @@ be sure to set the following environment variables:
 
 ## Roadmap
 
-Until this hits version 1.0.0 everything is up in the air.
+New features I'd like to work on:
 
-I'll mark a 1.0.0 release when:
+* A web interface for viewing and responding to chat messages, comments,
+etc - basically, a web version of the IRC functionality.
+  * Probably a basic page that uses a websocket for sending/receiving
+    messages.
+* More networks!
 
-* I have read/write chat support for Twitch, Facebook, and YouTube
-  * this includes emotes, like Facebook 'likes'
+## Versioning
 
-From there, I'll version as follows: `MAJOR.MINOR.PATCH`
+This project uses semantic versioning: `MAJOR.MINOR.PATCH`
 
-Major releases if upgrading requires configuration changes or altering the
-database.
+A change to the major release number means the user *must* make a
+configuration change, running a database migration, etc. Upgrading
+to a new major release without taking action *will* result in a failure.
 
-Minor releases for new features that don't require intervention from the
-user.
+A change to the minor release number means some new feature is available,
+but the user doesn't necessarily need to take action (though the new
+feature might be disabled until they make a config change etc).
 
-Patch releases for bug fixes etc.
+A change to the patch number means I've made some small bug fix.
+
+All releases will include notes with details on migrating databases,
+updating the config, and so on.
 
 ## Licensing
 
