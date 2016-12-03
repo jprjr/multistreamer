@@ -445,7 +445,7 @@ function M.create_comment_funcs(account, stream, send)
           local ok, err = send(msg)
         end
       end
-      ngx.sleep(15)
+      ngx.sleep(6)
     end
   end
 

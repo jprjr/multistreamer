@@ -458,15 +458,15 @@ function M.create_comment_funcs(account, stream, send)
   local yt = youtube_client(account.access_token)
 
   local read_func = function()
-    local nextToken = nil
+    local nextPageToken = nil
     while true do
       local res, err = yt:get('/liveChat/messages',{
         liveChatId = stream.chat_id,
         part = 'id,snippet,authorDetails',
-        pageToken = nextToken,
+        pageToken = nextPageToken,
       })
       if res then
-        if res.nextToken then nextToken = res.nextToken end
+        if res.nextPageToken then nextPageToken = res.nextPageToken end
         for i,v in ipairs(res.items) do
           send({
             type = 'text',
@@ -478,12 +478,16 @@ function M.create_comment_funcs(account, stream, send)
           })
         end
       end
-      ngx.sleep(ceil((res.pollingIntervalMillis/1000)))
+      local sleep = ceil(res.pollingIntervalMillis/1000)
+      if sleep < 6 then
+        sleep = 6
+      end
+      ngx.sleep(sleep)
     end
   end
 
   local write_func = function(text)
-    local res, err = yt:post('/liveChat/messags',{
+    local res, err = yt:postJSON('/liveChat/messages',{
       part = 'snippet',
       liveChatId = stream.chat_id,
     }, {
