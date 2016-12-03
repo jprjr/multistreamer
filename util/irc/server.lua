@@ -346,7 +346,7 @@ function IRCServer:userList(room)
     if count > 1 then
       u = ' '..u
     end
-    ulist = ulist .. ' '..u
+    ulist = ulist .. u
   end
   return count, ulist
 end
