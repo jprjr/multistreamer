@@ -36,6 +36,7 @@ service's Terms of Service via simulcasting.
   + [Initialize the database](#initialize-the-database)
 * [Usage](#usage)
   + [Start the server](#start-the-server)
+  + [Alternative: run as systemd service](#alternative-run-as-systemd-service)
   + [Web Usage](#web-usage)
   + [IRC Usage](#irc-usage)
 * [Reference](#reference)
@@ -83,6 +84,8 @@ sudo make install
 ```
 
 ### Alternative: Install nginx with Lua and rtmp
+
+Here's a short script to download nginx and install it to `/opt/nginx-rtmp`
 
 ```bash
 mkdir nginx-build && cd nginx-build
@@ -236,6 +239,14 @@ Note: `whereami` may give you a hard time if you don't have
 
 Make sure your luarocks is setup for Lua 5.1 and/or LuaJIT.
 
+Using Mac OS? `lapis` will probably fail to install because `luacrypto`
+will fail to build. If you're using Homebrew, you can install
+`luacrypto` with:
+
+`luarocks --tree lua_modules install luacrypto OPENSSL_DIR=/usr/local/opt/openss`
+
+Then proceed to install lapis.
+
 ### Initialize the database
 
 If you run `./bin/multistreamer -e <environment> initdb`, a new database will
@@ -250,6 +261,23 @@ Alternatively, you could run something like:
 ### Start the server
 
 Once it's been setup, you can start the server with `./bin/multistreamer -e <environment> run`
+
+### Alternative: run as systemd service
+
+First, create a local user to run `multistreamer` as:
+
+```bash
+sudo useradd \
+  -d /var/lib/multistreamer -m \
+  -r \
+  -s /usr/sbin/nologin \
+  multistreamer
+```
+
+Then copy `misc/multistreamer.service` to
+`/etc/systemd/system/multistreamer.service`, and edit it as-needed - you'll
+probably need to change the `ExecStart` line to point to wherever you
+cloned the git repo.
 
 ### Web Usage
 
