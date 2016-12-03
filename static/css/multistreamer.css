@@ -2,6 +2,10 @@ span.error {
     color: red;
 }
 
+#stream-key {
+  display:none;
+}
+
 a {
     color: #428bca;
 }
