@@ -343,6 +343,9 @@ function IRCServer:userList(room)
     if u == 'root' then
       u = '@'..u
     end
+    if count > 1 then
+      u = ' '..u
+    end
     ulist = ulist .. ' '..u
   end
   return count, ulist
