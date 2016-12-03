@@ -313,8 +313,9 @@ shutdown/stop actions - like ending the Facebook Live Video.
 Users can connect to Multistreamer with an IRC client, and view their
 stream's comments and messages.
 
-The IRC server supports (and only supports) SASL authentication with the 'PLAIN'
-method. This means passwords are sent in the clear, you should place some kind
+The IRC interface supports logging in with SASL PLAIN authentication, as
+well as by specifying a server password. Both of these methods transmit
+the password in plain-text, so you should place some kind
 of SSL terminator in front of Multistreamer, like stunnel or haproxy.
 
 Once a user has logged into the IRC interface, they'll see a list of rooms

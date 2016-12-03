@@ -709,6 +709,14 @@ function IRCServer.startClient(sock,server)
       ngx.exit(ngx.ERROR)
     end
 
+    if msg.command == 'PASS' then
+      if not msg.args[1] then
+        logging_in = false
+        break
+      end
+      password = msg.args[1]
+    end
+
     if msg.command == 'NICK' then
       if not msg.args[1] then
         logging_in = false
@@ -782,6 +790,13 @@ function IRCServer.startClient(sock,server)
       logging_in = false
     end
   end
+
+  if not user then
+    if password and nickname then
+      user = User:login(nickname,password)
+    end
+  end
+
   if user then
     insert(send_buffer,':{hostname} 001 {nick} :Welcome {nick}!{user}@{hostname}')
     insert(send_buffer,':{hostname} 002 {nick} :Your host is {hostname}, running version 1.0.0')
