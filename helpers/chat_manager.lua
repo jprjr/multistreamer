@@ -66,7 +66,7 @@ function ChatMgr:handleStreamStart(msg)
     local function relay(msg)
       msg.account_id = acc.id
       msg.stream_id = stream.id
-      msg.network = acc.network.name,
+      msg.network = acc.network.name
       publish('comment:in',msg)
     end
     local read_func, write_func = acc.network.create_comment_funcs(

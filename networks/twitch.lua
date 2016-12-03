@@ -355,22 +355,31 @@ function M.create_comment_funcs(account, stream, send)
     return true, nil
   end
 
+  local function sendMsg(event,data)
+    if data.to ~= channel then return nil end
+    local msg = {
+      from = {
+        name = data.tags['display-name'],
+        id = data.tags['user-id'],
+      },
+      text = data.message,
+      markdown = emojify(data.message,data.tags.emotes),
+    }
+    if event == 'message' then
+      msg.type = 'text'
+    elseif event == 'emote' then
+      msg.type = 'emote'
+    end
+    send(msg)
+  end
+
   if not irc_connect() then return nil,nil end
+
 
   local read_func = function()
     local running = true
-    irc:onEvent('message',function(data)
-      if data.to ~= channel then return nil end
-      send({
-        type = 'text',
-        from = {
-          name = data.tags['display-name'],
-          id = data.tags['user-id'],
-        },
-        text = data.message,
-        markdown = emojify(data.message,data.tags.emotes),
-      })
-    end)
+    irc:onEvent('message',sendMsg)
+    irc:onEvent('emote',sendMsg)
     while running do
       local ok, err = irc:cruise()
       if not irc_connect then running = false end

@@ -262,16 +262,16 @@ function IRCServer:processCommentUpdate(update)
   local user = account:get_user()
   account.network = networks[account.network]
   local stream = Stream:find({ id = update.stream_id })
-  local username = slugify(account.network.name) .. '-' .. slugify(account.name)
+  local username = slugify(update.from.name)..'-'..update.network
   local roomname = slugify(user.username) .. '-' .. stream.slug
 
   for u,user in pairs(self.rooms[roomname].users) do
     local r = '#' .. roomname
     if self.users[u].socket then
       if update.type == 'text' then
-        self:sendPrivMessage(u,username,r,'(' .. update.from.name ..') '..update.text)
+        self:sendPrivMessage(u,username,r,update.text)
       elseif update.type == 'emote' then
-        self:sendPrivMessage(u,username,r,char(1)..'ACTION ' ..update.from.name .. ' '..update.text ..char(1))
+        self:sendPrivMessage(u,username,r,char(1)..'ACTION ' ..update.text ..char(1))
       end
     end
   end
@@ -449,7 +449,7 @@ end
 function IRCServer:clientMode(nick,msg)
   local target = msg.args[1]
   if not msg.args[2] then
-    return self:sendClientFromServer(nick,'324',target,'+on')
+    return self:sendClientFromServer(nick,'324',target,'+o')
   end
   return self:sendClientFromServer(nick,'482',target,'Not an op')
 end
@@ -640,10 +640,8 @@ function IRCServer:processClientMessage(nick,msg)
 end
 
 function IRCServer:sendFromClient(to,from,...)
-  local msg = irc.format_line(':'..
-    from .. '!' ..
-    self.users[from].user.username .. '@' ..
-    config.irc_hostname,...)
+  local full_from = from .. '!' .. from .. '@' .. config.irc_hostname
+  local msg = irc.format_line(':'..full_from,...)
   local bytes, err = self.users[to].socket:send(msg .. '\r\n')
   if not bytes then
     return false, err
@@ -786,9 +784,9 @@ function IRCServer.startClient(sock,server)
   end
   if user then
     insert(send_buffer,':{hostname} 001 {nick} :Welcome {nick}!{user}@{hostname}')
-    insert(send_buffer,':{hostname} 002 {nick} :Your host is {hostname}, running version 0.0.1')
+    insert(send_buffer,':{hostname} 002 {nick} :Your host is {hostname}, running version 1.0.0')
     insert(send_buffer,':{hostname} 003 {nick} :This server was created ' .. date(start_time):fmt('%a %b %d %Y at %H:%M:%S UTC'))
-    insert(send_buffer,':{hostname} 004 {nick} :{hostname} multistreamer 0.0.1 o no')
+    insert(send_buffer,':{hostname} 004 {nick} :{hostname} multistreamer 1.0.0 o o')
     drain_buffer()
     local u = {
       id = user.id,

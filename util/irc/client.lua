@@ -67,7 +67,7 @@ end
 function IRCClient:emitEvent(event,data)
   if not self.events[event] then return false, nil end
   for i,f in ipairs(self.events[event]) do
-    f(data)
+    f(event,data)
   end
   return true,nil
 end
@@ -177,9 +177,16 @@ function IRCClient:cruise()
     if err and err ~= 'timeout' then
       return false, err
     end
-    local msg = irc.parse_line(data)
-    local func = self.commandFuncs[msg.command:upper()]
-    if func then func(self,msg) end
+    local msg
+    if data then
+      msg = irc.parse_line(data)
+    else
+      msg = irc.parse_line(partial)
+    end
+    if msg and msg.command then
+      local func = self.commandFuncs[msg.command:upper()]
+      if func then func(self,msg) end
+    end
   end
 end
 
@@ -188,15 +195,15 @@ function IRCClient:serverPing(msg)
 end
 
 function IRCClient:serverMessage(msg)
-  if msg.args[2].byte(1) == 1 then
+  if msg.args[2]:byte(1) == 1 then
     local message = msg.args[2]:sub(2,msg.args[2]:len()-1)
     local parts = message:split(' ')
-    local command = remove(parts,1)
     if parts[1] == 'ACTION' then
       self:emitEvent('emote',{
         from = msg.from,
         to = msg.args[1],
-        emote = concat(parts,' ')
+        message = concat(parts,' ',2),
+        tags = msg.tags,
       })
     end
   else
