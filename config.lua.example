@@ -118,10 +118,6 @@ config({'development','production'}, {
   -- defaults to $HOME/.multistreamer if not set
   -- work_dir = '/path/to/some/folder',
 
-  -- specify a host for redis, and a prefix for redis keys
-  redis_host = '127.0.0.1:6379',
-  redis_prefix = 'multistreamer/',
-
 })
 
 
