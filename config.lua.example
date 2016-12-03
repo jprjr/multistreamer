@@ -43,6 +43,12 @@ config({'development','production'}, {
   private_http_url = 'http://127.0.0.1:8081',
   private_rtmp_url = 'rtmp://127.0.0.1:1935',
 
+  -- setup your public (display) IRC hostname
+  public_irc_hostname = 'example.com',
+  -- setup your public IRC port, to report in the
+  -- web interface
+  public_irc_port = '7000',
+
   -- configure streaming networks/services
   -- you'll need to register a new app with each
   -- service and insert keys/ids in here
@@ -84,7 +90,7 @@ config({'development','production'}, {
 
   -- nginx irc "listen" directive, see
   -- https://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
-  irc_listen = '7000',
+  irc_listen = '6667',
 
   -- set the IRC hostname reported by the server
   irc_hostname = 'localhost',
