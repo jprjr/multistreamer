@@ -77,6 +77,7 @@ function IRCServer.new(socket,user,parentServer)
   server.redisFunctions = {
     [endpoint('stream:start')] = IRCServer.processStreamStart,
     [endpoint('stream:end')] = IRCServer.processStreamEnd,
+    [endpoint('stream:update')] = IRCServer.processStreamUpdate,
     [endpoint('comment:in')] = IRCServer.processCommentUpdate,
     [endpoint('irc:events')] = IRCServer.processIrcUpdate,
   }
@@ -93,6 +94,7 @@ function IRCServer:run()
   end
   subscribe('stream:start',red)
   subscribe('stream:end',red)
+  subscribe('stream:update',red)
   subscribe('comment:in',red)
 
   self.ready = true
@@ -204,6 +206,59 @@ function IRCServer:processStreamStart(update)
   end
 end
 
+function IRCServer:processStreamUpdate(update)
+  local stream = Stream:find({ id = update.id })
+  local user = stream:get_user()
+  local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
+  ngx.log(ngx.DEBUG,roomName)
+  local room = self.rooms[roomName]
+  if room then
+    -- just have to update the mtime and topic
+    local topic = stream:get('title')
+    if room.topic ~= topic then
+      room.topic = topic
+      room.mtime = date.diff(stream.updated_at,date.epoch()):spanseconds()
+      for u,_ in pairs(room.users) do
+        if self.users[u].socket then
+          self:sendFromClient(u,'root','TOPIC','#'..roomName,topic)
+        end
+      end
+    end
+  else
+    room = {
+      user_id = user.id,
+      stream_id = stream.id,
+      topic = stream:get('title'),
+      mtime = date.diff(stream.updated_at,date.epoch()):spanseconds(),
+      ctime = date.diff(stream.created_at,date.epoch()):spanseconds(),
+      users = {
+        ['root'] = true,
+      }
+    }
+    local oldroomName, oldroom
+    for k,v in pairs(self.rooms) do
+      if v.stream_id == stream.id then
+        oldroomName = k
+        oldroom = v
+        break
+      end
+    end
+    if oldroom then
+      for u,_ in pairs(oldroom.users) do
+        -- only copy bots
+        if self.users[u].network then
+          room.users[u] = true
+        end
+        if self.users[u].socket then
+          self:sendFromClient(u,'root','KICK','#'..oldroomName,u,'Room moving to #'..roomName)
+        end
+      end
+      self.rooms[oldroomName] = nil
+    end
+    self.rooms[roomName] = room
+  end
+end
+
 function IRCServer:processStreamEnd(update)
   local stream = Stream:find({ id = update.id })
   local sas = stream:get_streams_accounts()
@@ -220,42 +275,6 @@ function IRCServer:processStreamEnd(update)
       end
     end
     self.rooms[roomName].users[accountUsername] = nil
-  end
-end
-
-function IRCServer:processStreamUpdate(update)
-  local stream = Stream:find({ id = update.id })
-  local sas = stream:get_streams_accounts()
-  local user = stream:get_user()
-  for _,sa in pairs(sas) do
-    local account = sa:get_account()
-    account.network = networks[account.network]
-    local accountUsername = slugify(account.network.name)..'-'..slugify(account.name)
-    local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
-    if update.status == 'live' then
-      if not self.users[accountUsername] then
-        self.users[accountUsername] = {
-          user = {
-            nick = accountUsername,
-            username = accountUsername,
-            realname = accountUsername
-          }
-        }
-      end
-      self.rooms[roomName].users[accountUsername] = true
-      for u,user in pairs(self.rooms[roomName].users) do
-        if self.users[u].socket then
-          self:sendRoomJoin(u,accountUsername,roomName)
-        end
-      end
-    elseif update.status == 'stopped' then
-      for u,user in pairs(self.rooms[roomName].users) do
-        if self.users[u].socket then
-          self:sendRoomPart(u,accountUsername,roomName)
-        end
-      end
-      self.rooms[roomName].users[accountUsername] = nil
-    end
   end
 end
 

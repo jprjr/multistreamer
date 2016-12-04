@@ -143,6 +143,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     self.stream, err = Stream:save_stream(self.user,self.stream,self.params)
     if err then return err_out(self, err) end
+    publish('stream:update', self.stream)
 
     self.session.status_msg = { type = 'success', msg = 'Stream updated' }
     return { redirect_to = self:url_for('metadata-edit')..self.stream.id }
@@ -196,6 +197,7 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
         end
       end
     end
+    publish('stream:update',self.stream)
 
     self.session.status_msg = { type = 'success', msg = 'Settings saved' }
     return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
