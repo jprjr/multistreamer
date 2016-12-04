@@ -109,11 +109,13 @@ if(arg[1] == 'run') then
   exit(1)
 
 elseif(arg[1] == 'psql') then
+  posix.setenv('PGPASSWORD',config.postgres.password)
   local _, err = posix.exec(config.psql, { '-U', config.postgres.user, '-h' , config.postgres.host })
   print(err)
   exit(1)
 
 elseif(arg[1] == 'initdb') then
+  posix.setenv('PGPASSWORD',config.postgres.password)
   for i,f in ipairs(sql_files) do
     local pid, errmsg = posix.fork()
     if pid == nil then
