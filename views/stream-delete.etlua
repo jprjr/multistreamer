@@ -1,0 +1,11 @@
+<h3>Delete Stream</h3>
+<p>This will delete stream <%= stream.name %></p>
+
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-delete', { id = stream.id }) %>" enctype="multipart/form-data">
+
+<div class="pure-controls">
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn">Delete</button>
+</div>
+</form>
+

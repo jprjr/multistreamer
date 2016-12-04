@@ -319,6 +319,33 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   return { render = 'index' }
 end)
 
+app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_to({
+  before = function(self)
+    if not require_login(self) then
+      return { redirect_to = 'login' }
+    end
+    local stream = Stream:find({ id = self.params.id })
+    if not stream or not stream:check_user(self.user) then
+      return err_out(self,'Not authorized to modify that stream')
+    end
+    self.stream = stream
+  end,
+  GET = function(self)
+    return { render = 'stream-delete' }
+  end,
+  POST = function(self)
+    local sas = self.stream:get_streams_accounts()
+    for _,sa in pairs(sas) do
+      sa:get_keystore():unset_all()
+      sa:delete()
+    end
+    self.stream:delete()
+    self.session.status_msg = { type = 'success', msg = 'Stream removed' }
+    return { redirect_to = self:url_for('site-root') }
+  end
+}))
+
+
 app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond_to({
   before = function(self)
     if not require_login(self) then

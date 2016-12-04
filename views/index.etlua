@@ -8,6 +8,7 @@
   <ul>
     <li><a href="<%= url_for('stream-edit', { id = v.id })%>">Add/Remove Accounts</a></li>
     <li><a href="<%= url_for('metadata-edit', { id = v.id }) %>">Edit Metadata</a></li>
+    <li><a href="<%= url_for('stream-delete', { id = v.id }) %>">Delete Stream</a></li>
   </ul></li>
 <% end %>
 <% end %>
