@@ -245,7 +245,7 @@ Using Mac OS? `lapis` will probably fail to install because `luacrypto`
 will fail to build. If you're using Homebrew, you can install
 `luacrypto` with:
 
-`luarocks --tree lua_modules install luacrypto OPENSSL_DIR=/usr/local/opt/openss`
+`luarocks --tree lua_modules install luacrypto OPENSSL_DIR=/usr/local/opt/openssl`
 
 Then proceed to install lapis.
 
