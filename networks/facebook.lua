@@ -14,6 +14,7 @@ local format = string.format
 local insert = table.insert
 local sort = table.sort
 local floor = math.floor
+local date = require'date'
 local facebook_config = config.networks.facebook
 
 local Account = require'models.account'
@@ -99,6 +100,91 @@ function M.get_oauth_url(user)
     })
 end
 
+local function refresh_targets(access_token)
+  local fb_client = facebook_client(access_token)
+  local targets = {}
+  local my_info, my_info_err = fb_client:get('/me', {
+    fields = 'id,name'}
+  )
+
+  targets[my_info.id] = {
+    type = 'profile',
+    name = my_info.name,
+    token = access_token,
+  }
+  -- todo - make this more efficient with batch requests
+
+  local group_info, group_info_err
+  repeat
+    local after
+    if group_info and group_info.paging and group_info.paging.cursors then
+      after = group_info.paging.cursors.after
+    end
+    group_info, group_info_err = fb_client:get('/me/groups', {
+      after = after,
+      fields = 'id,name,administrator',
+    })
+    for i,group in pairs(group_info.data) do
+      if group.administrator == true then
+        targets[group.id] = {
+          type = 'group',
+          name = group.name,
+          token = access_token,
+        }
+      end
+    end
+  until group_info.paging.next == nil
+
+  local event_info, event_info_err
+  local right_now = date(true)
+  repeat
+    local after
+    if event_info and event_info.paging and event_info.paging.cursors then
+      after = event_info.paging.cursors.after
+    end
+    event_info, event_info_err = fb_client:get('/me/events', {
+      after = after,
+      fields = 'id,name,is_viewer_admin,start_time',
+    })
+    for i,event in pairs(event_info.data) do
+      local days_after = date.diff(right_now,date(event.start_time)):spandays()
+      -- events in the future will be negative, events in the past
+      -- will be positive. So we want < (some-time)
+      if event.is_viewer_admin == true and days_after < 15 then -- skip events > 15 days old
+        targets[event.id] = {
+          type = 'event',
+          name = event.name,
+          token = access_token,
+        }
+      end
+    end
+  until event_info.paging.next == nil
+
+  local page_info, page_info_err
+  repeat
+    local after
+    if page_info and page_info.paging and page_info.paging.cursors then
+        after = page_info.paging.cursors.after
+    end
+    page_info, page_info_err = fb_client:get('/me/accounts', {
+      after = after
+    })
+    for i,page in pairs(page_info.data) do
+      local name = page.name
+      local id = page.id
+      local access_token = page.access_token
+
+      targets[id] = {
+        type = 'page',
+        name = name,
+        token = access_token,
+      }
+    end
+  until page_info.paging.next == nil
+
+  return targets
+end
+
 function M.register_oauth(params)
   local user, err = decode_with_secret(decode_base64(params.state))
 
@@ -169,41 +255,11 @@ function M.register_oauth(params)
     account:set('access_token',creds.access_token, tonumber(creds.expires_in))
   else
     local old_tok, old_exp = account:get('access_token')
+    if not old_exp then old_exp = 3456000 end
     account:set('access_token',creds.access_token,floor(old_exp))
   end
 
-  local available_targets = {
-    [user_info.id] = {
-      type = 'profile',
-      name = user_info.name,
-      token = creds.access_token,
-    }
-  }
-
-
-  local page_info, page_info_err
-
-  repeat
-    local after
-    if page_info and page_info.paging and page_info.paging.cursors then
-        after = page_info.paging.cursors.after
-    end
-    page_info, page_info_err = fb_client:get('/me/accounts', {
-      after = after
-    })
-    for i,page in pairs(page_info.data) do
-      local name = page.name
-      local id = page.id
-      local access_token = page.access_token
-
-      available_targets[id] = {
-        type = 'page',
-        name = name,
-        token = access_token,
-      }
-    end
-  until page_info.paging.next == nil
-
+  local available_targets = refresh_targets(creds.access_token)
   account:set('targets',to_json(available_targets))
 
   if account.user_id ~= user.id then
@@ -216,7 +272,14 @@ end
 
 function M.metadata_form(account, stream)
   local form = M.metadata_fields()
-  local targets = from_json(account:get('targets'))
+  local targets
+  local targets_raw = account:get('targets')
+  if not targets_raw then
+    targets = refresh_targets(account:get('access_token'))
+    account:set('targets',to_json(targets))
+  else
+    targets = from_json(targets_raw)
+  end
   local keys = {}
   for k in pairs(targets) do insert(keys,k) end
   sort(keys,function(a,b)
@@ -225,6 +288,10 @@ function M.metadata_form(account, stream)
 
     if a_type ~= b_type then
       if a_type == 'profile' then
+        return true
+      elseif a_type == 'page' and b_type ~= 'profile' then
+        return true
+      elseif a_type == 'event' and b_type ~= 'page' and b_type ~= 'profile' then
         return true
       end
       return false
@@ -240,6 +307,10 @@ function M.metadata_form(account, stream)
       name = name .. ' (Profile)'
     elseif acc_type == 'page' then
       name = name .. ' (Page)'
+    elseif acc_type == 'group' then
+      name = name .. ' (Group)'
+    elseif acc_type == 'event' then
+      name = name .. ' (Event)'
     end
     insert(form[3].options,
       { value = k,
