@@ -382,7 +382,12 @@ function M.create_comment_funcs(account, stream, send)
     irc:onEvent('emote',sendMsg)
     while running do
       local ok, err = irc:cruise()
-      if not irc_connect then running = false end
+      if not ok then ngx.log(ngx.ERR,'[Twitch] IRC Client error: ' .. err) end
+      ok, err = irc_connect()
+      if not ok then
+        ngx.log(ngx.ERR,'[Twitch] IRC Connection error: ' .. err)
+        running = false
+      end
     end
     return false, nil
   end

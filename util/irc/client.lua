@@ -179,8 +179,10 @@ function IRCClient:cruise()
     end
     local msg
     if data then
+      ngx.log(ngx.DEBUG,data)
       msg = irc.parse_line(data)
     else
+      ngx.log(ngx.DEBUG,partial)
       msg = irc.parse_line(partial)
     end
     if msg and msg.command then
@@ -191,7 +193,7 @@ function IRCClient:cruise()
 end
 
 function IRCClient:serverPing(msg)
-  self.socket.send(ircline('PONG',msg.args[1]))
+  self.socket:send(ircline('PONG',msg.args[1]))
 end
 
 function IRCClient:serverMessage(msg)
