@@ -141,7 +141,6 @@ elseif(arg[1] == 'push') then
   local sas = stream:get_streams_accounts()
 
   local ffmpeg_args = {
-    '-re',
     '-v',
     'error',
     '-i',
