@@ -156,7 +156,7 @@ function IRCServer:run()
           users = {
             root = true,
           },
-          topic = s:get('title'),
+          topic = 'Status: offline',
           mtime = date.diff(s.updated_at,date.epoch()):spanseconds(),
           ctime = date.diff(s.created_at,date.epoch()):spanseconds(),
         }
@@ -181,11 +181,13 @@ function IRCServer:processStreamStart(update)
   local stream = Stream:find({ id = update.id })
   local sas = stream:get_streams_accounts()
   local user = stream:get_user()
+  local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
+  local topic = 'Status: live'
+
   for _,sa in pairs(sas) do
     local account = sa:get_account()
     account.network = networks[account.network]
     local accountUsername = slugify(account.network.name)..'-'..slugify(account.name)
-    local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
     if not self.users[accountUsername] then
       self.users[accountUsername] = {
         user = {
@@ -203,7 +205,13 @@ function IRCServer:processStreamStart(update)
         self:sendRoomJoin(u,accountUsername,roomName)
       end
     end
+    local http_url = sa:get('http_url')
+    if http_url then
+      topic = topic .. ' ' .. http_url
+    end
   end
+  self.rooms[roomName].topic = topic
+  self:sendRoomTopic(roomName)
 end
 
 function IRCServer:processStreamUpdate(update)
@@ -212,19 +220,7 @@ function IRCServer:processStreamUpdate(update)
   local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
   ngx.log(ngx.DEBUG,roomName)
   local room = self.rooms[roomName]
-  if room then
-    -- just have to update the mtime and topic
-    local topic = stream:get('title')
-    if room.topic ~= topic then
-      room.topic = topic
-      room.mtime = date.diff(stream.updated_at,date.epoch()):spanseconds()
-      for u,_ in pairs(room.users) do
-        if self.users[u].socket then
-          self:sendFromClient(u,'root','TOPIC','#'..roomName,topic)
-        end
-      end
-    end
-  else
+  if not room then
     room = {
       user_id = user.id,
       stream_id = stream.id,
@@ -263,11 +259,12 @@ function IRCServer:processStreamEnd(update)
   local stream = Stream:find({ id = update.id })
   local sas = stream:get_streams_accounts()
   local user = stream:get_user()
+  local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
+
   for _,sa in pairs(sas) do
     local account = sa:get_account()
     account.network = networks[account.network]
     local accountUsername = slugify(account.network.name)..'-'..slugify(account.name)
-    local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
 
     for u,user in pairs(self.rooms[roomName].users) do
       if self.users[u].socket then
@@ -276,6 +273,8 @@ function IRCServer:processStreamEnd(update)
     end
     self.rooms[roomName].users[accountUsername] = nil
   end
+  self.rooms[roomName].topic = 'Status: offline'
+  self:sendRoomTopic(roomName)
 end
 
 function IRCServer:processCommentUpdate(update)
@@ -650,6 +649,14 @@ function IRCServer:endClient(user)
     event = 'logout',
     nick = user.nick,
   })
+end
+
+function IRCServer:sendRoomTopic(roomName)
+  for u,_ in pairs(self.rooms[roomName].users) do
+    if self.users[u] and self.users[u].socket then
+      self:sendFromClient(u,'root','TOPIC','#'..roomName,self.rooms[roomName].topic)
+    end
+  end
 end
 
 function IRCServer:processClientMessage(nick,msg)
