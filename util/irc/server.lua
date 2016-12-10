@@ -224,7 +224,7 @@ function IRCServer:processStreamUpdate(update)
     room = {
       user_id = user.id,
       stream_id = stream.id,
-      topic = stream:get('title'),
+      topic = 'Status: offline',
       mtime = date.diff(stream.updated_at,date.epoch()):spanseconds(),
       ctime = date.diff(stream.created_at,date.epoch()):spanseconds(),
       users = {
