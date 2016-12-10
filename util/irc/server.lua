@@ -791,7 +791,7 @@ function IRCServer.startClient(sock,server)
         local creds = ngx.decode_base64(msg.args[1]):split(char(0))
         user = User:login(creds[2],creds[3])
         if user then
-          if user.username ~= nickname or user.username ~= username then
+          if user.username ~= nickname then
             insert(send_buffer,':{hostname} 902 {nick} :You must use a nick assigned to you')
             user = nil
           else
