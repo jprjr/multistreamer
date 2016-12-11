@@ -29,6 +29,14 @@ local subscribe = redis.subscribe
 local IRCServer = {}
 IRCServer.__index = IRCServer
 
+function botPublish(nick,room,message)
+  publish('irc:events:message', {
+    nick = 'root',
+    target = '#'..room,
+    message = nick .. ': ' .. message
+  })
+end
+
 function IRCServer.new(socket,user,parentServer)
   local server = {}
   server.ready = false
@@ -42,8 +50,7 @@ function IRCServer.new(socket,user,parentServer)
     server.users[user.nick].user = user
     server.users[user.nick].socket = socket
 
-    publish('irc:events', {
-      event = 'login',
+    publish('irc:events:login', {
       nick = user.nick,
       username = user.username,
       realname = user.realname,
@@ -78,8 +85,28 @@ function IRCServer.new(socket,user,parentServer)
     [endpoint('stream:start')] = IRCServer.processStreamStart,
     [endpoint('stream:end')] = IRCServer.processStreamEnd,
     [endpoint('stream:update')] = IRCServer.processStreamUpdate,
+    [endpoint('stream:writer:result')] = IRCServer.processWriterResult,
     [endpoint('comment:in')] = IRCServer.processCommentUpdate,
-    [endpoint('irc:events')] = IRCServer.processIrcUpdate,
+    [endpoint('irc:events:login')] = IRCServer.processIrcLogin,
+    [endpoint('irc:events:logout')] = IRCServer.processIrcLogout,
+    [endpoint('irc:events:join')] = IRCServer.processIrcJoin,
+    [endpoint('irc:events:part')] = IRCServer.processIrcPart,
+    [endpoint('irc:events:message')] = IRCServer.processIrcMessage,
+  }
+  server.botCommands = {
+    ['help'] = {
+      func = IRCServer.botCommandHelp,
+      help = {'Usage: !help <command> '},
+    },
+    ['summon'] = {
+      func = IRCServer.botCommandSummon,
+      help = {
+        'Usage: !summon <existing room bot>',
+        '^ List what accounts you can create a bot for',
+        '!summon <existing room bot> <your account>',
+        '^ Create a bot to post as your account',
+      },
+    },
   }
   setmetatable(server,IRCServer)
   return server
@@ -88,14 +115,19 @@ end
 function IRCServer:run()
   local running = true
 
-  local ok, red = subscribe('irc:events')
+  local ok, red = subscribe('irc:events:login')
   if not ok then
     ngx.exit(ngx.ERROR)
   end
+  subscribe('irc:events:logout',red)
+  subscribe('irc:events:join',red)
+  subscribe('irc:events:part',red)
+  subscribe('irc:events:message',red)
   subscribe('stream:start',red)
   subscribe('stream:end',red)
   subscribe('stream:update',red)
   subscribe('comment:in',red)
+  subscribe('stream:writer:result',red)
 
   self.ready = true
 
@@ -118,6 +150,7 @@ function IRCServer:run()
   if self.socket then
     local irc_func = ngx.thread.spawn(function()
       while true do
+        if not self.socket then return end
         local data, err, partial = self.socket:receive('*l')
         local msg
         if data then
@@ -149,7 +182,7 @@ function IRCServer:run()
   else
     for _,u in ipairs(User:select()) do
       for _,s in ipairs(u:get_streams()) do
-        local room = slugify(u.username)..'-'..slugify(s.name)
+        local room = slugify(u.username)..'-'..s.slug
         self.rooms[room] = {
           user_id = u.id,
           stream_id = s.id,
@@ -177,17 +210,41 @@ function IRCServer:getState()
   }
 end
 
+function IRCServer:processWriterResult(update)
+  local stream = Stream:find({ id = update.stream_id })
+  local account = Account:find({ id = update.account_id })
+  local og_account = Account:find({ id = update.cur_stream_account_id })
+  account.network = networks[account.network]
+  local accountUsername = slugify(account.network.name) .. '-' .. account.slug .. '-' .. og_account.slug
+  local roomName = slugify(account:get_user().username) .. '-' .. stream.slug
+  self.users[accountUsername] = {
+    user = {
+      nick = accountUsername,
+      username = accountUsername,
+      realname = accountUsername,
+    },
+    account_id = account.id,
+    network = account.network,
+  }
+  self.rooms[roomName].users[accountUsername] = true
+  for u,user in pairs(self.rooms[roomName].users) do
+    if self.users[u].socket then
+      self:sendRoomJoin(u,accountUsername,roomName)
+    end
+  end
+end
+
 function IRCServer:processStreamStart(update)
   local stream = Stream:find({ id = update.id })
   local sas = stream:get_streams_accounts()
   local user = stream:get_user()
-  local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
+  local roomName = slugify(user.username) .. '-' ..stream.slug
   local topic = 'Status: live'
 
   for _,sa in pairs(sas) do
     local account = sa:get_account()
     account.network = networks[account.network]
-    local accountUsername = slugify(account.network.name)..'-'..slugify(account.name)
+    local accountUsername = slugify(account.network.name)..'-'..account.slug
     if not self.users[accountUsername] then
       self.users[accountUsername] = {
         user = {
@@ -217,7 +274,7 @@ end
 function IRCServer:processStreamUpdate(update)
   local stream = Stream:find({ id = update.id })
   local user = stream:get_user()
-  local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
+  local roomName = slugify(user.username) .. '-' ..stream.slug
   ngx.log(ngx.DEBUG,roomName)
   local room = self.rooms[roomName]
   if not room then
@@ -259,20 +316,16 @@ function IRCServer:processStreamEnd(update)
   local stream = Stream:find({ id = update.id })
   local sas = stream:get_streams_accounts()
   local user = stream:get_user()
-  local roomName = slugify(user.username) .. '-' ..slugify(stream.name)
-
-  for _,sa in pairs(sas) do
-    local account = sa:get_account()
-    account.network = networks[account.network]
-    local accountUsername = slugify(account.network.name)..'-'..slugify(account.name)
-
-    for u,user in pairs(self.rooms[roomName].users) do
-      if self.users[u].socket then
-        self:sendRoomPart(u,accountUsername,roomName)
+  local roomName = slugify(user.username) .. '-' ..stream.slug
+  for u,user in pairs(self.rooms[roomName].users) do
+    if not self.users[u].user.id then
+      if self.user then
+        self:sendRoomPart(self.user.nick,u,roomName)
       end
+      self.rooms[roomName].users[u] = nil
     end
-    self.rooms[roomName].users[accountUsername] = nil
   end
+
   self.rooms[roomName].topic = 'Status: offline'
   self:sendRoomTopic(roomName)
 end
@@ -297,58 +350,64 @@ function IRCServer:processCommentUpdate(update)
   end
 end
 
-function IRCServer:processIrcUpdate(update)
-  if update.event == 'join' then
-    self.rooms[update.room].users[update.nick] = true
-    for to,_ in pairs(self.rooms[update.room].users) do
-      if self.users[to].socket then
-        self:sendRoomJoin(to,update.nick,update.room)
-      end
+function IRCServer:processIrcJoin(msg)
+  self.rooms[msg.room].users[msg.nick] = true
+  for to,_ in pairs(self.rooms[msg.room].users) do
+    if self.users[to].socket then
+      self:sendRoomJoin(to,msg.nick,msg.room)
     end
-  elseif update.event == 'part' then
-    self.rooms[update.room].users[update.nick] = false
-    for to,_ in pairs(self.rooms[update.room].users) do
-      if self.users[to].socket then
-        self:sendRoomPart(to,update.nick,update.room,update.message)
-      end
+  end
+end
+
+function IRCServer:processIrcPart(msg)
+  self.rooms[msg.room].users[msg.nick] = false
+  for to,_ in pairs(self.rooms[msg.room].users) do
+    if self.users[to].socket then
+      self:sendRoomPart(to,msg.nick,msg.room,msg.message)
     end
-  elseif update.event == 'login' then
-    if not self.users[update.nick] then
-      self.users[update.nick] = {
-          user = {
-              nick = update.nick,
-              username = update.username,
-              realname = update.realname,
-              id = update.id,
-          }
+  end
+end
+
+function IRCServer:processIrcLogin(msg)
+  if not self.users[msg.nick] then
+    self.users[msg.nick] = {
+      user = {
+        nick = msg.nick,
+        username = msg.username,
+        realname = msg.realname,
+        id = msg.id,
       }
-    end
-  elseif update.event == 'logout' then
-    for r,room in pairs(self.rooms) do
-      if room.users[update.nick] then
-        for u,user in pairs(room.users) do
-          if self.users[u] and self.users[u].socket then
-            self:sendRoomPart(u,update.nick,r)
-          end
-        end
-        room.users[update.nick] = nil
-      end
-    end
-    self.users[update.nick] = nil
-  elseif update.event == 'message' then
-    if update.target:sub(1,1) == '#' then
-      local room = update.target:sub(2)
-      if self.rooms[room] then
-        for u,user in pairs(self.rooms[room].users) do
-          if u ~= update.nick and self.users[u].socket then
-            self:sendPrivMessage(u,update.nick,'#'..room,update.message)
-          end
+    }
+  end
+end
+
+function IRCServer:processIrcLogout(msg)
+  for r,room in pairs(self.rooms) do
+    if room.users[msg.nick] then
+      for u,user in pairs(room.users) do
+        if self.users[u] and self.users[u].socket then
+          self:sendRoomPart(u,msg.nick,r)
         end
       end
-    else
-      if self.users[update.target] and self.users[update.target].socket then
-        self:sendPrivMessage(update.target,update.nick,update.nick,update.message)
+      room.users[msg.nick] = nil
+    end
+  end
+  self.users[msg.nick] = nil
+end
+
+function IRCServer:processIrcMessage(msg)
+  if msg.target:sub(1,1) == '#' then
+    local room = msg.target:sub(2)
+    if self.rooms[room] then
+      for u,user in pairs(self.rooms[room].users) do
+        if u ~= msg.nick and self.users[u].socket then
+          self:sendPrivMessage(u,msg.nick,'#'..room,msg.message)
+        end
       end
+    end
+  else
+    if self.users[msg.target] and self.users[msg.target].socket then
+      self:sendPrivMessage(msg.target,msg.nick,msg.nick,msg.message)
     end
   end
 end
@@ -486,8 +545,7 @@ function IRCServer:clientJoinRoom(nick,msg)
   if not self.rooms[room] then
     return self:sendClientFromServer(nick,'403','Channel does not exist')
   end
-  local ok, err = publish('irc:events', {
-    event = 'join',
+  local ok, err = publish('irc:events:join', {
     nick = nick,
     room = room
   })
@@ -502,8 +560,7 @@ function IRCServer:clientPartRoom(nick,msg)
     if room:sub(1,1) == '#' then
       room = room:sub(2)
     end
-    publish('irc:events', {
-      event = 'part',
+    publish('irc:events:part', {
       nick = nick,
       room = room,
       message = msg.args[2],
@@ -514,23 +571,110 @@ end
 
 function IRCServer:clientMessage(nick,msg)
   local target = msg.args[1]
+  local room = false
   if target:sub(1,1) == '#' then
     target = target:sub(2)
+    room = true
     if not self.rooms[target] then
       return self:sendClientFromServer(nick,'403','Channel does not exist')
     end
-    self:relayMessage(nick,target,msg.args[2])
   else
     if not self.users[target] then
       return self:sendClientFromServer(nick,'401','No such nick')
     end
   end
-  return publish('irc:events',{
-    event = 'message',
+  publish('irc:events:message',{
     nick = nick,
     target = msg.args[1],
     message = msg.args[2],
   })
+  if room then
+    self:relayMessage(nick,target,msg.args[2])
+    self:checkBotCommand(nick,target,msg.args[2])
+  end
+  return true,nil
+end
+
+function IRCServer:checkBotCommand(nick,room,message)
+  if(message:sub(1,1) == '!') then
+    local parts = message:sub(2):split(' ')
+    local botCmd = self.botCommands[parts[1]]
+    if not botCmd then
+      botPublish(nick,room,'Unknown command !'..parts[1])
+      botPublish(nick,room,'Try !help')
+      return
+    end
+    botCmd.func(self,nick,room,unpack(parts,2))
+  end
+end
+
+function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
+  local message = ''
+  local user = User:find({username = nick})
+  if not stream_nick then
+    botPublish(nick,room,'Parameters are <stream-bot> <account-name>')
+    botPublish(nick,room,'try !help summon')
+    return
+  end
+  if not self.users[stream_nick] or not self.users[stream_nick].account_id then
+    botPublish(nick,room,'Not an active bot: ' ..stream_nick)
+    return
+  end
+  if not account_slug or account_slug:len() == 0 then
+    local accounts = Account:select(
+      'where network = ? and user_id = ? and id <> ?',
+      self.users[stream_nick].network.name,
+      self.users[nick].user.id,
+      self.users[stream_nick].account_id)
+    local message = 'Available accounts:'
+    for i,account in ipairs(accounts) do
+      message = message .. ' ' .. account.slug
+    end
+    botPublish(nick,room,message)
+    return
+  end
+
+  local account = Account:find({network = self.users[stream_nick].network.name, slug = account_slug })
+  if not account then
+    botPublish(nick,room,'Account not found')
+    return
+  end
+
+  if not account:check_user(user) then
+    botPublish(nick,room,'You don\'t own that account')
+  end
+
+  publish('stream:writer',{
+    worker = ngx.worker.pid(),
+    account_id = account.id,
+    stream_id = self.rooms[room].stream_id,
+    cur_stream_account_id = self.users[stream_nick].account_id,
+  })
+end
+
+function IRCServer:botCommandHelp(nick,room,cmd)
+  local message = ''
+  if not cmd or cmd:len() == 0 then
+    message = 'Available commands:'
+    for command,_ in pairs(self.botCommands) do
+      message = message .. ' !' .. command
+    end
+    botPublish(nick,room,message)
+    botPublish(nick,room,'Type !help <command> for more info')
+    return
+  end
+  if cmd:sub(1,1) == '!' then
+    cmd = cmd:sub(2)
+  end
+  local botCmd = self.botCommands[cmd]
+  if not botCmd then
+    botPublish(nick,room,'Unknown command !'..cmd)
+    botPublish(nick,room,'Try !help')
+    return
+  end
+  for i,v in ipairs(botCmd.help) do
+    botPublish(nick,room,v)
+  end
 end
 
 function IRCServer:relayMessage(nick,room,message)
@@ -545,20 +689,28 @@ function IRCServer:relayMessage(nick,room,message)
   if msg:len() == 0 then return end
 
   if self.users[username] and self.users[username].account_id and self.rooms[room].users[username] == true then
-    if self.users[username].network.write_comments then
-      local stream_id = self.rooms[room].stream_id
-      local account_id = self.users[username].account_id
-      publish('comment:out', {
-        stream_id = stream_id,
-        account_id = account_id,
-        text = msg,
-      })
+    local account = Account:find({id = self.users[username].account_id})
+    if account:check_user(self.users[nick].user) then
+      if self.users[username].network.write_comments then
+        local stream_id = self.rooms[room].stream_id
+        local account_id = self.users[username].account_id
+        publish('comment:out', {
+          stream_id = stream_id,
+          account_id = account_id,
+          text = msg,
+        })
+      else
+        publish('irc:events:message',{
+          nick = username,
+          target = '#' .. room,
+          message = nick .. ': not supported',
+        })
+      end
     else
-      publish('irc:events',{
-        event = 'message',
+      publish('irc:events:message',{
         nick = username,
         target = '#' .. room,
-        message = nick .. ': not supported',
+        message = nick .. ': not authorized',
       })
     end
   end
@@ -644,9 +796,11 @@ function IRCServer:clientQuit(nick,msg)
 end
 
 function IRCServer:endClient(user)
+  if self.socket then
+    self.socket = nil
+  end
   self.users[user.nick] = nil
-  publish('irc:events',{
-    event = 'logout',
+  publish('irc:events:logout',{
     nick = user.nick,
   })
 end

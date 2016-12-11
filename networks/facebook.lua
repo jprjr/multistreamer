@@ -7,6 +7,7 @@ local encode_with_secret = require('lapis.util.encoding').encode_with_secret
 local decode_with_secret = require('lapis.util.encoding').decode_with_secret
 local to_json   = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
+local slugify = require('lapis.util').slugify
 local http = require'resty.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
@@ -248,6 +249,7 @@ function M.register_oauth(params)
       network = M.name,
       network_user_id = network_user_id,
       name = user_info.name,
+      slug = slugify(user_info.name),
     })
   end
 
@@ -523,50 +525,53 @@ function M.create_comment_funcs(account, stream, send)
 
   local video_id = stream.video_id
   local fb_client = facebook_client(access_token)
+  local read_func
 
-  local read_func = function()
-    local afterComment = nil
-    local afterReaction = nil
-    while true do
-      local res, err = fb_client:batch({
-        {
-          method = 'GET',
-          relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment}),
-        },
-        {
-          method = 'GET',
-          relative_url = video_id .. '/reactions?' .. encode_query_string({after = afterReaction}),
-        }
-      })
-      if res[1].code == 200 then
-        local body = from_json(res[1].body)
-        if body.paging then afterComment = body.paging.cursors.after end
-        for i,v in pairs(body.data) do
-          send({
-            type = 'text',
-            from = {
-              name = v.from.name,
-              id = v.from.id,
-            },
-            text = v.message,
-          })
+  if send then
+    read_func = function()
+      local afterComment = nil
+      local afterReaction = nil
+      while true do
+        local res, err = fb_client:batch({
+          {
+            method = 'GET',
+            relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment}),
+          },
+          {
+            method = 'GET',
+            relative_url = video_id .. '/reactions?' .. encode_query_string({after = afterReaction}),
+          }
+        })
+        if res[1].code == 200 then
+          local body = from_json(res[1].body)
+          if body.paging then afterComment = body.paging.cursors.after end
+          for i,v in pairs(body.data) do
+            send({
+              type = 'text',
+              from = {
+                name = v.from.name,
+                id = v.from.id,
+              },
+              text = v.message,
+            })
+          end
         end
-      end
-      if res[2].code == 200 then
-        local body = from_json(res[2].body)
-        if body.paging then afterReaction = body.paging.cursors.after end
-        for i,v in pairs(body.data) do
-          send({
-            type = 'emote',
-            from = {
-              name = v.name,
-              id = v.id,
-            },
-            text = textify(v.type)
-          })
+        if res[2].code == 200 then
+          local body = from_json(res[2].body)
+          if body.paging then afterReaction = body.paging.cursors.after end
+          for i,v in pairs(body.data) do
+            send({
+              type = 'emote',
+              from = {
+                name = v.name,
+                id = v.id,
+              },
+              text = textify(v.type)
+            })
+          end
         end
+        ngx.sleep(6)
       end
-      ngx.sleep(6)
     end
   end
 
