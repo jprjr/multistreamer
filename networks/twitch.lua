@@ -6,6 +6,7 @@ local encode_with_secret = require('lapis.util.encoding').encode_with_secret
 local decode_with_secret = require('lapis.util.encoding').decode_with_secret
 local to_json   = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
+local slugify = require('lapis.util').slugify
 local http = require'resty.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
@@ -169,11 +170,11 @@ function M.register_oauth(params)
   local user, err = decode_with_secret(decode_base64(params.state))
 
   if not user then
-    return false, 'error'
+    return false, 'error - user not found'
   end
 
   if not params.code then
-    return false, 'error'
+    return false, 'error - no params.code'
   end
 
   local httpc = http.new()
@@ -225,11 +226,13 @@ function M.register_oauth(params)
       network = M.name,
       network_user_id = network_user_id,
       name = user_info.display_name,
+      slug = slugify(user_info.name),
     })
   else
    -- this account might be owned by somebody else
     account:update({
       name = user_info.display_name,
+      slug = slugify(user_info.name),
     })
   end
 
@@ -281,6 +284,7 @@ function M.publish_start(account, stream)
   end
 
   stream_o:set('http_url','https://twitch.tv/' .. account.channel)
+  stream_o:set('channel',account.channel)
   return rtmp_url, nil
 end
 
@@ -336,7 +340,7 @@ function M.create_comment_funcs(account, stream, send)
 
   local irc = IRCClient.new()
   local nick = account.channel:lower()
-  local channel = '#' .. nick
+  local channel = '#' .. stream.channel:lower()
 
   local function irc_connect()
     local ok, err
@@ -375,11 +379,12 @@ function M.create_comment_funcs(account, stream, send)
 
   if not irc_connect() then return nil,nil end
 
-
   local read_func = function()
     local running = true
-    irc:onEvent('message',sendMsg)
-    irc:onEvent('emote',sendMsg)
+    if send then
+      irc:onEvent('message',sendMsg)
+      irc:onEvent('emote',sendMsg)
+    end
     while running do
       local ok, err = irc:cruise()
       if not ok then ngx.log(ngx.ERR,'[Twitch] IRC Client error: ' .. err) end

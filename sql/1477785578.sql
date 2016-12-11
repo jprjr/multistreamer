@@ -1,9 +1,3 @@
-drop table if exists keystore;
-drop table if exists streams_accounts;
-drop table if exists streams;
-drop table if exists accounts;
-drop table if exists users;
-
 create table if not exists users (
   id serial,
   username varchar(255) not null,

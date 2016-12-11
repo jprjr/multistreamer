@@ -7,6 +7,7 @@ local encode_with_secret = require('lapis.util.encoding').encode_with_secret
 local decode_with_secret = require('lapis.util.encoding').decode_with_secret
 local to_json   = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
+local slugify = require('lapis.util').slugify
 
 local http = require'resty.http'
 local resty_sha1 = require'resty.sha1'
@@ -178,7 +179,8 @@ function M.register_oauth(params)
       user_id = user.id,
       network = M.name,
       network_user_id = network_user_id,
-      name = name
+      name = name,
+      slug = slugify(name),
     })
   end
 
@@ -457,32 +459,36 @@ function M.create_comment_funcs(account, stream, send)
 
   local yt = youtube_client(account.access_token)
 
-  local read_func = function()
-    local nextPageToken = nil
-    while true do
-      local res, err = yt:get('/liveChat/messages',{
-        liveChatId = stream.chat_id,
-        part = 'id,snippet,authorDetails',
-        pageToken = nextPageToken,
-      })
-      if res then
-        if res.nextPageToken then nextPageToken = res.nextPageToken end
-        for i,v in ipairs(res.items) do
-          send({
-            type = 'text',
-            from = {
-              name = v.authorDetails.displayName,
-              id = v.authorDetails.channelId,
-            },
-            text = v.snippet.textMessageDetails.messageText,
-          })
+  local read_func = nil
+
+  if send then
+    read_func = function()
+      local nextPageToken = nil
+      while true do
+        local res, err = yt:get('/liveChat/messages',{
+          liveChatId = stream.chat_id,
+          part = 'id,snippet,authorDetails',
+          pageToken = nextPageToken,
+        })
+        if res then
+          if res.nextPageToken then nextPageToken = res.nextPageToken end
+          for i,v in ipairs(res.items) do
+            send({
+              type = 'text',
+              from = {
+                name = v.authorDetails.displayName,
+                id = v.authorDetails.channelId,
+              },
+              text = v.snippet.textMessageDetails.messageText,
+            })
+          end
         end
+        local sleep = ceil(res.pollingIntervalMillis/1000)
+        if sleep < 6 then
+          sleep = 6
+        end
+        ngx.sleep(sleep)
       end
-      local sleep = ceil(res.pollingIntervalMillis/1000)
-      if sleep < 6 then
-        sleep = 6
-      end
-      ngx.sleep(sleep)
     end
   end
 

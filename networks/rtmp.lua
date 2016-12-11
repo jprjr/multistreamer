@@ -3,6 +3,7 @@ local Account = require'models.account'
 local config = require'helpers.config'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
+local slugify = require('lapis.util').slugify
 
 local M = {}
 
@@ -62,6 +63,7 @@ function M.save_account(user, account, params)
       network_user_id = url_key,
       name = params.name,
       user_id = user.id,
+      slug = slugify(params.name),
     })
     if not account then
         return false,err
@@ -69,6 +71,7 @@ function M.save_account(user, account, params)
   else
     account:update({
       name = params.name,
+      slug = slugify(params.name),
     })
   end
 

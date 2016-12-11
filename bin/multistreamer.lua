@@ -18,7 +18,6 @@ local script_path = posix.realpath(arg[0])
 local streamer_dir = posix.dirname(posix.dirname(script_path))
 posix.chdir(streamer_dir)
 
-
 local commands = {
   ['run'] = 1,
   ['initdb'] = 1,
@@ -28,6 +27,7 @@ local commands = {
 
 local sql_files = {
   [1] = streamer_dir .. '/sql/1477785578.sql',
+  [2] = streamer_dir .. '/sql/1481421931.sql',
 }
 
 if(not arg[1] or not commands[arg[1]]) then

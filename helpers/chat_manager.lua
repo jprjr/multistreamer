@@ -7,6 +7,8 @@ local subscribe = redis.subscribe
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local Stream = require'models.stream'
+local Account = require'models.account'
+local StreamAccount = require'models.stream_account'
 local setmetatable = setmetatable
 
 local ChatMgr = {}
@@ -18,6 +20,7 @@ ChatMgr.new = function()
   t.messageFuncs = {
     [endpoint('stream:start')] = ChatMgr.handleStreamStart,
     [endpoint('stream:end')] = ChatMgr.handleStreamEnd,
+    [endpoint('stream:writer')] = ChatMgr.handleChatWriterRequest,
     [endpoint('comment:out')] = ChatMgr.handleCommentOut,
   }
   setmetatable(t,ChatMgr)
@@ -32,6 +35,7 @@ function ChatMgr:run()
     ngx.exit(ngx.ERROR)
   end
   subscribe('stream:end',red)
+  subscribe('stream:writer',red)
   subscribe('comment:out',red)
   while(running) do
     local res, err = red:read_reply()
@@ -48,6 +52,40 @@ function ChatMgr:run()
   end
 end
 
+function ChatMgr:handleChatWriterRequest(msg)
+  if msg.worker ~= ngx.worker.pid() then
+    return nil
+  end
+  local account = Account:find({id = msg.account_id})
+  local sa = StreamAccount:find({stream_id = msg.stream_id, account_id = msg.cur_stream_account_id})
+
+  account.network = networks[account.network]
+
+  self.streams[msg.stream_id][account.id] = {}
+  local read_func, write_func = account.network.create_comment_funcs(
+    account:get_keystore(),
+    sa:get_keystore()
+  )
+  local t = {
+    read_started = false,
+    write_started = false,
+  }
+  if read_func then
+    self.streams[msg.stream_id][account.id].read_thread = ngx.thread.spawn(read_func)
+    t.read_started = true
+  end
+  if write_func then
+    self.streams[msg.stream_id][account.id].send = write_func
+    t.write_started = true
+  end
+  publish('stream:writer:result', {
+    stream_id = msg.stream_id,
+    account_id = msg.account_id,
+    cur_stream_account_id = msg.cur_stream_account_id,
+    read_started = t.read_started,
+    write_started = t.write_started,
+  })
+end
 
 function ChatMgr:handleStreamStart(msg)
   if msg.worker ~= ngx.worker.pid() then
@@ -97,16 +135,15 @@ function ChatMgr:handleStreamEnd(msg)
     return nil
   end
 
-  for _,sa in pairs(stream:get_streams_accounts()) do
-    local acc = sa:get_account()
-
-    if self.streams[stream.id] and self.streams[stream.id][acc.id] then
-      if self.streams[stream.id][acc.id].read_thread then
-        local ok, err = ngx.thread.kill(self.streams[stream.id][acc.id].read_thread)
+  if self.streams[stream.id] then
+    for k,v in pairs(self.streams[stream.id]) do
+      if v and v.read_thread then
+        local ok, err = ngx.thread.kill(v.read_thread)
       end
-      self.streams[stream.id][acc.id] = nil
+      self.streams[stream.id][k] = nil
     end
   end
+
   self.streams[stream.id] = nil
 end
 
