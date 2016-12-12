@@ -100,6 +100,12 @@ config({'development','production'}, {
   -- set the IRC hostname reported by the server
   irc_hostname = 'localhost',
 
+  -- should users be automatically brought into chat rooms when
+  -- their streams go live? (default false)
+  -- this is handy for clients like Adium, Pidgin, etc that don't
+  -- have a great IRC interface
+  irc_force_join = false,
+
   -- number of worker processes
   worker_processes = 1,
 
