@@ -59,8 +59,10 @@ local function twitch_api_client(access_token)
       headers = req_headers,
       body = body,
     })
+    if body then ngx.log(ngx.DEBUG,body) end
+
     if err then
-      return false, err
+      return false, { error = err }
     end
 
     if res.status == 400 then
@@ -167,14 +169,21 @@ function M.get_oauth_url(user)
 end
 
 function M.register_oauth(params)
+  if params.error_description then
+    return false, 'Twitch Error: ' .. params.error_description
+  end
+  if params.error then
+    return false, 'Twitch Error: ' .. params.error
+  end
+
   local user, err = decode_with_secret(decode_base64(params.state))
 
   if not user then
-    return false, 'error - user not found'
+    return false, 'Error: User not found'
   end
 
   if not params.code then
-    return false, 'error - no params.code'
+    return false, 'Twitch Error: failed to get temporary client token'
   end
 
   local httpc = http.new()
@@ -243,7 +252,7 @@ function M.register_oauth(params)
   account:set('stream_key',channel_info.stream_key)
 
   if(account.user_id ~= user.id) then
-    return false, "Account already registered"
+    return false, 'Error: Account already registered'
   end
 
   return account, nil
