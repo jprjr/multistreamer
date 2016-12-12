@@ -7,6 +7,7 @@ local from_json = require('lapis.util').from_json
 local User = require'models.user'
 local Stream = require'models.stream'
 local Account = require'models.account'
+local SharedAccount = require'models.shared_account'
 local string = require'util.string'
 
 local insert = table.insert
@@ -71,13 +72,26 @@ function IRCServer.new(socket,user,parentServer)
   end
 
   server.clientFunctions = {
-    ['LIST'] = IRCServer.clientList,
+    ['AWAY'] = IRCServer.clientUnknown,
+    ['INVITE'] = IRCServer.clientInvite,
+    ['ISON'] = IRCServer.clientIson,
     ['JOIN'] = IRCServer.clientJoinRoom,
+    ['KICK'] = IRCServer.clientKick,
+    ['LIST'] = IRCServer.clientList,
+    ['MODE'] = IRCServer.clientMode,
+    ['NOTICE'] = IRCServer.clientMessage,
+    ['OPER'] = IRCServer.clientOper,
+    ['OPERWALL'] = IRCServer.clientUnknown,
     ['PART'] = IRCServer.clientPartRoom,
     ['PING'] = IRCServer.clientPing,
     ['PRIVMSG'] = IRCServer.clientMessage,
-    ['MODE'] = IRCServer.clientMode,
     ['QUIT'] = IRCServer.clientQuit,
+    ['REHASH'] = IRCServer.clientUnknown,
+    ['RESTART'] = IRCServer.clientUnknown,
+    ['SUMMON'] = IRCServer.clientUnknown,
+    ['TOPIC'] = IRCServer.clientTopic,
+    ['USERHOST'] = IRCServer.clientUnknown,
+    ['USERS'] = IRCServer.clientUsers,
     ['WHO'] = IRCServer.clientWho,
     ['WHOIS'] = IRCServer.clientWhois,
   }
@@ -92,6 +106,7 @@ function IRCServer.new(socket,user,parentServer)
     [endpoint('irc:events:join')] = IRCServer.processIrcJoin,
     [endpoint('irc:events:part')] = IRCServer.processIrcPart,
     [endpoint('irc:events:message')] = IRCServer.processIrcMessage,
+    [endpoint('irc:events:invite')] = IRCServer.processIrcInvite,
   }
   server.botCommands = {
     ['help'] = {
@@ -101,10 +116,11 @@ function IRCServer.new(socket,user,parentServer)
     ['summon'] = {
       func = IRCServer.botCommandSummon,
       help = {
-        'Usage: !summon <existing room bot>',
-        '^ List what accounts you can create a bot for',
-        '!summon <existing room bot> <your account>',
-        '^ Create a bot to post as your account',
+        '!summon - summon a user, or create a bot',
+        'Usage:',
+        '!summon <user> -- bring a user into this room',
+        '!summon <existing room bot> -- list accounts for bot-creation',
+        '!summon <existing room bot> <your account> -- create a bot to post comments',
       },
     },
   }
@@ -123,6 +139,7 @@ function IRCServer:run()
   subscribe('irc:events:join',red)
   subscribe('irc:events:part',red)
   subscribe('irc:events:message',red)
+  subscribe('irc:events:invite',red)
   subscribe('stream:start',red)
   subscribe('stream:end',red)
   subscribe('stream:update',red)
@@ -229,10 +246,11 @@ end
 function IRCServer:processWriterResult(update)
   local stream = Stream:find({ id = update.stream_id })
   local account = Account:find({ id = update.account_id })
+  local user = User:find({ id = update.user_id })
   local og_account = Account:find({ id = update.cur_stream_account_id })
   account.network = networks[account.network]
   local accountUsername = slugify(account.network.name) .. '-' .. account.slug .. '-' .. og_account.slug
-  local roomName = slugify(account:get_user().username) .. '-' .. stream.slug
+  local roomName = slugify(user.username) .. '-' .. stream.slug
   self.users[accountUsername] = {
     user = {
       nick = accountUsername,
@@ -444,6 +462,14 @@ function IRCServer:processIrcMessage(msg)
   end
 end
 
+function IRCServer:processIrcInvite(msg)
+-- args: to from room
+  if self.users[msg.to] and self.users[msg.to].socket then
+    return self:sendFromClient(msg.to,msg.from,'INVITE',msg.to,':#'..msg.room)
+  end
+  return true,nil
+end
+
 function IRCServer:userList(room)
   local count = 0
   local ulist = ''
@@ -479,6 +505,23 @@ function IRCServer:listRooms(nick,rooms)
     'End of /LIST')
   if not ok then return false,err end
   return true, nil
+end
+
+function IRCServer:clientIson(nick,msg)
+  local resp = ''
+  local i = 1
+  for _,u in pairs(msg.args) do
+    if self.users[u] then
+      if i > 1 then
+        u = ' ' .. u
+      end
+      resp = resp .. u
+    end
+  end
+  if resp:len() == 0 then
+    resp = ':'
+  end
+  return self:sendClientFromServer(nick,'303',resp)
 end
 
 function IRCServer:clientWhois(nick,msg)
@@ -568,6 +611,50 @@ function IRCServer:clientMode(nick,msg)
   return self:sendClientFromServer(nick,'482',target,'Not an op')
 end
 
+function IRCServer:clientInvite(nick,msg)
+  if not msg.args[2] then
+    return self:sendClientFromServer(nick,'461','INVITE','Not enough parameters')
+  end
+  local user = msg.args[1]
+  local room = msg.args[2]:sub(2)
+
+  if not self.users[user] or not self.rooms[room] then
+    return self:sendClientFromServer(nick,'401',user,'No such nick/channel')
+  end
+
+  if self.rooms[room].users[user] then
+    return self:sendClientFromServer(nick,'443',user,'#'..room,'is already on channel')
+  end
+
+  publish('irc:events:invite',{
+    from = nick,
+    to = user,
+    room = room,
+  })
+
+  return self:sendClientFromServer(nick,'341',user,'#'..room)
+end
+
+function IRCServer:clientOper(nick,msg)
+  return self:sendClientFromServer(nick,'464','Password incorrect')
+end
+
+function IRCServer:clientKick(nick,msg)
+  return self:sendClientFromServer(nick,'482',msg.args[1],'You\'re not channel operator')
+end
+
+function IRCServer:clientTopic(nick,msg)
+  return self:sendClientFromServer(nick,'482',msg.args[1],'You\'re not channel operator')
+end
+
+function IRCServer:clientUsers(nick,msg)
+  return self:sendClientFromServer(nick,'446','USERS has been disabled')
+end
+
+function IRCServer:clientUnknown(nick,msg)
+  return self:sendClientFromServer(nick,'421',msg.command:upper(),'Unknown command')
+end
+
 function IRCServer:clientJoinRoom(nick,msg)
   local room = msg.args[1]
   if not room then return self:sendClientFromServer(nick,'403','Channel does not exist') end
@@ -644,23 +731,46 @@ function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
   local message = ''
   local user = User:find({username = nick})
   if not stream_nick then
-    botPublish(nick,room,'Parameters are <stream-bot> <account-name>')
+    botPublish(nick,room,'Missing parameters')
     botPublish(nick,room,'try !help summon')
     return
   end
-  if not self.users[stream_nick] or not self.users[stream_nick].account_id then
+
+  if not self.users[stream_nick] then
+    botPublish(nick,room,'No such nick')
+    return
+  elseif self.users[stream_nick].user and not self.users[stream_nick].account_id then
+    if not self.rooms[room].users[stream_nick] then
+      publish('irc:events:join', {
+        nick = stream_nick,
+        room = room,
+      })
+    else
+      botPublish(nick,room,'That user is already here')
+    end
+    return
+  elseif not self.users[stream_nick].account_id then
     botPublish(nick,room,'Not an active bot: ' ..stream_nick)
     return
-  end
-  if not account_slug or account_slug:len() == 0 then
+  elseif not account_slug or account_slug:len() == 0 then
     local accounts = Account:select(
       'where network = ? and user_id = ? and id <> ?',
       self.users[stream_nick].network.name,
       self.users[nick].user.id,
       self.users[stream_nick].account_id)
+    local sas = SharedAccount:select(
+      'where user_id = ?',
+      self.users[nick].user.id)
     local message = 'Available accounts:'
     for i,account in ipairs(accounts) do
       message = message .. ' ' .. account.slug
+    end
+    for i,sa in ipairs(sas) do
+      local account = sa:get_account()
+      if account.network == self.users[stream_nick].network.name and
+         account.id ~= self.users[stream_nick].account_id then
+        message = message .. ' ' .. account.slug
+      end
     end
     botPublish(nick,room,message)
     return
@@ -679,6 +789,7 @@ function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
   publish('stream:writer',{
     worker = ngx.worker.pid(),
     account_id = account.id,
+    user_id = self.users[nick].user.id,
     stream_id = self.rooms[room].stream_id,
     cur_stream_account_id = self.users[stream_nick].account_id,
   })

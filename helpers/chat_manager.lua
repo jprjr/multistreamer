@@ -81,6 +81,7 @@ function ChatMgr:handleChatWriterRequest(msg)
   publish('stream:writer:result', {
     stream_id = msg.stream_id,
     account_id = msg.account_id,
+    user_id = msg.user_id,
     cur_stream_account_id = msg.cur_stream_account_id,
     read_started = t.read_started,
     write_started = t.write_started,
