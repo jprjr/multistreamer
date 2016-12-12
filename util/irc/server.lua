@@ -172,6 +172,21 @@ function IRCServer:run()
         end
       end
     end)
+
+    -- find and force-join user to rooms
+    if config.irc_force_join then
+      local u = User:find({ id = self.user.id })
+      for _,stream in ipairs(u:get_streams()) do
+        local roomName = slugify(u.username) .. '-' .. stream.slug
+        if self.rooms[roomName] and self.rooms[roomName].live then
+          local ok, err = publish('irc:events:join', {
+            nick = self.user.nick,
+            room = roomName,
+          })
+        end
+      end
+    end
+
     local ok, irc_res, red_res = ngx.thread.wait(irc_func,red_func)
     if coroutine.status(red_func) == 'dead' then
       ngx.thread.kill(irc_func)
@@ -190,6 +205,7 @@ function IRCServer:run()
             root = true,
           },
           topic = 'Status: offline',
+          live = false,
           mtime = date.diff(s.updated_at,date.epoch()):spanseconds(),
           ctime = date.diff(s.created_at,date.epoch()):spanseconds(),
         }
@@ -268,7 +284,14 @@ function IRCServer:processStreamStart(update)
     end
   end
   self.rooms[roomName].topic = topic
+  self.rooms[roomName].live = true
   self:sendRoomTopic(roomName)
+  if config.irc_force_join then
+    local ok, err = publish('irc:events:join', {
+      nick = slugify(user.username),
+      room = roomName,
+    })
+  end
 end
 
 function IRCServer:processStreamUpdate(update)
@@ -277,11 +300,12 @@ function IRCServer:processStreamUpdate(update)
   local roomName = slugify(user.username) .. '-' ..stream.slug
   ngx.log(ngx.DEBUG,roomName)
   local room = self.rooms[roomName]
-  if not room then
+  if not room then -- slug has changed and/or brand-new stream
     room = {
       user_id = user.id,
       stream_id = stream.id,
       topic = 'Status: offline',
+      live = false,
       mtime = date.diff(stream.updated_at,date.epoch()):spanseconds(),
       ctime = date.diff(stream.created_at,date.epoch()):spanseconds(),
       users = {
@@ -297,6 +321,8 @@ function IRCServer:processStreamUpdate(update)
       end
     end
     if oldroom then
+      room.live = oldroom.live
+      room.topic = oldroom.topic
       for u,_ in pairs(oldroom.users) do
         -- only copy bots
         if self.users[u].network then
@@ -304,6 +330,12 @@ function IRCServer:processStreamUpdate(update)
         end
         if self.users[u].socket then
           self:sendFromClient(u,'root','KICK','#'..oldroomName,u,'Room moving to #'..roomName)
+          if room.live and config.irc_force_join then
+            local ok, err = publish('irc:events:join', {
+              nick = u,
+              room = roomName,
+            })
+          end
         end
       end
       self.rooms[oldroomName] = nil
@@ -949,7 +981,7 @@ function IRCServer.startClient(sock,server)
             insert(send_buffer,':{hostname} 902 {nick} :You must use a nick assigned to you')
             user = nil
           else
-            insert(send_buffer,':{hostname} 900 {nick} {nick}!{user}@{hostname} {account} :You are now logged in as {user}')
+            insert(send_buffer,':{hostname} 900 {nick} {nick}!{nick}@{hostname} {account} :You are now logged in as {nick}')
             insert(send_buffer,':{hostname} 903 {nick} :SASL authenticate successful')
           end
         else
@@ -985,7 +1017,7 @@ function IRCServer.startClient(sock,server)
   end
 
   if user then
-    insert(send_buffer,':{hostname} 001 {nick} :Welcome {nick}!{user}@{hostname}')
+    insert(send_buffer,':{hostname} 001 {nick} :Welcome {nick}!{nick}@{hostname}')
     insert(send_buffer,':{hostname} 002 {nick} :Your host is {hostname}, running version 1.0.0')
     insert(send_buffer,':{hostname} 003 {nick} :This server was created ' .. date(start_time):fmt('%a %b %d %Y at %H:%M:%S UTC'))
     insert(send_buffer,':{hostname} 004 {nick} :{hostname} multistreamer 1.0.0 o o')
@@ -997,7 +1029,7 @@ function IRCServer.startClient(sock,server)
     local u = {
       id = user.id,
       nick = nickname,
-      username = username,
+      username = nickname,
       realname = realname,
     }
     return true, u
