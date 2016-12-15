@@ -531,6 +531,7 @@ function M.create_comment_funcs(account, stream, send)
     read_func = function()
       local afterComment = nil
       local afterReaction = nil
+      local reactions = {}
       while true do
         local res, err = fb_client:batch({
           {
@@ -558,16 +559,21 @@ function M.create_comment_funcs(account, stream, send)
         end
         if res[2].code == 200 then
           local body = from_json(res[2].body)
-          if body.paging then afterReaction = body.paging.cursors.after end
+          if body.paging and body.paging.next then
+              afterReaction = body.paging.cursors.after
+          end
           for i,v in pairs(body.data) do
-            send({
-              type = 'emote',
-              from = {
-                name = v.name,
-                id = v.id,
-              },
-              text = textify(v.type)
-            })
+            if not reactions[v.id] then
+              reactions[v.id] = true
+              send({
+                type = 'emote',
+                from = {
+                  name = v.name,
+                  id = v.id,
+                },
+                text = textify(v.type)
+              })
+            end
           end
         end
         ngx.sleep(6)
