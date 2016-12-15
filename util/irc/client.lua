@@ -182,7 +182,6 @@ function IRCClient:cruise()
       ngx.log(ngx.DEBUG,data)
       msg = irc.parse_line(data)
     else
-      ngx.log(ngx.DEBUG,partial)
       msg = irc.parse_line(partial)
     end
     if msg and msg.command then

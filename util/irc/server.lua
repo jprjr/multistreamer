@@ -174,7 +174,6 @@ function IRCServer:run()
           ngx.log(ngx.DEBUG,data)
           msg = irc.parse_line(data)
         elseif partial then
-          ngx.log(ngx.DEBUG,partial)
           msg = irc.parse_line(partial)
         end
         if err and err == 'closed' then
