@@ -259,10 +259,14 @@ function IRCServer:processWriterResult(update)
     account_id = account.id,
     network = account.network,
   }
-  self.rooms[roomName].users[accountUsername] = true
-  for u,user in pairs(self.rooms[roomName].users) do
-    if self.users[u].socket then
-      self:sendRoomJoin(u,accountUsername,roomName)
+  if self.rooms[roomName] and self.rooms[roomName].users then
+    self.rooms[roomName].users[accountUsername] = true
+  end
+  if self.rooms[roomName] and self.rooms[roomName].users then
+    for u,user in pairs(self.rooms[roomName].users) do
+      if self.users[u] and self.users[u].socket then
+        self:sendRoomJoin(u,accountUsername,roomName)
+      end
     end
   end
 end
@@ -304,10 +308,12 @@ function IRCServer:processStreamStart(update)
   self.rooms[roomName].live = true
   self:sendRoomTopic(roomName)
   if config.irc_force_join then
-    local ok, err = publish('irc:events:join', {
-      nick = slugify(user.username),
-      room = roomName,
-    })
+    if not self.rooms[roomName].users[slugify(user.username)] and self.users[slugify(user.username)] then
+      local ok, err = publish('irc:events:join', {
+        nick = slugify(user.username),
+        room = roomName,
+      })
+    end
   end
 end
 
@@ -315,7 +321,6 @@ function IRCServer:processStreamUpdate(update)
   local stream = Stream:find({ id = update.id })
   local user = stream:get_user()
   local roomName = slugify(user.username) .. '-' ..stream.slug
-  ngx.log(ngx.DEBUG,roomName)
   local room = self.rooms[roomName]
   if not room then -- slug has changed and/or brand-new stream
     room = {
@@ -400,19 +405,23 @@ function IRCServer:processCommentUpdate(update)
 end
 
 function IRCServer:processIrcJoin(msg)
-  self.rooms[msg.room].users[msg.nick] = true
-  for to,_ in pairs(self.rooms[msg.room].users) do
-    if self.users[to].socket then
-      self:sendRoomJoin(to,msg.nick,msg.room)
+  if not self.rooms[msg.room].users[msg.nick] then
+    self.rooms[msg.room].users[msg.nick] = true
+    for to,_ in pairs(self.rooms[msg.room].users) do
+      if self.users[to] and self.users[to].socket then
+        self:sendRoomJoin(to,msg.nick,msg.room)
+      end
     end
   end
 end
 
 function IRCServer:processIrcPart(msg)
-  self.rooms[msg.room].users[msg.nick] = false
-  for to,_ in pairs(self.rooms[msg.room].users) do
-    if self.users[to].socket then
-      self:sendRoomPart(to,msg.nick,msg.room,msg.message)
+  if self.rooms[msg.room] and self.rooms[msg.room].users[msg.nick] then
+    self.rooms[msg.room].users[msg.nick] = false
+    for to,_ in pairs(self.rooms[msg.room].users) do
+      if self.users[to].socket then
+        self:sendRoomPart(to,msg.nick,msg.room,msg.message)
+      end
     end
   end
 end
@@ -449,7 +458,7 @@ function IRCServer:processIrcMessage(msg)
     local room = msg.target:sub(2)
     if self.rooms[room] then
       for u,user in pairs(self.rooms[room].users) do
-        if u ~= msg.nick and self.users[u].socket then
+        if u ~= msg.nick and self.users[u] and self.users[u].socket then
           self:sendPrivMessage(u,msg.nick,'#'..room,msg.message)
         end
       end
