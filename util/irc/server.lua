@@ -249,7 +249,7 @@ function IRCServer:processWriterResult(update)
   local og_account = Account:find({ id = update.cur_stream_account_id })
   account.network = networks[account.network]
   local accountUsername = slugify(account.network.name) .. '-' .. account.slug .. '-' .. og_account.slug
-  local roomName = slugify(og_account:get_user().username) .. '-' .. stream.slug
+  local roomName = slugify(stream:get_user().username) .. '-' .. stream.slug
   self.users[accountUsername] = {
     user = {
       nick = accountUsername,
