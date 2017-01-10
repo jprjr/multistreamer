@@ -63,6 +63,7 @@ local function facebook_client(access_token)
       ngx.log(ngx.DEBUG,res.body)
       return false, res.body
     end
+    ngx.log(ngx.DEBUG,res.body)
 
     return from_json(res.body), nil
   end
@@ -211,6 +212,7 @@ function M.register_oauth(params)
   if err or res.status >= 400 then
     return false, err
   end
+  ngx.log(ngx.DEBUG,res.body)
 
   local creds = from_json(res.body)
 
@@ -225,7 +227,34 @@ function M.register_oauth(params)
   if err or res.status >= 400 then
       return false, err
   end
+  ngx.log(ngx.DEBUG,res.body)
   creds = from_json(res.body)
+
+  if not creds.expires_in then
+    res, err = httpc:request_uri(graph_root .. '/debug_token?' ..
+      encode_query_string({
+        input_token = creds.access_token,
+        access_token = facebook_config.app_id .. '|' .. facebook_config.app_secret}))
+    if err then
+      ngx.log(ngx.DEBUG,err)
+    end
+    if res.status ~= 200 then
+      ngx.log(ngx.DEBUG,res.body)
+    end
+    if res and res.status == 200 then
+      ngx.log(ngx.DEBUG,res.body)
+      local info = from_json(res.body)
+
+      -- check if this is a non-expiring token
+      if info.data.expires_at == 0 and info.data.valid == true then
+        creds.expires_in = 0
+      else
+        creds.expires_in = date.diff(date(info.data.expires_at),date(true)):spanseconds()
+      end
+    end
+  else
+    creds.expires_in = tonumber(creds.expires_in)
+  end
 
   -- now, we can make the facebook client object
 
@@ -233,6 +262,7 @@ function M.register_oauth(params)
 
   local user_info, err = fb_client:get('/me')
   if err then return false, err end
+  ngx.log(ngx.DEBUG,res.body)
 
   local sha1 = resty_sha1:new()
   sha1:update(user_info.id)
@@ -253,12 +283,10 @@ function M.register_oauth(params)
     })
   end
 
-  if(creds.expires_in) then
+  if(creds.expires_in > 0) then
     account:set('access_token',creds.access_token, tonumber(creds.expires_in))
   else
-    local old_tok, old_exp = account:get('access_token')
-    if not old_exp then old_exp = 3456000 end
-    account:set('access_token',creds.access_token,floor(old_exp))
+    account:set('access_token',creds.access_token)
   end
 
   local available_targets = refresh_targets(creds.access_token)
