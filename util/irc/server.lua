@@ -878,6 +878,9 @@ function IRCServer:sendRoomPart(to,from,room,message)
 end
 
 function IRCServer:sendPrivMessage(to,msgFrom,msgTarget,message)
+  if not message:find(' ') then
+    message = ':' .. message
+  end
   return self:sendFromClient(to,msgFrom,'PRIVMSG',msgTarget,message)
 end
 
