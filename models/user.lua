@@ -37,9 +37,9 @@ function User:login(username,password)
     error = err
   elseif(res.status >= 200 and res.status < 300) then
     ngx.log(ngx.DEBUG, 'login succeeded');
-    user = self:find({ username = username })
+    user = self:find({ username = username:lower() })
     if not user then
-      user = self:create({username = username})
+      user = self:create({username = username:lower() })
     end
   else
     ngx.log(ngx.DEBUG, 'login failed');
