@@ -77,6 +77,8 @@ curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/e527417c
 cd openresty-1.11.2.2
 ./configure \
   --prefix=/opt/openresty-rtmp \
+  --with-pcre-jit \
+  --with-ipv6 \
   --with-stream \
   --with-stream_ssl_module \
   --add-module=../nginx-rtmp-module-1.1.10 \
