@@ -22,7 +22,9 @@ available via the regular Facebook web interface, as far as I know. :)
 Please note: you're responsible for ensuring you're not violating each
 service's Terms of Service via simulcasting.
 
-I have a YouTube video with an overview here: https://youtu.be/rjaTaHm4WkA
+I have a YouTube video going over to to use this here: https://youtu.be/BukSywMuf5E
+
+I also have a YouTube video about installing this available here: https://youtu.be/Wr4CD6RU_CU
 
 ## Table of Contents
 
@@ -71,7 +73,7 @@ includes the Lua module (and the Lua module's requirements).
 
 ```bash
 sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev \
-    libssl-dev perl make build-essential unzip curl
+    libssl-dev perl make build-essential unzip curl git
 mkdir openresty-build && cd openresty-build
 curl -R -L https://openresty.org/download/openresty-1.11.2.2.tar.gz | tar xz
 curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.1.10.tar.gz | tar xz
