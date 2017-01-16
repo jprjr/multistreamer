@@ -70,10 +70,13 @@ You don't explicitly need OpenResty - it's just convenient because it already
 includes the Lua module (and the Lua module's requirements).
 
 ```bash
+sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev \
+    libssl-dev perl make build-essential unzip curl
 mkdir openresty-build && cd openresty-build
 curl -R -L https://openresty.org/download/openresty-1.11.2.2.tar.gz | tar xz
 curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.1.10.tar.gz | tar xz
 curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/e527417c5d04da0c26c12cf4d8a0ef0f1e36e051.tar.gz | tar xz
+curl -R -L http://luarocks.github.io/luarocks/releases/luarocks-2.4.2.tar.gz | tar xz
 cd openresty-1.11.2.2
 ./configure \
   --prefix=/opt/openresty-rtmp \
@@ -85,6 +88,12 @@ cd openresty-1.11.2.2
   --add-module=../stream-lua-nginx-module-e527417c5d04da0c26c12cf4d8a0ef0f1e36e051
 make
 sudo make install
+cd ../luarocks-2.4.2
+./configure \
+  --prefix=/opt/openresty-rtmp \
+  --with-lua=/opt/openresty-rtmp/luajit \
+  --lua-suffix=jit \
+  --with-lua-include=/opt/openresty-rtmp/luajit/include/luajit-2.1
 ```
 
 ### Alternative: Install nginx with Lua and rtmp
