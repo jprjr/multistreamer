@@ -341,6 +341,7 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
       sa:get_keystore():unset_all()
       sa:delete()
     end
+    self.stream:get_keystore():unset_all()
     self.stream:delete()
     self.session.status_msg = { type = 'success', msg = 'Stream removed' }
     return { redirect_to = self:url_for('site-root') }
