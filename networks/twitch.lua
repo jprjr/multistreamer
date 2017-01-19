@@ -11,6 +11,7 @@ local http = require'resty.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
 local format = string.format
+local len = string.len
 local insert = table.insert
 local concat = table.concat
 local sort = table.sort
@@ -378,6 +379,9 @@ function M.create_comment_funcs(account, stream, send)
       text = data.message,
       markdown = emojify(data.message,data.tags.emotes),
     }
+    if len(msg.from.name) == 0 then
+      msg.from.name = data.from.nick
+    end
     if event == 'message' then
       msg.type = 'text'
     elseif event == 'emote' then
