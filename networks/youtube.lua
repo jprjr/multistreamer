@@ -454,36 +454,32 @@ function M.check_errors(account)
 end
 
 function M.create_comment_funcs(account, stream, send)
-  local err = M.check_errors(account)
-  if err then return nil,nil end
-
-  local account = account:get_all()
-  local stream = stream:get_all()
-
-  local yt = youtube_client(account.access_token)
-
   local read_func = nil
 
   if send then
     read_func = function()
       local nextPageToken = nil
       while true do
-        local res, err = yt:get('/liveChat/messages',{
-          liveChatId = stream.chat_id,
-          part = 'id,snippet,authorDetails',
-          pageToken = nextPageToken,
-        })
-        if res then
-          if res.nextPageToken then nextPageToken = res.nextPageToken end
-          for i,v in ipairs(res.items) do
-            send({
-              type = 'text',
-              from = {
-                name = v.authorDetails.displayName,
-                id = v.authorDetails.channelId,
-              },
-              text = v.snippet.textMessageDetails.messageText,
-            })
+        local err = M.check_errors(account)
+        if not err then
+          local yt = youtube_client(account:get('access_token'))
+          local res, err = yt:get('/liveChat/messages',{
+            liveChatId = stream.chat_id,
+            part = 'id,snippet,authorDetails',
+            pageToken = nextPageToken,
+          })
+          if res then
+            if res.nextPageToken then nextPageToken = res.nextPageToken end
+            for i,v in ipairs(res.items) do
+              send({
+                type = 'text',
+                from = {
+                  name = v.authorDetails.displayName,
+                  id = v.authorDetails.channelId,
+                },
+                text = v.snippet.textMessageDetails.messageText,
+              })
+            end
           end
         end
         local sleep = ceil(res.pollingIntervalMillis/1000)
@@ -496,22 +492,27 @@ function M.create_comment_funcs(account, stream, send)
   end
 
   local write_func = function(text)
-    local res, err = yt:postJSON('/liveChat/messages',{
-      part = 'snippet',
-      liveChatId = stream.chat_id,
-    }, {
-      snippet = {
+    local err = M.check_errors(account)
+    if not err then
+      local yt = youtube_client(account:get('access_token'))
+      local res, err = yt:postJSON('/liveChat/messages',{
+        part = 'snippet',
         liveChatId = stream.chat_id,
-        type = 'textMessageEvent',
-        textMessageDetails = {
-          messageText = text,
-        },
-      }
-    })
-    if err then
-      return false, err
+      }, {
+        snippet = {
+          liveChatId = stream.chat_id,
+          type = 'textMessageEvent',
+          textMessageDetails = {
+            messageText = text,
+          },
+        }
+      })
+      if err then
+        return false, err
+      end
+      return true, nil
     end
-    return true, nil
+    return false, err
   end
 
   return read_func, write_func
