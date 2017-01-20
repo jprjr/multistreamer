@@ -454,6 +454,9 @@ function M.check_errors(account)
 end
 
 function M.create_comment_funcs(account, stream, send)
+  local err = M.check_errors(account)
+  if err then return nil,nil end
+
   local account = account:get_all()
   local stream = stream:get_all()
 
