@@ -29,7 +29,9 @@ function IRC.parse_line(data)
         repeat
             local t = byte(data,i)
             if(t == 32) then
-
+                if cur_tag then
+                    msg.tags[cur_tag] = cur_val
+                end
             elseif(t == 59) then
                 msg.tags[cur_tag] = cur_val
                 cur_tag = nil
