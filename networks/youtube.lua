@@ -21,6 +21,8 @@ local db = require'lapis.db'
 local pairs = pairs
 local ipairs = ipairs
 local ceil = math.ceil
+local len = string.len
+local tonumber = tonumber
 
 local M = {}
 
@@ -85,6 +87,12 @@ local function google_client(base_url,access_token)
     if params then params = to_json(params) else params = '' end
     return self:request('POST',endpoint,qparams,headers,params)
   end
+  t.putJSON = function(self,endpoint,qparams,params,headers)
+    if not headers then headers = {} end
+    headers['Content-Type'] = 'application/json'
+    if params then params = to_json(params) else params = '' end
+    return self:request('PUT',endpoint,qparams,headers,params)
+  end
 
   return t,nil
 
@@ -92,10 +100,6 @@ end
 
 local function youtube_client(access_token)
   return google_client('https://www.googleapis.com/youtube/v3',access_token)
-end
-
-local function plus_client(access_token)
-  return google_client('https://www.googleapis.com/plus/v1',access_token)
 end
 
 
@@ -156,13 +160,14 @@ function M.register_oauth(params)
   local exp = creds.expires_in
   local refresh_token = creds.refresh_token
 
-  local pc = plus_client(access_token)
   local yt = youtube_client(access_token)
 
   -- first get user info
-  local res, err = pc:get('/people/me')
-  local user_id = res.id
-  local name = res.displayName
+  local res, err = yt:get('/channels', {
+    part = 'snippet',
+    mine = 'true',})
+  local user_id = res.items[1].id
+  local name = res.items[1].snippet.title
 
   -- see if we have an account
   local sha1 = resty_sha1:new()
@@ -196,7 +201,27 @@ function M.register_oauth(params)
 end
 
 function M.metadata_form(account, stream)
+  M.check_errors(account)
+
   local form = M.metadata_fields()
+  form[6].options = {}
+
+  local yt = youtube_client(account:get('access_token'))
+  local res, err = yt:get('/videoCategories', {
+    part = 'snippet',
+    regionCode = config.networks[M.name].country,
+  })
+
+  sort(res.items, function(a,b)
+    return a.snippet.title < b.snippet.title
+  end)
+
+  for i,v in ipairs(res.items) do
+    insert(form[6].options, {
+      label = v.snippet.title,
+      value = v.id,
+    })
+  end
 
   for i,v in pairs(form) do
     v.value = stream:get(v.key)
@@ -207,7 +232,7 @@ function M.metadata_form(account, stream)
 end
 
 function M.metadata_fields()
-  return {
+  local fields = {
     [1] = {
       type = 'text',
       label = 'Title',
@@ -255,7 +280,15 @@ function M.metadata_fields()
         { label = '60fps', value = '60fps' },
       },
     },
+    [6] = {
+      type = 'select',
+      label = 'Category',
+      key = 'category',
+      required = true,
+    },
   }
+
+  return fields
 
 end
 
@@ -271,6 +304,7 @@ function M.publish_start(account, stream)
   local access_token = account.access_token
 
   local title = stream.title
+  local category = stream.category
   local privacy = stream.privacy
   local description = stream.description
   local resolution = stream.resolution
@@ -280,6 +314,7 @@ function M.publish_start(account, stream)
   -- create Broadcast (POST /liveBroadcasts)
   -- create stream    (POST /liveStreams)
   -- create binding   (POST /liveBroadcasts/bind)
+  -- update video metadata
   -- then after the video has started:
   -- transition broadcast to live (POST /liveBroadcasts/transition)
 
@@ -327,13 +362,26 @@ function M.publish_start(account, stream)
   end
 
   local bind_res, err = yt:postJSON('/liveBroadcasts/bind', {
-    part = 'id, snippet, contentDetails,status',
+    part = 'id,snippet,contentDetails,status',
     id = broadcast.id,
     streamId = video_stream.id,
   })
 
   if err then
     return false, to_json(err)
+  end
+
+  local update_res, err = yt:putJSON('/videos', {
+    part = 'id,snippet',}, {
+    id = broadcast.id,
+    snippet = {
+      title = title,
+      categoryId = category,
+    }
+  })
+
+  if err then
+    return false, err
   end
 
   local http_url = 'https://youtu.be/' .. broadcast.id
@@ -417,6 +465,51 @@ function M.publish_stop(account, stream)
   return true
 end
 
+local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+  local do_refresh = false
+  local now = date(true)
+  local expires_at
+
+  if not expires_at then
+    do_refresh = true
+  else
+    expires_at = date(expires_at)
+    if now > expires_at then
+      do_refresh = true
+    end
+  end
+
+  if do_refresh == true then
+
+    local httpc = http.new()
+    local res, err = httpc:request_uri('https://accounts.google.com/o/oauth2/token', {
+      method = 'POST',
+      body = encode_query_string({
+        client_id = config.networks[M.name].client_id,
+        client_secret = config.networks[M.name].client_secret,
+        refresh_token = refresh_token,
+        grant_type = 'refresh_token',
+      }),
+      headers = {
+        ['Content-Type'] = 'application/x-www-form-urlencoded',
+      },
+    })
+
+    if err then
+      return nil, err
+    end
+    if res.status >= 400 then
+      return nil, res.body
+    end
+
+    local creds = from_json(res.body)
+
+    return creds.access_token, creds.expires_in, now:addseconds(tonumber(creds.expires_in))
+  else
+    return access_token, expires_in, expires_at
+  end
+end
+
 function M.check_errors(account)
   local account_token, exp = account:get('access_token')
   if account_token then
@@ -425,90 +518,88 @@ function M.check_errors(account)
 
   local refresh_token = account:get('refresh_token')
 
-  local httpc = http.new()
-  local res, err = httpc:request_uri('https://accounts.google.com/o/oauth2/token', {
-    method = 'POST',
-    body = encode_query_string({
-      client_id = config.networks[M.name].client_id,
-      client_secret = config.networks[M.name].client_secret,
-      refresh_token = refresh_token,
-      grant_type = 'refresh_token',
-    }),
-    headers = {
-      ['Content-Type'] = 'application/x-www-form-urlencoded',
-    },
-  })
+  access_token, exp = refresh_access_token(refresh_token)
 
-  if err then
-    return err
-  end
-  if res.status >= 400 then
-    return res.body
+  if not access_token then
+    return false, exp
   end
 
-  local creds = from_json(res.body)
-
-  account:set('access_token',creds.access_token,creds.expires_in)
+  account:set('access_token',access_token,exp)
 
   return false,nil
 end
 
 function M.create_comment_funcs(account, stream, send)
-  local account = account:get_all()
-  local stream = stream:get_all()
-
-  local yt = youtube_client(account.access_token)
-
   local read_func = nil
+
+  local refresh_token = account['refresh_token']
+
+  local access_token = account['access_token']
+  local expires_in
+  local expires_at
+
+  if not access_token then
+    access_token, expires_in, expires_at = refresh_access_token(account['refresh_token'])
+  else
+    expires_in = account['access_token.expires_in']
+    expires_at = account['access_token.expires_at']
+  end
 
   if send then
     read_func = function()
       local nextPageToken = nil
       while true do
-        local res, err = yt:get('/liveChat/messages',{
-          liveChatId = stream.chat_id,
-          part = 'id,snippet,authorDetails',
-          pageToken = nextPageToken,
-        })
-        if res then
-          if res.nextPageToken then nextPageToken = res.nextPageToken end
-          for i,v in ipairs(res.items) do
-            send({
-              type = 'text',
-              from = {
-                name = v.authorDetails.displayName,
-                id = v.authorDetails.channelId,
-              },
-              text = v.snippet.textMessageDetails.messageText,
-            })
+        local sleeptime = 6
+        access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+        if access_token then
+          local yt = youtube_client(access_token)
+          local res, err = yt:get('/liveChat/messages',{
+            liveChatId = stream.chat_id,
+            part = 'id,snippet,authorDetails',
+            pageToken = nextPageToken,
+          })
+          if res then
+            if res.nextPageToken then nextPageToken = res.nextPageToken end
+            for i,v in ipairs(res.items) do
+              send({
+                type = 'text',
+                from = {
+                  name = v.authorDetails.displayName,
+                  id = v.authorDetails.channelId,
+                },
+                text = v.snippet.textMessageDetails.messageText,
+              })
+            end
+            sleeptime = ceil(res.pollingIntervalMillis/1000)
           end
         end
-        local sleep = ceil(res.pollingIntervalMillis/1000)
-        if sleep < 6 then
-          sleep = 6
-        end
-        ngx.sleep(sleep)
+        ngx.sleep(sleeptime)
       end
     end
   end
 
   local write_func = function(text)
-    local res, err = yt:postJSON('/liveChat/messages',{
-      part = 'snippet',
-      liveChatId = stream.chat_id,
-    }, {
-      snippet = {
+    access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+    if access_token then
+      local yt = youtube_client(access_token)
+      local res, err = yt:postJSON('/liveChat/messages',{
+        part = 'snippet',
         liveChatId = stream.chat_id,
-        type = 'textMessageEvent',
-        textMessageDetails = {
-          messageText = text,
-        },
-      }
-    })
-    if err then
-      return false, err
+      }, {
+        snippet = {
+          liveChatId = stream.chat_id,
+          type = 'textMessageEvent',
+          textMessageDetails = {
+            messageText = text,
+          },
+        }
+      })
+      if err then
+        return false, err
+      end
+      return true, nil
     end
-    return true, nil
+    return false, err
   end
 
   return read_func, write_func

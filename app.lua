@@ -17,7 +17,7 @@ local decode_with_secret = lapis.application.decode_with_secret
 local to_json = require('lapis.util').to_json
 
 local tonumber = tonumber
-local length = string.len
+local len = string.len
 local insert = table.insert
 local sort = table.sort
 
@@ -184,6 +184,11 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       self.stream:set('description',self.params.description)
     end
     for _,account in pairs(self.accounts) do
+      local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
+      if ffmpeg_args and len(ffmpeg_args) > 0 then
+          self.stream:get_stream_account(account):update({ffmpeg_args = ffmpeg_args })
+      end
+
       local metadata_fields = account.network.metadata_fields()
       if not metadata_fields then metadata_fields = {} end
       for i,field in pairs(metadata_fields) do

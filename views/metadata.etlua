@@ -17,7 +17,7 @@
 </div>
 
 <% for _,account in pairs(accounts) do %>
-<h4><%= account.name %> (<%= account.network.displayname %>) Settings</h4>
+<fieldset><legend><%= account.name %> (<%= account.network.displayname %>) Settings</legend>
 <% local metadata_form, err = account.network.metadata_form(account:get_keystore(),stream:get_stream_account(account):get_keystore()) %>
 
 <% if err then %>
@@ -46,6 +46,13 @@
 <% else %>
 <p>No settings for this account</o>
 <% end %>
+
+<% local ffmpeg_args = stream:get_stream_account(account).ffmpeg_args %>
+<div class="pure-control-group"><label for="ffmpeg_args.<%= account.id %>">FFMPEG Args (blank for default)</label>
+<input type="text" id="ffmpeg_args.<%= account.id %>" name="ffmpeg_args.<%= account.id %>" <% if ffmpeg_args then %>value="<%= ffmpeg_args %>" <% end %> />
+</div>
+
+</fieldset>
 <% end %>
 
 <div class="pure-controls">

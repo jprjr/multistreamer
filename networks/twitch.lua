@@ -345,9 +345,6 @@ local function emojify(message,emotes)
 end
 
 function M.create_comment_funcs(account, stream, send)
-  local account = account:get_all()
-  local stream = stream:get_all()
-
   local irc = IRCClient.new()
   local nick = account.channel:lower()
   local channel = '#' .. stream.channel:lower()

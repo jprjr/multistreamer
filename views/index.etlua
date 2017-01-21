@@ -61,3 +61,4 @@
 <p>Port: <%= public_irc_port %></p>
 <p>SSL: <%= public_irc_ssl and 'Enabled' or 'Disabled' %></p>
 <p><a href="irc<%= public_irc_ssl and 's' or ''%>://<%=public_irc_hostname%>:<%=public_irc_port %>/,needpass">Login</a></p>
+

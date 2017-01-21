@@ -73,6 +73,7 @@ config({'development','production'}, {
     -- youtube = {
     --   client_id = 'client_id',
     --   client_secret = 'client_secret',
+    --   country = 'us', -- 2-character country code, used for listing available categories
     -- },
     rtmp = true,
   },

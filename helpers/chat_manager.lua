@@ -97,8 +97,10 @@ function ChatMgr:handleStreamStart(msg)
     return nil
   end
   self.streams[stream.id] = {}
+  local sas = stream:get_streams_accounts()
+  StreamAccount:preload_relation(sas,"account")
 
-  for _,sa in pairs(stream:get_streams_accounts()) do
+  for _,sa in pairs(sas) do
     local acc = sa:get_account()
     acc.network = networks[acc.network]
     self.streams[stream.id][acc.id] = {}
@@ -109,8 +111,8 @@ function ChatMgr:handleStreamStart(msg)
       publish('comment:in',msg)
     end
     local read_func, write_func = acc.network.create_comment_funcs(
-      acc:get_keystore(),
-      sa:get_keystore(),
+      acc:get_all(),
+      sa:get_all(),
       relay)
     if read_func then
       self.streams[stream.id][acc.id].read_thread = ngx.thread.spawn(read_func)

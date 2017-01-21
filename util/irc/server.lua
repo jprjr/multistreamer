@@ -997,7 +997,7 @@ end
 
 function IRCServer:sendFromServer(nick,...)
   local msg = irc.format_line(':' .. config.irc_hostname,...)
-  if self.users[nick].socket then
+  if self.users[nick] and self.users[nick].socket then
     ngx.log(ngx.DEBUG,msg)
     local bytes, err = self.users[nick].socket:send(msg .. '\r\n')
     if not bytes then
