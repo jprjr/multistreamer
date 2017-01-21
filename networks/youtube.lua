@@ -468,13 +468,12 @@ end
 local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
   local do_refresh = false
   local now = date(true)
-  local expires_at
 
-  if not expires_at then
+  if not access_token then
     do_refresh = true
   else
-    expires_at = date(expires_at)
-    if now > expires_at then
+    local expires_at_dt = date(expires_at)
+    if now > expires_at_dt then
       do_refresh = true
     end
   end
@@ -511,13 +510,12 @@ local function refresh_access_token(refresh_token, access_token, expires_in, exp
 end
 
 function M.check_errors(account)
-  local account_token, exp = account:get('access_token')
-  if account_token then
+  local access_token, exp = account:get('access_token')
+  if access_token then
     return false, nil
   end
 
   local refresh_token = account:get('refresh_token')
-
   access_token, exp = refresh_access_token(refresh_token)
 
   if not access_token then
