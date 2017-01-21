@@ -47,6 +47,11 @@
 <p>No settings for this account</o>
 <% end %>
 
+<% local ffmpeg_args = stream:get_stream_account(account).ffmpeg_args %>
+<div class="pure-control-group"><label for="ffmpeg_args.<%= account.id %>">FFMPEG Args (blank for default)</label>
+<input type="text" id="ffmpeg_args.<%= account.id %>" name="ffmpeg_args.<%= account.id %>" <% if ffmpeg_args then %>value="<%= ffmpeg_args %>" <% end %> />
+</div>
+
 </fieldset>
 <% end %>
 

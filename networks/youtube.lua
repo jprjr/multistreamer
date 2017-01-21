@@ -467,11 +467,13 @@ end
 
 local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
   local do_refresh = false
+  local now = date(true)
+  local expires_at
+
   if not expires_at then
     do_refresh = true
   else
-    local expires_at = date(expires_at)
-    local now = date(true)
+    expires_at = date(expires_at)
     if now > expires_at then
       do_refresh = true
     end

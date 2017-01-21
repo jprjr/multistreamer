@@ -28,6 +28,7 @@ local commands = {
 local sql_files = {
   [1] = streamer_dir .. '/sql/1477785578.sql',
   [2] = streamer_dir .. '/sql/1481421931.sql',
+  [3] = streamer_dir .. '/sql/1485029477.sql',
 }
 
 if(not arg[1] or not commands[arg[1]]) then
@@ -136,6 +137,7 @@ elseif(arg[1] == 'push') then
     exit(1)
   end
 
+  local shell = require'util.shell'
   local StreamModel = require'models.stream'
   local stream = StreamModel:find({uuid = arg[2]})
   local sas = stream:get_streams_accounts()
@@ -147,10 +149,17 @@ elseif(arg[1] == 'push') then
     config.private_rtmp_url ..'/'.. config.rtmp_prefix ..'/'..arg[2],
   }
   for _,sa in pairs(sas) do
-    insert(ffmpeg_args,'-codec:v')
-    insert(ffmpeg_args,'copy')
-    insert(ffmpeg_args,'-codec:a')
-    insert(ffmpeg_args,'copy')
+    if sa.ffmpeg_args and len(sa.ffmpeg_args) > 0 then
+      local args = shell.parse(sa.ffmpeg_args)
+      for i,v in pairs(args) do
+        insert(ffmpeg_args,v)
+      end
+    else
+      insert(ffmpeg_args,'-codec:v')
+      insert(ffmpeg_args,'copy')
+      insert(ffmpeg_args,'-codec:a')
+      insert(ffmpeg_args,'copy')
+    end
     insert(ffmpeg_args,'-f')
     insert(ffmpeg_args,'flv')
     insert(ffmpeg_args,sa.rtmp_url)
