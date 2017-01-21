@@ -22,6 +22,7 @@ local pairs = pairs
 local ipairs = ipairs
 local ceil = math.ceil
 local len = string.len
+local tonumber = tonumber
 
 local M = {}
 
@@ -464,6 +465,49 @@ function M.publish_stop(account, stream)
   return true
 end
 
+local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+  local do_refresh = false
+  if not expires_at then
+    do_refresh = true
+  else
+    local expires_at = date(expires_at)
+    local now = date(true)
+    if now > expires_at then
+      do_refresh = true
+    end
+  end
+
+  if do_refresh == true then
+
+    local httpc = http.new()
+    local res, err = httpc:request_uri('https://accounts.google.com/o/oauth2/token', {
+      method = 'POST',
+      body = encode_query_string({
+        client_id = config.networks[M.name].client_id,
+        client_secret = config.networks[M.name].client_secret,
+        refresh_token = refresh_token,
+        grant_type = 'refresh_token',
+      }),
+      headers = {
+        ['Content-Type'] = 'application/x-www-form-urlencoded',
+      },
+    })
+
+    if err then
+      return nil, err
+    end
+    if res.status >= 400 then
+      return nil, res.body
+    end
+
+    local creds = from_json(res.body)
+
+    return creds.access_token, creds.expires_in, now:addseconds(tonumber(creds.expires_in))
+  else
+    return access_token, expires_in, expires_at
+  end
+end
+
 function M.check_errors(account)
   local account_token, exp = account:get('access_token')
   if account_token then
@@ -472,30 +516,13 @@ function M.check_errors(account)
 
   local refresh_token = account:get('refresh_token')
 
-  local httpc = http.new()
-  local res, err = httpc:request_uri('https://accounts.google.com/o/oauth2/token', {
-    method = 'POST',
-    body = encode_query_string({
-      client_id = config.networks[M.name].client_id,
-      client_secret = config.networks[M.name].client_secret,
-      refresh_token = refresh_token,
-      grant_type = 'refresh_token',
-    }),
-    headers = {
-      ['Content-Type'] = 'application/x-www-form-urlencoded',
-    },
-  })
+  access_token, exp = refresh_access_token(refresh_token)
 
-  if err then
-    return err
-  end
-  if res.status >= 400 then
-    return res.body
+  if not access_token then
+    return false, exp
   end
 
-  local creds = from_json(res.body)
-
-  account:set('access_token',creds.access_token,creds.expires_in)
+  account:set('access_token',access_token,exp)
 
   return false,nil
 end
@@ -503,14 +530,27 @@ end
 function M.create_comment_funcs(account, stream, send)
   local read_func = nil
 
+  local refresh_token = account['refresh_token']
+
+  local access_token = account['access_token']
+  local expires_in
+  local expires_at
+
+  if not access_token then
+    access_token, expires_in, expires_at = refresh_access_token(account['refresh_token'])
+  else
+    expires_in = account['access_token.expires_in']
+    expires_at = account['access_token.expires_at']
+  end
+
   if send then
     read_func = function()
       local nextPageToken = nil
       while true do
         local sleeptime = 6
-        local err = M.check_errors(account)
-        if not err then
-          local yt = youtube_client(account:get('access_token'))
+        access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+        if access_token then
+          local yt = youtube_client(access_token)
           local res, err = yt:get('/liveChat/messages',{
             liveChatId = stream.chat_id,
             part = 'id,snippet,authorDetails',
@@ -537,9 +577,9 @@ function M.create_comment_funcs(account, stream, send)
   end
 
   local write_func = function(text)
-    local err = M.check_errors(account)
-    if not err then
-      local yt = youtube_client(account:get('access_token'))
+    access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+    if access_token then
+      local yt = youtube_client(access_token)
       local res, err = yt:postJSON('/liveChat/messages',{
         part = 'snippet',
         liveChatId = stream.chat_id,

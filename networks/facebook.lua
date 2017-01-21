@@ -544,9 +544,6 @@ local function textify(emote)
 end
 
 function M.create_comment_funcs(account, stream, send)
-  local account = account:get_all()
-  local stream = stream:get_all()
-
   local targets = from_json(account.targets)
   local target = targets[stream.target]
   local access_token = target.token

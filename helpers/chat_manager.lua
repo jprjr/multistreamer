@@ -111,8 +111,8 @@ function ChatMgr:handleStreamStart(msg)
       publish('comment:in',msg)
     end
     local read_func, write_func = acc.network.create_comment_funcs(
-      acc:get_keystore(),
-      sa:get_keystore(),
+      acc:get_all(),
+      sa:get_all(),
       relay)
     if read_func then
       self.streams[stream.id][acc.id].read_thread = ngx.thread.spawn(read_func)
