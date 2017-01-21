@@ -151,8 +151,6 @@ elseif(arg[1] == 'push') then
     insert(ffmpeg_args,'copy')
     insert(ffmpeg_args,'-codec:a')
     insert(ffmpeg_args,'copy')
-    insert(ffmpeg_args,'-map_metadata')
-    insert(ffmpeg_args,'0')
     insert(ffmpeg_args,'-f')
     insert(ffmpeg_args,'flv')
     insert(ffmpeg_args,sa.rtmp_url)
