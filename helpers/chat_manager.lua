@@ -97,8 +97,10 @@ function ChatMgr:handleStreamStart(msg)
     return nil
   end
   self.streams[stream.id] = {}
+  local sas = stream:get_streams_accounts()
+  StreamAccount:preload_relation(sas,"account")
 
-  for _,sa in pairs(stream:get_streams_accounts()) do
+  for _,sa in pairs(sas) do
     local acc = sa:get_account()
     acc.network = networks[acc.network]
     self.streams[stream.id][acc.id] = {}

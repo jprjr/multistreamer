@@ -86,6 +86,12 @@ local function google_client(base_url,access_token)
     if params then params = to_json(params) else params = '' end
     return self:request('POST',endpoint,qparams,headers,params)
   end
+  t.putJSON = function(self,endpoint,qparams,params,headers)
+    if not headers then headers = {} end
+    headers['Content-Type'] = 'application/json'
+    if params then params = to_json(params) else params = '' end
+    return self:request('PUT',endpoint,qparams,headers,params)
+  end
 
   return t,nil
 
@@ -93,10 +99,6 @@ end
 
 local function youtube_client(access_token)
   return google_client('https://www.googleapis.com/youtube/v3',access_token)
-end
-
-local function plus_client(access_token)
-  return google_client('https://www.googleapis.com/plus/v1',access_token)
 end
 
 
@@ -157,7 +159,6 @@ function M.register_oauth(params)
   local exp = creds.expires_in
   local refresh_token = creds.refresh_token
 
-  local pc = plus_client(access_token)
   local yt = youtube_client(access_token)
 
   -- first get user info
@@ -199,7 +200,27 @@ function M.register_oauth(params)
 end
 
 function M.metadata_form(account, stream)
+  M.check_errors(account)
+
   local form = M.metadata_fields()
+  form[6].options = {}
+
+  local yt = youtube_client(account:get('access_token'))
+  local res, err = yt:get('/videoCategories', {
+    part = 'snippet',
+    regionCode = config.networks[M.name].country,
+  })
+
+  sort(res.items, function(a,b)
+    return a.snippet.title < b.snippet.title
+  end)
+
+  for i,v in ipairs(res.items) do
+    insert(form[6].options, {
+      label = v.snippet.title,
+      value = v.id,
+    })
+  end
 
   for i,v in pairs(form) do
     v.value = stream:get(v.key)
@@ -210,7 +231,7 @@ function M.metadata_form(account, stream)
 end
 
 function M.metadata_fields()
-  return {
+  local fields = {
     [1] = {
       type = 'text',
       label = 'Title',
@@ -258,7 +279,15 @@ function M.metadata_fields()
         { label = '60fps', value = '60fps' },
       },
     },
+    [6] = {
+      type = 'select',
+      label = 'Category',
+      key = 'category',
+      required = true,
+    },
   }
+
+  return fields
 
 end
 
@@ -274,6 +303,7 @@ function M.publish_start(account, stream)
   local access_token = account.access_token
 
   local title = stream.title
+  local category = stream.category
   local privacy = stream.privacy
   local description = stream.description
   local resolution = stream.resolution
@@ -283,6 +313,7 @@ function M.publish_start(account, stream)
   -- create Broadcast (POST /liveBroadcasts)
   -- create stream    (POST /liveStreams)
   -- create binding   (POST /liveBroadcasts/bind)
+  -- update video metadata
   -- then after the video has started:
   -- transition broadcast to live (POST /liveBroadcasts/transition)
 
@@ -330,13 +361,26 @@ function M.publish_start(account, stream)
   end
 
   local bind_res, err = yt:postJSON('/liveBroadcasts/bind', {
-    part = 'id, snippet, contentDetails,status',
+    part = 'id,snippet,contentDetails,status',
     id = broadcast.id,
     streamId = video_stream.id,
   })
 
   if err then
     return false, to_json(err)
+  end
+
+  local update_res, err = yt:putJSON('/videos', {
+    part = 'id,snippet',}, {
+    id = broadcast.id,
+    snippet = {
+      title = title,
+      categoryId = category,
+    }
+  })
+
+  if err then
+    return false, err
   end
 
   local http_url = 'https://youtu.be/' .. broadcast.id
@@ -463,6 +507,7 @@ function M.create_comment_funcs(account, stream, send)
     read_func = function()
       local nextPageToken = nil
       while true do
+        local sleeptime = 6
         local err = M.check_errors(account)
         if not err then
           local yt = youtube_client(account:get('access_token'))
@@ -483,13 +528,10 @@ function M.create_comment_funcs(account, stream, send)
                 text = v.snippet.textMessageDetails.messageText,
               })
             end
+            sleeptime = ceil(res.pollingIntervalMillis/1000)
           end
         end
-        local sleep = ceil(res.pollingIntervalMillis/1000)
-        if sleep < 6 then
-          sleep = 6
-        end
-        ngx.sleep(sleep)
+        ngx.sleep(sleeptime)
       end
     end
   end
