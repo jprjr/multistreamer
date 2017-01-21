@@ -78,3 +78,7 @@ li {
     padding-top: .25em;
     padding-bottom: .25em;
 }
+
+legend {
+    font-weight: bold;
+}

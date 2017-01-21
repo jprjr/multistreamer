@@ -17,7 +17,7 @@
 </div>
 
 <% for _,account in pairs(accounts) do %>
-<h4><%= account.name %> (<%= account.network.displayname %>) Settings</h4>
+<fieldset><legend><%= account.name %> (<%= account.network.displayname %>) Settings</legend>
 <% local metadata_form, err = account.network.metadata_form(account:get_keystore(),stream:get_stream_account(account):get_keystore()) %>
 
 <% if err then %>
@@ -46,6 +46,8 @@
 <% else %>
 <p>No settings for this account</o>
 <% end %>
+
+</fieldset>
 <% end %>
 
 <div class="pure-controls">
