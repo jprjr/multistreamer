@@ -21,6 +21,7 @@ local db = require'lapis.db'
 local pairs = pairs
 local ipairs = ipairs
 local ceil = math.ceil
+local len = string.len
 
 local M = {}
 
@@ -160,9 +161,11 @@ function M.register_oauth(params)
   local yt = youtube_client(access_token)
 
   -- first get user info
-  local res, err = pc:get('/people/me')
-  local user_id = res.id
-  local name = res.displayName
+  local res, err = yt:get('/channels', {
+    part = 'snippet',
+    mine = 'true',})
+  local user_id = res.items[1].id
+  local name = res.items[1].snippet.title
 
   -- see if we have an account
   local sha1 = resty_sha1:new()
