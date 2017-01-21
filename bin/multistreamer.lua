@@ -29,6 +29,7 @@ local sql_files = {
   [1] = streamer_dir .. '/sql/1477785578.sql',
   [2] = streamer_dir .. '/sql/1481421931.sql',
   [3] = streamer_dir .. '/sql/1485029477.sql',
+  [4] = streamer_dir .. '/sql/1485036089.sql',
 }
 
 if(not arg[1] or not commands[arg[1]]) then
@@ -149,17 +150,24 @@ elseif(arg[1] == 'push') then
     config.private_rtmp_url ..'/'.. config.rtmp_prefix ..'/'..arg[2],
   }
   for _,sa in pairs(sas) do
-    if sa.ffmpeg_args and len(sa.ffmpeg_args) > 0 then
-      local args = shell.parse(sa.ffmpeg_args)
-      for i,v in pairs(args) do
-        insert(ffmpeg_args,v)
-      end
-    else
-      insert(ffmpeg_args,'-codec:v')
-      insert(ffmpeg_args,'copy')
-      insert(ffmpeg_args,'-codec:a')
-      insert(ffmpeg_args,'copy')
+    local account = sa:get_account()
+    local args = {}
+
+    if account.ffmpeg_args and len(account.ffmpeg_args) > 0 then
+      args = shell.parse(account.ffmpeg_args)
     end
+
+    if sa.ffmpeg_args and len(sa.ffmpeg_args) > 0 then
+      args = shell.parse(sa.ffmpeg_args)
+    end
+    if #args == 0 then
+      args = { '-c:v','copy','-c:a','copy' }
+    end
+
+    for i,v in pairs(args) do
+      insert(ffmpeg_args,v)
+    end
+
     insert(ffmpeg_args,'-f')
     insert(ffmpeg_args,'flv')
     insert(ffmpeg_args,sa.rtmp_url)

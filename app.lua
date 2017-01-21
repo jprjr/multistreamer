@@ -187,6 +187,8 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
       if ffmpeg_args and len(ffmpeg_args) > 0 then
           self.stream:get_stream_account(account):update({ffmpeg_args = ffmpeg_args })
+      else
+          self.stream:get_stream_account(account):update({ffmpeg_args = db.NULL })
       end
 
       local metadata_fields = account.network.metadata_fields()
@@ -475,6 +477,11 @@ for t,m in networks() do
       POST = function(self)
         local account, err = m.save_account(self.user, self.account, self.params)
         if err then return err_out(self, err) end
+        if self.params.ffmpeg_args and len(self.params.ffmpeg_args) > 0 then
+          account:update({ ffmpeg_args = self.params.ffmpeg_args })
+        else
+          account:update({ ffmpeg_args = db.NULL })
+        end
         self.session.status_msg = { type = 'success', msg = 'Account saved' }
         return { redirect_to = self:url_for('site-root') }
       end,
