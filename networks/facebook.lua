@@ -543,6 +543,24 @@ local function textify(emote)
   return text
 end
 
+function M.get_view_count(account, stream)
+  local targets = from_json(account.targets)
+  local target = targets[stream.target]
+  local access_token = target.token
+
+  local video_id = stream.video_id
+  local fb_client = facebook_client(access_token)
+  local res, err = fb_client:get('/' .. video_id, {
+    fields = 'id,live_views' })
+
+  if not err then
+    return tonumber(res.live_views)
+  end
+
+  return nil
+
+end
+
 function M.create_comment_funcs(account, stream, send)
   local targets = from_json(account.targets)
   local target = targets[stream.target]

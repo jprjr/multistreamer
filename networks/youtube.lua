@@ -102,6 +102,66 @@ local function youtube_client(access_token)
   return google_client('https://www.googleapis.com/youtube/v3',access_token)
 end
 
+local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+  local do_refresh = false
+  local now = date(true)
+
+  if not access_token then
+    do_refresh = true
+  else
+    local expires_at_dt = date(expires_at)
+    if now > expires_at_dt then
+      do_refresh = true
+    end
+  end
+
+  if do_refresh == true then
+
+    local httpc = http.new()
+    local res, err = httpc:request_uri('https://accounts.google.com/o/oauth2/token', {
+      method = 'POST',
+      body = encode_query_string({
+        client_id = config.networks[M.name].client_id,
+        client_secret = config.networks[M.name].client_secret,
+        refresh_token = refresh_token,
+        grant_type = 'refresh_token',
+      }),
+      headers = {
+        ['Content-Type'] = 'application/x-www-form-urlencoded',
+      },
+    })
+
+    if err then
+      return nil, err
+    end
+    if res.status >= 400 then
+      return nil, res.body
+    end
+
+    local creds = from_json(res.body)
+
+    return creds.access_token, creds.expires_in, now:addseconds(tonumber(creds.expires_in))
+  else
+    return access_token, expires_in, expires_at
+  end
+end
+
+local function refresh_access_token_wrapper(account)
+  local refresh_token = account['refresh_token']
+
+  local access_token = account['access_token']
+  local expires_in
+  local expires_at
+
+  if not access_token then
+    access_token, expires_in, expires_at = refresh_access_token(account['refresh_token'])
+  else
+    expires_in = account['access_token.expires_in']
+    expires_at = account['access_token.expires_at']
+  end
+
+  return access_token, expires_in, expires_at
+end
 
 function M.get_oauth_url(user)
   return 'https://accounts.google.com/o/oauth2/auth?' ..
@@ -465,50 +525,6 @@ function M.publish_stop(account, stream)
   return true
 end
 
-local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
-  local do_refresh = false
-  local now = date(true)
-
-  if not access_token then
-    do_refresh = true
-  else
-    local expires_at_dt = date(expires_at)
-    if now > expires_at_dt then
-      do_refresh = true
-    end
-  end
-
-  if do_refresh == true then
-
-    local httpc = http.new()
-    local res, err = httpc:request_uri('https://accounts.google.com/o/oauth2/token', {
-      method = 'POST',
-      body = encode_query_string({
-        client_id = config.networks[M.name].client_id,
-        client_secret = config.networks[M.name].client_secret,
-        refresh_token = refresh_token,
-        grant_type = 'refresh_token',
-      }),
-      headers = {
-        ['Content-Type'] = 'application/x-www-form-urlencoded',
-      },
-    })
-
-    if err then
-      return nil, err
-    end
-    if res.status >= 400 then
-      return nil, res.body
-    end
-
-    local creds = from_json(res.body)
-
-    return creds.access_token, creds.expires_in, now:addseconds(tonumber(creds.expires_in))
-  else
-    return access_token, expires_in, expires_at
-  end
-end
-
 function M.check_errors(account)
   local access_token, exp = account:get('access_token')
   if access_token then
@@ -527,21 +543,31 @@ function M.check_errors(account)
   return false,nil
 end
 
+function M.get_view_count(account, stream)
+  local httpc = http.new()
+
+  local url = 'https://www.youtube.com/live_stats?v=' .. stream['broadcast_id']
+  local res, err = httpc:request_uri(url , {
+    method = 'GET',
+  })
+
+  if err then
+    return nil, err
+  end
+
+  if res.status >= 400 then
+    return nil, res.body
+  end
+
+  return tonumber(res.body)
+end
+
 function M.create_comment_funcs(account, stream, send)
   local read_func = nil
 
   local refresh_token = account['refresh_token']
 
-  local access_token = account['access_token']
-  local expires_in
-  local expires_at
-
-  if not access_token then
-    access_token, expires_in, expires_at = refresh_access_token(account['refresh_token'])
-  else
-    expires_in = account['access_token.expires_in']
-    expires_at = account['access_token.expires_at']
-  end
+  local access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
 
   if send then
     read_func = function()

@@ -100,6 +100,7 @@ function IRCServer.new(socket,user,parentServer)
     [endpoint('stream:end')] = IRCServer.processStreamEnd,
     [endpoint('stream:update')] = IRCServer.processStreamUpdate,
     [endpoint('stream:writer:result')] = IRCServer.processWriterResult,
+    [endpoint('stream:viewcount:result')] = IRCServer.processViewCountResult,
     [endpoint('comment:in')] = IRCServer.processCommentUpdate,
     [endpoint('irc:events:login')] = IRCServer.processIrcLogin,
     [endpoint('irc:events:logout')] = IRCServer.processIrcLogout,
@@ -123,6 +124,14 @@ function IRCServer.new(socket,user,parentServer)
         '!summon <existing room bot> <your account> -- create a bot to post comments',
       },
     },
+    ['viewcount'] = {
+      func = IRCServer.botCommandViewcount,
+      help = {
+        'Usage:',
+        '!viewcount -- get the current viewer count',
+        '!viewcount <room bot> -- get the viewer count for a single stream',
+      },
+    },
   }
   setmetatable(server,IRCServer)
   return server
@@ -143,6 +152,7 @@ function IRCServer:run()
   subscribe('stream:start',red)
   subscribe('stream:end',red)
   subscribe('stream:update',red)
+  subscribe('stream:viewcount:result',red)
   subscribe('comment:in',red)
   subscribe('stream:writer:result',red)
 
@@ -240,6 +250,30 @@ function IRCServer:getState()
     users = from_json(to_json(self.users)),
     rooms = from_json(to_json(self.rooms)),
   }
+end
+
+function IRCServer:processViewCountResult(update)
+  local stream = Stream:find({ id = update.stream_id })
+  local roomName = slugify(stream:get_user().username) .. '-' .. stream.slug
+
+  if self.rooms[roomName] and self.rooms[roomName].users then
+    for i,v in ipairs(update.viewcounts) do
+      local account = Account:find({ id = v.account_id })
+      account.network = networks[account.network]
+      local accountName = slugify(account.network.name) .. '-' .. account.slug
+      local message
+      if v.viewcount then
+        message = v.viewcount .. ' viewers'
+      else
+        message = 'unknown viewers'
+      end
+      for u,user in pairs(self.rooms[roomName].users) do
+        if self.users[u] and self.users[u].socket then
+          self:sendPrivMessage(u,accountName,'#'..roomName,message)
+        end
+      end
+    end
+  end
 end
 
 function IRCServer:processWriterResult(update)
@@ -732,6 +766,29 @@ function IRCServer:checkBotCommand(nick,room,message)
       return
     end
     botCmd.func(self,nick,room,unpack(parts,2))
+  end
+end
+
+function IRCServer:botCommandViewcount(nick,room,stream_nick)
+  local message = ''
+  local user = User:find({username = nick})
+  if not stream_nick then
+    publish('stream:viewcount',{
+      worker = ngx.worker.pid(),
+      stream_id = self.rooms[room].stream_id
+    })
+  else
+    if not self.users[stream_nick] then
+      botPublish(nick,room,'No such nick')
+    elseif not self.users[stream_nick].account_id then
+      botPublish(nick,room,'Not an active bot: ' .. stream_nick)
+    else
+      publish('stream:viewcount', {
+        worker = ngx.worker.pid(),
+        stream_id = self.rooms[room].stream_id,
+        account_id = self.users[stream_nick].account_id,
+      })
+    end
   end
 end
 

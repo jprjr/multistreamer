@@ -344,6 +344,17 @@ local function emojify(message,emotes)
   return table.concat(outmsg,'')
 end
 
+function M.get_view_count(account, stream)
+  local tclient = twitch_api_client(account['token'])
+  local res, err = tclient:get('/streams/' .. account['channel'])
+  if not err then
+    if type(res.stream) == "table" then
+      return res.stream.viewers
+    end
+  end
+  return nil
+end
+
 function M.create_comment_funcs(account, stream, send)
   local irc = IRCClient.new()
   local nick = account.channel:lower()

@@ -10,6 +10,7 @@ local Stream = require'models.stream'
 local Account = require'models.account'
 local StreamAccount = require'models.stream_account'
 local setmetatable = setmetatable
+local insert = table.insert
 
 local ChatMgr = {}
 ChatMgr.__index = ChatMgr
@@ -21,6 +22,7 @@ ChatMgr.new = function()
     [endpoint('stream:start')] = ChatMgr.handleStreamStart,
     [endpoint('stream:end')] = ChatMgr.handleStreamEnd,
     [endpoint('stream:writer')] = ChatMgr.handleChatWriterRequest,
+    [endpoint('stream:viewcount')] = ChatMgr.handleViewCountRequest,
     [endpoint('comment:out')] = ChatMgr.handleCommentOut,
   }
   setmetatable(t,ChatMgr)
@@ -36,6 +38,7 @@ function ChatMgr:run()
   end
   subscribe('stream:end',red)
   subscribe('stream:writer',red)
+  subscribe('stream:viewcount',red)
   subscribe('comment:out',red)
   while(running) do
     local res, err = red:read_reply()
@@ -50,6 +53,40 @@ function ChatMgr:run()
       end
     end
   end
+end
+
+function ChatMgr:handleViewCountRequest(msg)
+  if msg.worker ~= ngx.worker.pid() then
+    return nil
+  end
+
+
+  local sas
+
+  if msg.account_id then
+    sas = { StreamAccount:find({ stream_id = msg.stream_id, account_id = msg.account_id }) }
+  else
+    sas = StreamAccount:select('where stream_id = ?', msg.stream_id)
+  end
+  StreamAccount:preload_relation(sas,'account')
+
+  local result = {
+    stream_id = msg.stream_id,
+    viewcounts = {},
+  }
+  for i,sa in ipairs(sas) do
+    local acc = sa:get_account()
+    acc.network = networks[acc.network]
+
+    if acc.network.get_view_count then
+      insert(result.viewcounts, {
+        account_id = acc.id,
+        viewcount = acc.network.get_view_count(acc:get_all(),sa:get_all())
+      })
+    end
+  end
+
+  publish('stream:viewcount:result',result)
 end
 
 function ChatMgr:handleChatWriterRequest(msg)
