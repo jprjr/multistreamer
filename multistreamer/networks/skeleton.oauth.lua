@@ -1,5 +1,5 @@
 local Account = require'models.account'
-local config = require'helpers.config'
+local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
 local decode_base64 = require('lapis.util.encoding').decode_base64

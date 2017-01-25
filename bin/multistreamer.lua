@@ -42,7 +42,7 @@ if(not arg[1] or not commands[arg[1]]) then
 end
 
 
-local config = require'helpers.config'
+local config = require'multistreamer.config'
 
 if not config.auth_endpoint then
   print('Error: auth_endpoint not set in config')
@@ -138,7 +138,7 @@ elseif(arg[1] == 'push') then
     exit(1)
   end
 
-  local shell = require'util.shell'
+  local shell = require'multistreamer.shell'
   local StreamModel = require'models.stream'
   local stream = StreamModel:find({uuid = arg[2]})
   local sas = stream:get_streams_accounts()

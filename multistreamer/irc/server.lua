@@ -1,5 +1,5 @@
-local irc = require'util.irc'
-local config = require'helpers.config'
+local irc = require'multistreamer.irc'
+local config = require'multistreamer.config'
 local date = require'date'
 local slugify = require('lapis.util').slugify
 local to_json = require('lapis.util').to_json
@@ -8,7 +8,7 @@ local User = require'models.user'
 local Stream = require'models.stream'
 local Account = require'models.account'
 local SharedAccount = require'models.shared_account'
-local string = require'util.string'
+local string = require'multistreamer.string'
 
 local insert = table.insert
 local remove = table.remove
@@ -22,7 +22,7 @@ if not unpack then
 end
 local networks = networks
 
-local redis = require'helpers.redis'
+local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
 local publish = redis.publish
 local subscribe = redis.subscribe
@@ -99,8 +99,8 @@ function IRCServer.new(socket,user,parentServer)
     [endpoint('stream:start')] = IRCServer.processStreamStart,
     [endpoint('stream:end')] = IRCServer.processStreamEnd,
     [endpoint('stream:update')] = IRCServer.processStreamUpdate,
-    [endpoint('stream:writer:result')] = IRCServer.processWriterResult,
-    [endpoint('stream:viewcount:result')] = IRCServer.processViewCountResult,
+    [endpoint('stream:writerresult')] = IRCServer.processWriterResult,
+    [endpoint('stream:viewcountresult')] = IRCServer.processViewCountResult,
     [endpoint('comment:in')] = IRCServer.processCommentUpdate,
     [endpoint('irc:events:login')] = IRCServer.processIrcLogin,
     [endpoint('irc:events:logout')] = IRCServer.processIrcLogout,
@@ -152,9 +152,9 @@ function IRCServer:run()
   subscribe('stream:start',red)
   subscribe('stream:end',red)
   subscribe('stream:update',red)
-  subscribe('stream:viewcount:result',red)
+  subscribe('stream:viewcountresult',red)
   subscribe('comment:in',red)
-  subscribe('stream:writer:result',red)
+  subscribe('stream:writerresult',red)
 
   self.ready = true
 
@@ -773,7 +773,7 @@ function IRCServer:botCommandViewcount(nick,room,stream_nick)
   local message = ''
   local user = User:find({username = nick})
   if not stream_nick then
-    publish('stream:viewcount',{
+    publish('stream:viewcount' ,{
       worker = ngx.worker.pid(),
       stream_id = self.rooms[room].stream_id
     })
@@ -851,7 +851,7 @@ function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
     botPublish(nick,room,'You don\'t own that account')
   end
 
-  publish('stream:writer',{
+  publish('stream:writer', {
     worker = ngx.worker.pid(),
     account_id = account.id,
     user_id = self.users[nick].user.id,

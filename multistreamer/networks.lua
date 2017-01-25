@@ -1,4 +1,4 @@
-local config = require'helpers.config'
+local config = require'multistreamer.config'
 local table_insert = table.insert
 local table_sort = table.sort
 local pairs = pairs
@@ -9,7 +9,7 @@ local networks = {}
 
 if not config.networks then config.networks = {} end
 for k,v in pairs(config.networks) do
-  local ok, helper = pcall(require,'networks.'..k)
+  local ok, helper = pcall(require,'multistreamer.networks.'..k)
   if ok then
     networks[k] = helper
     networks[k].name = k

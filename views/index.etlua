@@ -4,8 +4,9 @@
 <li><p>No streams created</p></li>
 <% else %>
 <% for k,v in pairs(streams) do %>
-<li><%= v.name %>:
+<li class="<%= v.live and 'live' or 'offline' %>"><%= v.name %>:
   <ul>
+    <li><a href="<%= url_for('stream-chat', { id = v.id })%>">Chat</a></li>
     <li><a href="<%= url_for('stream-edit', { id = v.id })%>">Add/Remove Accounts</a></li>
     <li><a href="<%= url_for('metadata-edit', { id = v.id }) %>">Edit Metadata</a></li>
     <li><a href="<%= url_for('stream-delete', { id = v.id }) %>">Delete Stream</a></li>

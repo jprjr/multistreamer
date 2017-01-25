@@ -1,5 +1,5 @@
-local irc = require'util.irc'
-local string = require'util.string'
+local irc = require'multistreamer.irc'
+local string = require'multistreamer.string'
 local ngx = ngx
 local char = string.char
 local byte = string.byte

@@ -1,9 +1,12 @@
 local lapis = require'lapis'
 local app = lapis.Application()
-local config = require'helpers.config'
+local config = require'multistreamer.config'
 local db = require'lapis.db'
-local redis = require'helpers.redis'
+
+local redis = require'multistreamer.redis'
 local publish = redis.publish
+local subscribe = redis.subscribe
+local endpoint = redis.endpoint
 
 local User = require'models.user'
 local Account = require'models.account'
@@ -14,12 +17,16 @@ local SharedAccount = require'models.shared_account'
 local respond_to = lapis.application.respond_to
 local encode_with_secret = lapis.application.encode_with_secret
 local decode_with_secret = lapis.application.decode_with_secret
-local to_json = require('lapis.util').to_json
+local to_json   = require('lapis.util').to_json
+local from_json = require('lapis.util').from_json
+
+local WebsocketServer = require'multistreamer.websocket.server'
 
 local tonumber = tonumber
 local len = string.len
 local insert = table.insert
 local sort = table.sort
+local streams_dict = ngx.shared.streams
 
 app:enable('etlua')
 app.layout = require'views.layout'
@@ -31,6 +38,8 @@ app:before_filter(function(self)
     self.status_msg = self.session.status_msg
     self.session.status_msg = nil
   end
+  self.public_http_url = config.public_http_url
+  self.http_prefix = config.http_prefix
   self.public_irc_hostname = config.public_irc_hostname
   self.public_irc_port = config.public_irc_port
   self.public_irc_ssl = config.public_irc_ssl
@@ -232,7 +241,8 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     end
 
     -- just going to ignore any errors
-    publish('stream:start',{
+    local ok, err = streams_dict:set(stream.id,true)
+    publish('stream:start', {
       worker = ngx.worker.pid(),
       id = stream.id,
     })
@@ -274,9 +284,10 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
     return plain_err_out(self,err)
   end
 
-  publish('stream:end',{
+  publish('stream:end', {
     id = stream.id,
   })
+  streams_dict:set(stream.id,nil)
 
   for _,v in pairs(sas) do
     local account = v[1]
@@ -311,6 +322,15 @@ app:get('site-root', config.http_prefix .. '/', function(self)
       v.errors = v.network.check_errors(v:get_keystore())
     end
   end
+  for k,v in pairs(self.streams) do
+    local ok = ngx.shared.streams:get(v.id)
+    if ok then
+      v.live = true
+    else
+      v.live = false
+    end
+  end
+
 
   sort(self.accounts,function(a,b)
     if not a.network.displayname then
@@ -322,6 +342,9 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   end)
 
   sort(self.streams,function(a,b)
+    if a.live ~= b.live then
+      return a.live
+    end
     return a.name < b.name
   end)
 
@@ -353,6 +376,39 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
     self.session.status_msg = { type = 'success', msg = 'Stream removed' }
     return { redirect_to = self:url_for('site-root') }
   end
+}))
+
+app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
+  before = function(self)
+    if not require_login(self) then
+      return { redirect_to = 'login' }
+    end
+    local stream = Stream:find({ id = self.params.id })
+    if not stream or not stream:check_user(self.user) then
+      return err_out(self, 'Not authorized to view this chat')
+    end
+    self.stream = stream
+  end,
+  GET = function(self)
+    return { layout = 'chatlayout', render = 'chat' }
+  end,
+}))
+
+app:match('stream-ws', config.http_prefix .. '/ws/:id',respond_to({
+  before = function(self)
+    if not require_login(self) then
+      return plain_err_out(self,'Not authorized', 403)
+    end
+    local stream = Stream:find({ id = self.params.id })
+    if not stream or not stream:check_user(self.user) then
+      return plain_err_out(self,'Not authorized', 403)
+    end
+    self.stream = stream
+  end,
+  GET = function(self)
+    local wb_server = WebsocketServer:new(self.user,self.stream)
+    wb_server:run()
+  end,
 }))
 
 

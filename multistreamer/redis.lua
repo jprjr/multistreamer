@@ -1,4 +1,4 @@
-local config = require'helpers.config'
+local config = require'multistreamer.config'
 local redis = require'resty.redis'
 local to_json = require('lapis.util').to_json
 
