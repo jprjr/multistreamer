@@ -100,8 +100,8 @@ function ChatMgr:handleChatWriterRequest(msg)
 
   self.streams[msg.stream_id][account.id] = {}
   local read_func, write_func = account.network.create_comment_funcs(
-    account:get_keystore(),
-    sa:get_keystore()
+    account:get_keystore():get_all(),
+    sa:get_keystore():get_all()
   )
   local t = {
     read_started = false,
