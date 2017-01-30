@@ -113,7 +113,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.id then
       self.stream = Stream:find({ id = self.params.id })
-      local ok, err = self.stream:check_user(self.user)
+      local ok, chat, meta, err = self.stream:check_user(self.user)
       if err then return err_out(self, err) end
     end
 
@@ -167,8 +167,12 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
   before = function(self)
     if not require_login(self) then return err_out(self,'login required') end
     self.stream = Stream:find({ id = self.params.id })
-    if not (self.stream) or not (self.stream:check_user(self.user)) then
-      return err_out(self,'stream not found')
+    if not self.stream then
+      return err_out(self,'Stream not found')
+    end
+    local ok, chat, meta, err = self.stream:check_user(self.user)
+    if err then
+      return err_out(self,'Stream not found')
     end
     self.accounts = self.stream:get_accounts()
     for _,acc in pairs(self.accounts) do
@@ -357,9 +361,14 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
       return { redirect_to = 'login' }
     end
     local stream = Stream:find({ id = self.params.id })
-    if not stream or not stream:check_user(self.user) then
+    if not stream then
       return err_out(self,'Not authorized to modify that stream')
     end
+    local ok, chat, meta, err = stream:check_user(self.user)
+    if not (ok == true and chat == true and meta == true) then
+      return err_out(self,'Not authorized to modify that stream')
+    end
+
     self.stream = stream
   end,
   GET = function(self)
@@ -384,7 +393,11 @@ app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
       return { redirect_to = 'login' }
     end
     local stream = Stream:find({ id = self.params.id })
-    if not stream or not stream:check_user(self.user) then
+    if not stream then
+      return err_out(self, 'Not authorized to view this chat')
+    end
+    local ok, chat, meta, err = stream:check_user(self.user)
+    if chat == false or chat == 0 then
       return err_out(self, 'Not authorized to view this chat')
     end
     self.stream = stream
@@ -400,7 +413,11 @@ app:match('stream-ws', config.http_prefix .. '/ws/:id',respond_to({
       return plain_err_out(self,'Not authorized', 403)
     end
     local stream = Stream:find({ id = self.params.id })
-    if not stream or not stream:check_user(self.user) then
+    if not stream then
+      return plain_err_out(self,'Not authorized', 403)
+    end
+    local ok, chat, meta, err = stream:check_user(self.user)
+    if not ok then
       return plain_err_out(self,'Not authorized', 403)
     end
     self.stream = stream

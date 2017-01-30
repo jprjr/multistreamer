@@ -2,6 +2,7 @@ local Model = require('lapis.db.model').Model
 local Keystore = require'models.keystore'
 local Account = require'models.account'
 local StreamAccount = require'models.stream_account'
+local SharedStream = require'models.shared_stream'
 local format = string.format
 local slugify = require('lapis.util').slugify
 
@@ -12,10 +13,20 @@ local Stream = Model:extend('streams', {
     {'streams_accounts', has_many = 'StreamAccount' },
   },
   check_user = function(self,user)
-    if self.user_id ~= user.id then
-      return false, 'Not authorized for this stream'
+    if self.user_id == user.id then
+      return true, true, true, nil
     end
-    return true, nil
+    local ss = SharedStream:find({
+      stream_id = self.id,
+      user_id = user.id,
+    })
+    if ss then
+      if ss.chat_level == 0 and ss.metadata_level == 0 then
+        return false, 0, 0, 'Not authorized for this stream'
+      end
+      return true, ss.chat_level, ss.metadata_level, nil
+    end
+    return false, 0, 0, 'Not authorized for this stream'
   end,
   get_stream_account = function(self,account)
     return StreamAccount:find({
