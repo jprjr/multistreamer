@@ -1,6 +1,6 @@
 local ngx = ngx
-local config = require'helpers.config'
-local redis = require'helpers.redis'
+local config = require'multistreamer.config'
+local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
 local publish = redis.publish
 local subscribe = redis.subscribe
@@ -60,7 +60,6 @@ function ChatMgr:handleViewCountRequest(msg)
     return nil
   end
 
-
   local sas
 
   if msg.account_id then
@@ -81,12 +80,16 @@ function ChatMgr:handleViewCountRequest(msg)
     if acc.network.get_view_count then
       insert(result.viewcounts, {
         account_id = acc.id,
-        viewcount = acc.network.get_view_count(acc:get_all(),sa:get_all())
+        viewcount = acc.network.get_view_count(acc:get_all(),sa:get_all()),
+        network = {
+          name = acc.network.name,
+          displayname = acc.network.displayname,
+        }
       })
     end
   end
 
-  publish('stream:viewcount:result',result)
+  publish('stream:viewcountresult',result)
 end
 
 function ChatMgr:handleChatWriterRequest(msg)
@@ -115,7 +118,7 @@ function ChatMgr:handleChatWriterRequest(msg)
     self.streams[msg.stream_id][account.id].send = write_func
     t.write_started = true
   end
-  publish('stream:writer:result', {
+  publish('stream:writerresult', {
     stream_id = msg.stream_id,
     account_id = msg.account_id,
     user_id = msg.user_id,
@@ -133,6 +136,7 @@ function ChatMgr:handleStreamStart(msg)
   if not stream then
     return nil
   end
+
   self.streams[stream.id] = {}
   local sas = stream:get_streams_accounts()
   StreamAccount:preload_relation(sas,"account")

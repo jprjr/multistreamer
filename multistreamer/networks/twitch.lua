@@ -1,4 +1,4 @@
-local config = require'helpers.config'
+local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
 local decode_base64 = require('lapis.util.encoding').decode_base64
@@ -10,13 +10,14 @@ local slugify = require('lapis.util').slugify
 local http = require'resty.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
+local string = require'multistreamer.string'
 local format = string.format
 local len = string.len
 local insert = table.insert
 local concat = table.concat
 local sort = table.sort
 local tonumber = tonumber
-local IRCClient = require'util.irc.client'
+local IRCClient = require'multistreamer.irc.client'
 
 local Account = require'models.account'
 
@@ -24,6 +25,7 @@ local M = {}
 
 M.displayname = 'Twitch'
 M.allow_sharing = true
+M.icon = '<svg class="chaticon twitch" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="1.414"><g fill-rule="nonzero"><path d="M1.393 0L.35 2.783v11.13h3.824V16h2.088l2.085-2.088h3.13L15.65 9.74V0H1.394zm1.39 1.39H14.26v7.653l-2.435 2.435H8l-2.085 2.085v-2.085H2.783V1.39z"/><path d="M6.61 8.348H8V4.175H6.61v4.173zm3.824 0h1.39V4.175h-1.39v4.173z"/></g></svg>'
 
 M.read_comments = true
 M.write_comments = true
@@ -84,30 +86,6 @@ local function twitch_api_client(access_token)
 
 end
 
-local function update_ingest_endpoints(account)
-  local endpoints = account:get('endpoints')
-  if endpoints then
-    endpoints = from_json(endpoints)
-    return endpoints, nil
-  else
-    local tclient = twitch_api_client(account:get('token'))
-    local res, err = tclient:get('/ingests/')
-    if err then
-      return false, err
-    end
-    endpoints = {}
-    for _,v in pairs(res.ingests) do
-      local k = format('%d',v._id)
-      endpoints[k] = {
-        name = v.name,
-        url_template = v.url_template,
-      }
-    end
-    account:set('endpoints',to_json(endpoints),  864000 )
-    return endpoints, nil
-  end
-end
-
 function M.metadata_fields()
   return {
     [1] = {
@@ -122,12 +100,6 @@ function M.metadata_fields()
         key = 'game',
         required = true,
     },
-    [3] = {
-        type = 'select',
-        label = 'Stream Endpoint',
-        key = 'endpoint',
-        required = true,
-    },
   }
 end
 
@@ -137,21 +109,6 @@ function M.metadata_form(account, stream)
   for i,k in ipairs(form) do
     k.value = stream:get(k.key)
   end
-  form[3].options = {}
-
-  local endpoints, err = update_ingest_endpoints(account)
-  if err then return false, err end
-
-  for k,v in pairs(endpoints) do
-    insert(form[3].options, {
-      value = k,
-      label = v.name
-    })
-  end
-
-  sort(form[3].options,function(a,b)
-    return a.label < b.label
-  end)
 
   return form, nil
 end
@@ -260,17 +217,15 @@ function M.register_oauth(params)
 end
 
 function M.publish_start(account, stream)
-  local endpoints, err = update_ingest_endpoints(account)
-
   local stream_o = stream
 
   local account = account:get_all()
   local stream = stream:get_all()
 
-  local rtmp_url
+  local rtmp_url = twitch_config.ingest_server:gsub('/+$','') .. '/'
 
-  if endpoints and endpoints[stream.endpoint] and account.stream_key then
-    rtmp_url = endpoints[stream.endpoint].url_template:gsub('{stream_key}',account.stream_key)
+  if account.stream_key then
+    rtmp_url = rtmp_url .. account.stream_key
   else
     return false, 'unable to create rtmp url'
   end
@@ -328,7 +283,7 @@ local function emojify(message,emotes)
         for i=b,e,1 do
           msgTable[i] = nil
         end
-        msgTable[b] = string.format('![%s](http://static-cdn.jtvnw.net/emoticons/v1/%s/3.0)',alt_text,emote)
+        msgTable[b] = string.format('![%s](http://static-cdn.jtvnw.net/emoticons/v1/%s/1.0)',alt_text,emote)
       end
     end
   end
@@ -420,6 +375,27 @@ function M.create_comment_funcs(account, stream, send)
 
   local write_func = function(message)
     irc:message(channel,message)
+    -- we don't get messages echo'd back
+    -- from IRC, so we'll echo on our own here
+    local t = 'text'
+    local message = message
+    if message:byte(1) == 1 then
+      message = msg.args[2]:sub(2,msg.args[2]:len()-1)
+      local parts = message:split(' ')
+      if parts[1] == 'ACTION' then
+        t = 'emote'
+        message = concat(parts,' ',2)
+      end
+    end
+    local msg = {
+      from = {
+        name = account.channel,
+      },
+      text = message,
+      markdown = message,
+      type = t,
+    }
+    send(msg)
   end
 
   return read_func, write_func

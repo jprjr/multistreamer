@@ -59,12 +59,12 @@ config({'development','production'}, {
   -- service and insert keys/ids in here
 
   -- 'rtmp' just stores RTMP urls and has no config,
-  -- besides just a true/false
-  -- 'twitch' requires a client_id and client_secret
   networks = {
     -- twitch = {
     --   client_id = 'client_id',
     --   client_secret = 'client_secret',
+    --   ingest_server = 'rtmp://somewhere', -- see https://bashtech.net/twitch/ingest.php
+                                             -- for a list of endpoints
     -- },
     -- facebook = {
     --   app_id = 'app_id',

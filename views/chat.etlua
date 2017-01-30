@@ -1,0 +1,19 @@
+<div id="chatviewers">
+<div><span class="offline">Offline</span></div>
+</div>
+
+<div id="chatmessages"></div>
+
+<div id="chatinput">
+<div class="name">
+<p>Stream not started</p>
+</div>
+</div>
+
+
+<script src="<%= url_for("site-root") %>static/js/chat-client.js"></script>
+<script type="text/javascript">
+  /* start_chat('<%= public_http_url:gsub("^http","ws",1) .. http_prefix %>/ws/<%= params.id %>'); */
+  start_chat('ws://127.0.0.1:8081/ws/<%= params.id %>');
+  buildChatInput(null);
+</script>

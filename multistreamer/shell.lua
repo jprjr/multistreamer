@@ -36,7 +36,7 @@ function M.parse(line)
     i = i + 1
   until i > max
   if len(arg) > 0 then
-    table.insert(args,arg)
+    insert(args,arg)
   end
 
   return args

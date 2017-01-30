@@ -1,0 +1,36 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>multistreamer</title>
+  <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/pure-min.css">
+  <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.css">
+  <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.chat.css">
+  <script src="<%= url_for("site-root") %>static/js/commonmark.min.js"></script>
+  <script type="text/javascript">
+  var icons = {
+      <% for k,v in networks() do %>
+      <% if v.icon then %>
+      <%- k %>:'<%- v.icon %>',
+      <% end %>
+      <% end %>
+  };
+  </script>
+</head>
+<body>
+<div id="viewwrapper">
+  <div class="pure-g header">
+  <div class="pure-u-1 title">
+  <h1><a href="<%= url_for("site-root") %>">multistreamer</a></h1>
+  <p><% if user then %>Logged in as <%= user.username %> (<a href="<%= url_for('logout') %>">Logout</a>)<% end %></p>
+  </div>
+  </div>
+  <div id="chatwrapper">
+    <% content_for('inner') %>
+  </div>
+</div>
+</body>
+</html>
+
+

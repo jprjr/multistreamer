@@ -428,3 +428,10 @@ as LICENSE-purecss.
 This project includes a copy of lua-resty-redis (`resty/redis.lua`),
 which is licensed under a BSD license. The license for lua-resty-redis is
 available as LICENSE-lua-resty-redis
+
+This project includes a copy of lua-resty-websocket (`resty/websocket/protocol.lua`,
+`resty/websocket/client.lua`, `resty/websocket/server.lua`) which is license under
+a BSD license. The license for lua-resty-websocket is available as
+LICENSE-lua-resty-websocket.
+
+

@@ -1,0 +1,11 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+}
+
+#viewwrapper > div.pure-g.header > div > p {
+    padding-bottom: 1.5em;
+}

@@ -1,6 +1,6 @@
 local Account = require'models.account'
 
-local config = require'helpers.config'
+local config = require'multistreamer.config'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
 local slugify = require('lapis.util').slugify
