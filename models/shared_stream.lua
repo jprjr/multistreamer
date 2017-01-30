@@ -1,6 +1,6 @@
 local Model = require('lapis.db.model').Model
 
-local SharedStrem = Model:extend('shared_streams', {
+local SharedStream = Model:extend('shared_streams', {
   primary_key = { 'user_id', 'stream_id' },
   timestamp = true,
   relations = {

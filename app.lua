@@ -113,7 +113,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.id then
       self.stream = Stream:find({ id = self.params.id })
-      local ok, chat, meta, err = self.stream:check_user(self.user)
+      local ok, err = self.stream:check_meta(self.user)
       if err then return err_out(self, err) end
     end
 
@@ -170,8 +170,8 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
     if not self.stream then
       return err_out(self,'Stream not found')
     end
-    local ok, chat, meta, err = self.stream:check_user(self.user)
-    if err then
+    local level = self.stream:check_meta(self.user)
+    if level == 0 then
       return err_out(self,'Stream not found')
     end
     self.accounts = self.stream:get_accounts()
@@ -364,8 +364,8 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
     if not stream then
       return err_out(self,'Not authorized to modify that stream')
     end
-    local ok, chat, meta, err = stream:check_user(self.user)
-    if not (ok == true and chat == true and meta == true) then
+    local ok, err = stream:check_owner(self.user)
+    if not ok then
       return err_out(self,'Not authorized to modify that stream')
     end
 
@@ -396,8 +396,8 @@ app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
     if not stream then
       return err_out(self, 'Not authorized to view this chat')
     end
-    local ok, chat, meta, err = stream:check_user(self.user)
-    if chat == false or chat == 0 then
+    local level = stream:check_chat(self.user)
+    if level == 0 then
       return err_out(self, 'Not authorized to view this chat')
     end
     self.stream = stream
@@ -416,8 +416,8 @@ app:match('stream-ws', config.http_prefix .. '/ws/:id',respond_to({
     if not stream then
       return plain_err_out(self,'Not authorized', 403)
     end
-    local ok, chat, meta, err = stream:check_user(self.user)
-    if not ok then
+    local level = stream:check_chat(self.user)
+    if level == 0 then
       return plain_err_out(self,'Not authorized', 403)
     end
     self.stream = stream
@@ -435,7 +435,7 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
       return { redirect_to = 'login' }
     end
     local account = Account:find({ id = self.params.id })
-    if not account or not account:check_user(self.user) then
+    if not account or not account:check_owner(self.user) then
       return err_out(self,'Not authorized to modify that account')
     end
     if not account:check_owner(self.user) then

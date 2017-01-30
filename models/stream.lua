@@ -28,6 +28,38 @@ local Stream = Model:extend('streams', {
     end
     return false, 0, 0, 'Not authorized for this stream'
   end,
+  check_owner = function(self,user)
+    if self.user_id ~= user.id then
+      return false, 'User not authorized for this account'
+    end
+    return true, nil
+  end,
+  check_meta = function(self,user)
+    if self:check_owner(user) then
+      return 2 -- edit abilities
+    end
+    local ss = SharedStream:find({
+      stream_id = self.id,
+      user_id = user.id
+    })
+    if ss then
+      return ss.meta_level
+    end
+    return 0
+  end,
+  check_chat = function(self,user)
+    if self:check_owner(user) then
+      return 2 -- edit abilities
+    end
+    local ss = SharedStream:find({
+      stream_id = self.id,
+      user_id = user.id
+    })
+    if ss then
+      return ss.chat_level
+    end
+    return 0
+  end,
   get_stream_account = function(self,account)
     return StreamAccount:find({
       account_id = account.id,
