@@ -377,25 +377,27 @@ function M.create_comment_funcs(account, stream, send)
     irc:message(channel,message)
     -- we don't get messages echo'd back
     -- from IRC, so we'll echo on our own here
-    local t = 'text'
-    local message = message
-    if message:byte(1) == 1 then
-      message = msg.args[2]:sub(2,msg.args[2]:len()-1)
-      local parts = message:split(' ')
-      if parts[1] == 'ACTION' then
-        t = 'emote'
-        message = concat(parts,' ',2)
+    if send then
+      local t = 'text'
+      local message = message
+      if message:byte(1) == 1 then
+        message = msg.args[2]:sub(2,msg.args[2]:len()-1)
+        local parts = message:split(' ')
+        if parts[1] == 'ACTION' then
+          t = 'emote'
+          message = concat(parts,' ',2)
+        end
       end
+      local msg = {
+        from = {
+          name = account.channel,
+        },
+        text = message,
+        markdown = message,
+        type = t,
+      }
+      send(msg)
     end
-    local msg = {
-      from = {
-        name = account.channel,
-      },
-      text = message,
-      markdown = message,
-      type = t,
-    }
-    send(msg)
   end
 
   return read_func, write_func
