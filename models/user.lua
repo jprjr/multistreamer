@@ -10,6 +10,7 @@ local User = Model:extend('users', {
     { 'accounts', has_many = 'Account' },
     { 'streams', has_many = 'Stream' },
     { 'shared_accounts', has_many = 'SharedAccount' },
+    { 'shared_streams', has_many = 'SharedStream' },
   },
   write_session = function(self, res)
     res.session.user = {

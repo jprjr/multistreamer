@@ -4,12 +4,22 @@
 <li><p>No streams created</p></li>
 <% else %>
 <% for k,v in pairs(streams) do %>
-<li class="<%= v.live and 'live' or 'offline' %>"><%= v.name %>:
+<li class="<%= v.live and 'live' or 'offline' %>"><%= v.name %><% if v.shared then %> (Shared by <%= v.shared_from %>)<% end %>:
   <ul>
+    <% if (not v.shared) or (v.shared and v.metadata_level == 2) then %>
     <li><a href="<%= url_for('metadata-edit', { id = v.id }) %>">Edit Metadata</a></li>
+    <% elseif v.shared and v.metadata_level == 1 then %>
+    <li><a href="<%= url_for('metadata-edit', { id = v.id }) %>">View Metadata</a></li>
+    <% end %>
+
+    <% if (not v.shared) or (v.shared and v.chat_level > 0) then %>
     <li><a href="<%= url_for('stream-chat', { id = v.id })%>">Chat</a></li>
+    <% end %>
+    <% if not v.shared then %>
     <li><a href="<%= url_for('stream-edit', { id = v.id })%>">Add/Remove Accounts</a></li>
+    <li><a href="<%= url_for('stream-share', { id = v.id })%>">Stream Permissions</a></li>
     <li><a href="<%= url_for('stream-delete', { id = v.id }) %>">Delete Stream</a></li>
+    <% end %>
   </ul></li>
 <% end %>
 <% end %>
@@ -26,7 +36,7 @@
 <% for k,v in pairs(accounts) do %>
 <% if v.network then %>
 
-<li><%= v.shared and '(Shared) ' or '' %><%= v.network.displayname -%>
+<li><% if v.shared then %>(Shared by <%= v.shared_from %>) <% end %><%= v.network.displayname -%>
 <% if v.name then %>: <%= v.name -%> <% end %><% if v.errors then %><span class="error">(<%= v.errors %>)</span><% end %>
 
 <ul>

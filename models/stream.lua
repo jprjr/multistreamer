@@ -43,7 +43,7 @@ local Stream = Model:extend('streams', {
       user_id = user.id
     })
     if ss then
-      return ss.meta_level
+      return ss.metadata_level
     end
     return 0
   end,

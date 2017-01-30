@@ -58,6 +58,14 @@ if not config.public_irc_ssl then
   config.public_irc_ssl = false
 end
 
+if not config.lua_shared_dict_streams_size then
+  config.lua_shared_dict_streams_size = '1m'
+end
+
+if not config.lua_shared_dict_writers_size then
+  config.lua_shared_dict_writers_size = '1m'
+end
+
 config.http_prefix = config.http_prefix:gsub('/+$','')
 config.public_http_url = config.public_http_url:gsub('/+$','')
 config.public_rtmp_url = config.public_rtmp_url:gsub('/+$','')

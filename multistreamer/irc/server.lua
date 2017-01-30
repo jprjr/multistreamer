@@ -8,6 +8,7 @@ local User = require'models.user'
 local Stream = require'models.stream'
 local Account = require'models.account'
 local SharedAccount = require'models.shared_account'
+local SharedStream = require'models.shared_stream'
 local string = require'multistreamer.string'
 
 local insert = table.insert
@@ -50,6 +51,11 @@ function IRCServer.new(socket,user,parentServer)
     server.users[user.nick] = {}
     server.users[user.nick].user = user
     server.users[user.nick].socket = socket
+
+    for _,r in pairs(server.rooms) do
+      r.user = User:find({id = r.user_id})
+      r.stream = Stream:find({id = r.stream_id})
+    end
 
     publish('irc:events:login', {
       nick = user.nick,
@@ -532,14 +538,17 @@ function IRCServer:listRooms(nick,rooms)
   local ok, err = self:sendClientFromServer(nick,'321','Channel','Users','Name')
   if not ok then return false,err end
   for k,v in pairs(rooms) do
-    local count, list = self:userList(k)
-    local ok, err = self:sendClientFromServer(
-      nick,
-      '322',
-      '#'..k,
-      count,
-      v.topic)
-    if not ok then return false,err end
+    local chat_level = v.stream:check_chat(self.user)
+    if chat_level > 0 then
+      local count, list = self:userList(k)
+      local ok, err = self:sendClientFromServer(
+        nick,
+        '322',
+        '#'..k,
+        count,
+        v.topic)
+      if not ok then return false,err end
+    end
   end
   ok, err = self:sendClientFromServer(
     nick,
@@ -704,6 +713,10 @@ function IRCServer:clientJoinRoom(nick,msg)
     room = room:sub(2)
   end
   if not self.rooms[room] then
+    return self:sendClientFromServer(nick,'403','Channel does not exist')
+  end
+  local chat_level = self.rooms[room].stream:check_chat(self.user)
+  if chat_level < 1 then
     return self:sendClientFromServer(nick,'403','Channel does not exist')
   end
   local ok, err = publish('irc:events:join', {
@@ -891,14 +904,16 @@ function IRCServer:relayMessage(nick,room,message)
   end
   local i = message:find(' ')
   if not i then return end
-  local username = message:sub(1,i-1)
+  local username = message:sub(1,i-1):lower()
   username = username:gsub('[^a-z]$','')
   local msg = message:sub(i+1)
   if msg:len() == 0 then return end
 
   if self.users[username] and self.users[username].account_id and self.rooms[room].users[username] == true then
     local account = Account:find({id = self.users[username].account_id})
-    if account:check_user(self.users[nick].user) then
+    local user_ok = account:check_user(self.users[nick].user)
+    local chat_level = self.rooms[room].stream:check_chat(self.users[nick].user)
+    if user_ok or chat_level == 2 then
       if self.users[username].network.write_comments then
         local stream_id = self.rooms[room].stream_id
         local account_id = self.users[username].account_id

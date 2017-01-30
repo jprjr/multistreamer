@@ -13,10 +13,27 @@ local Account = require'models.account'
 local Server = {}
 Server.__index = Server
 
-function Server:new(user, stream)
+local function add_account(l_networks,msg,accounts,account)
+  if not accounts[account.id] and l_networks[account.network] then
+    local id_string = string.format('%d',account.id)
+    msg.accounts[id_string] = {
+      network = account.network,
+      name = account.name,
+      ready = false,
+      live = false,
+      writable = false,
+    }
+    if networks[account.network].write_comments then
+      msg.accounts[id_string].writable = true
+    end
+  end
+end
+
+function Server:new(user, stream, chat_level)
   local t = {}
   t.user = user
   t.stream = stream
+  t.chat_level = chat_level
 
   setmetatable(t,Server)
   return t
@@ -50,7 +67,9 @@ function Server:redis_relay()
         self:send_stream_status(true)
       elseif res[2] == endpoint('stream:end') and msg.id == self.stream.id then
         self:send_stream_status(false)
-      elseif res[2] == endpoint('stream:writerresult') and msg.stream_id == self.stream.id then
+      elseif res[2] == endpoint('stream:writerresult') 
+             and msg.stream_id == self.stream.id 
+             and msg.user_id == self.user.id then
         self.ws:send_text(to_json({
             ['type'] = 'writerresult',
             account_id = msg.account_id,
@@ -138,33 +157,28 @@ function Server:send_stream_status(ok)
     msg.accounts[id_string] = {
       network = v.network,
       name = v.name,
-      http_url = sa:get('http_url'),
       ready = true,
       live = true,
       writable = false,
     }
-    if networks[v.network].write_comments then
+    if networks[v.network].write_comments and self.chat_level == 2 then
       msg.accounts[id_string].writable = true
     end
   end
 
   local more_accounts = Account:select('where user_id = ?',self.user.id)
   if more_accounts then
-  for i,v in ipairs(more_accounts) do
-    if not accounts[v.id] and l_networks[v.network] then
-      local id_string = string.format('%d',v.id)
-      msg.accounts[id_string] = {
-        network = v.network,
-        name = v.name,
-        ready = false,
-        live = false,
-        writable = false,
-      }
-      if networks[v.network].write_comments then
-        msg.accounts[id_string].writable = true
-      end
+    for i,v in ipairs(more_accounts) do
+      add_account(l_networks,msg,accounts,v)
     end
   end
+
+  local yet_more_accounts = self.user:get_shared_accounts()
+  if yet_more_accounts then
+    for i,sa in ipairs(yet_more_accounts) do
+      local v = sa:get_account()
+      add_account(l_networks,msg,accounts,v)
+    end
   end
 
   self.ws:send_text(to_json(msg))
