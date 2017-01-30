@@ -16,6 +16,7 @@ var curAccount;
 var ws;
 var live = false;
 var refresher;
+var scroller = zenscroll.createScroller(chatMessages);
 
 function atBottom(elem) {
     return elem.scrollHeight - elem.scrollTop === elem.clientHeight;
@@ -205,6 +206,9 @@ function buildChatInput(account) {
         chatPickerList = undefined;
     }
     chatWrapper.appendChild(chatInput);
+    if(curInput !== undefined) {
+        curInput.focus();
+    }
 }
 
 
@@ -240,7 +244,7 @@ function appendMessage(msg) {
 
   chatMessages.appendChild(newMsg);
   if(shouldScroll) {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    scroller.toY(chatMessages.scrollHeight);
   }
 }
 
@@ -319,6 +323,8 @@ function start_chat(endpoint) {
         var p = curInput.parentElement;
         p.removeChild(curInput);
         p.appendChild(inputElement);
+        curInput = inputElement;
+        curInput.focus();
     }
     if(data.type == 'status') {
         if(data.status === 'live') {
