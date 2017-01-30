@@ -30,6 +30,7 @@ local sql_files = {
   [2] = streamer_dir .. '/sql/1481421931.sql',
   [3] = streamer_dir .. '/sql/1485029477.sql',
   [4] = streamer_dir .. '/sql/1485036089.sql',
+  [5] = streamer_dir .. '/sql/1485788609.sql',
 }
 
 if(not arg[1] or not commands[arg[1]]) then
@@ -37,7 +38,7 @@ if(not arg[1] or not commands[arg[1]]) then
   print('Available actions')
   print('  run    -- run nginx')
   print('  initdb -- initialize the database')
-  print('  psql   -- launch psql')
+  print('  psql <file>   -- launch psql, runs sql if provided')
   exit(1)
 end
 
@@ -112,7 +113,12 @@ if(arg[1] == 'run') then
 
 elseif(arg[1] == 'psql') then
   posix.setenv('PGPASSWORD',config.postgres.password)
-  local _, err = posix.exec(config.psql, { '-U', config.postgres.user, '-h' , config.postgres.host })
+  local args = { '-U', config.postgres.user, '-h' , config.postgres.host }
+  if arg[2] then
+    table.insert(args,'-f')
+    table.insert(args,arg[2])
+  end
+  local _, err = posix.exec(config.psql, args)
   print(err)
   exit(1)
 
