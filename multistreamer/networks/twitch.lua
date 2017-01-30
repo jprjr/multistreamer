@@ -86,30 +86,6 @@ local function twitch_api_client(access_token)
 
 end
 
-local function update_ingest_endpoints(account)
-  local endpoints = account:get('endpoints')
-  if endpoints then
-    endpoints = from_json(endpoints)
-    return endpoints, nil
-  else
-    local tclient = twitch_api_client(account:get('token'))
-    local res, err = tclient:get('/ingests/')
-    if err then
-      return false, err
-    end
-    endpoints = {}
-    for _,v in pairs(res.ingests) do
-      local k = format('%d',v._id)
-      endpoints[k] = {
-        name = v.name,
-        url_template = v.url_template,
-      }
-    end
-    account:set('endpoints',to_json(endpoints),  864000 )
-    return endpoints, nil
-  end
-end
-
 function M.metadata_fields()
   return {
     [1] = {
@@ -124,12 +100,6 @@ function M.metadata_fields()
         key = 'game',
         required = true,
     },
-    [3] = {
-        type = 'select',
-        label = 'Stream Endpoint',
-        key = 'endpoint',
-        required = true,
-    },
   }
 end
 
@@ -139,21 +109,6 @@ function M.metadata_form(account, stream)
   for i,k in ipairs(form) do
     k.value = stream:get(k.key)
   end
-  form[3].options = {}
-
-  local endpoints, err = update_ingest_endpoints(account)
-  if err then return false, err end
-
-  for k,v in pairs(endpoints) do
-    insert(form[3].options, {
-      value = k,
-      label = v.name
-    })
-  end
-
-  sort(form[3].options,function(a,b)
-    return a.label < b.label
-  end)
 
   return form, nil
 end
@@ -262,17 +217,15 @@ function M.register_oauth(params)
 end
 
 function M.publish_start(account, stream)
-  local endpoints, err = update_ingest_endpoints(account)
-
   local stream_o = stream
 
   local account = account:get_all()
   local stream = stream:get_all()
 
-  local rtmp_url
+  local rtmp_url = twitch_config.ingest_server:gsub('/+$','') .. '/'
 
-  if endpoints and endpoints[stream.endpoint] and account.stream_key then
-    rtmp_url = endpoints[stream.endpoint].url_template:gsub('{stream_key}',account.stream_key)
+  if account.stream_key then
+    rtmp_url = rtmp_url .. account.stream_key
   else
     return false, 'unable to create rtmp url'
   end
