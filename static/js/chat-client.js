@@ -231,15 +231,26 @@ function appendMessage(msg) {
   msgDiv.className = 'message';
 
   if(msg.type === "emote") {
-    t = msg.from.name + ' ' + msg.markdown;
-    p = parser.parse(t);
+    if(msg.markdown !== undefined && msg.markdown !== null) {
+      t = msg.from.name + ' ' + msg.markdown;
+      p = parser.parse(t);
 
-    nameDiv.innerHTML = nameDiv.innerHTML + writer.render(p);
+      nameDiv.innerHTML = nameDiv.innerHTML + writer.render(p);
+    }
+    else {
+      t = msg.from.name + ' ' + msg.text;
+      nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + t + '</p>';
+    }
   }
   else {
-    p = parser.parse(msg.markdown)
     nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';
-    msgDiv.innerHTML = writer.render(p);
+    if(msg.markdown !== undefined && msg.markdown !== null) {
+      p = parser.parse(msg.markdown)
+      msgDiv.innerHTML = writer.render(p);
+    }
+    else {
+      msgDiv.innerHTML = '<p>' + msg.text + '</p>';
+    }
   }
   newMsg.appendChild(nameDiv);
   newMsg.appendChild(msgDiv);
