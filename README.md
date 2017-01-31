@@ -437,3 +437,10 @@ LICENSE-lua-resty-websocket.
 
 This project includes a copy of zenscroll (`static/js/zenscroll-min.js`), which
 is public-domain code. The license for zenscroll is availble as LICENSE-zenscroll.
+
+The network modules for Facebook, Twitch, and YouTube include embedded SVG icons from
+[simpleicons.org](https://simpleicons.org/). These icons are in the public domain
+see [https://github.com/danleech/simple-icons/blob/gh-pages/LICENSE.md](https://github.com/danleech/simple-icons/blob/gh-pages/LICENSE.md).
+I'll be honest, I'm not sure how trademark law applies here (but I'm sure it does),
+so I feel obligated to mention that all trademarked images are property of their
+respective companies.
