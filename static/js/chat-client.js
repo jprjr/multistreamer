@@ -194,7 +194,7 @@ function buildChatInput(account) {
         curAccount = undefined;
         curInput = undefined;
         if(live) {
-            nameElement.innerHTML = '<p>No account chosen</p>';
+            nameElement.innerHTML = '<p>No account chosen - click to choose</p>';
         }
         else {
             nameElement.innerHTML = '<p>Stream not started</p>';

@@ -115,6 +115,9 @@ function ChatMgr:handleChatWriterRequest(msg)
 
   account.network = networks[account.network]
 
+  if not self.streams[msg.stream_id] then
+    self.streams[msg.stream_id] = {}
+  end
   self.streams[msg.stream_id][account.id] = {}
   local read_func, write_func = account.network.create_comment_funcs(
     account:get_keystore():get_all(),
