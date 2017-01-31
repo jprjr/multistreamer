@@ -393,10 +393,6 @@ be sure to set the following environment variables:
 
 New features I'd like to work on:
 
-* A web interface for viewing and responding to chat messages, comments,
-etc - basically, a web version of the IRC functionality.
-  * Probably a basic page that uses a websocket for sending/receiving
-    messages.
 * More networks!
 
 ## Versioning
