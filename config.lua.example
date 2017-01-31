@@ -132,6 +132,10 @@ config({'development','production'}, {
   -- maximum ssl verify depth
   ssl_verify_depth = 5,
 
+  -- sizes for shared dictionaries (see https://github.com/openresty/lua-nginx-module#lua_shared_dict)
+  lua_shared_dict_streams_size = '10m',
+  lua_shared_dict_writers_size = '10m',
+
   -- specify the run directory to hold temp files etc,
   -- defaults to $HOME/.multistreamer if not set
   -- work_dir = '/path/to/some/folder',

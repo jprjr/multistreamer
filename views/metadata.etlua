@@ -1,20 +1,26 @@
 <h3>Edit Metadata</h3>
 
+<% if metadata_level == 2 then %>
 <p><strong>RTMP URL</strong> <code><%= public_rtmp_url %>/<%= rtmp_prefix %></code></p>
 <p><strong>Stream Key</strong> <button id="showBtn" type="button" class="pure-button">Show</button> <code id="stream-key"><%= stream.uuid %></code></p>
+<% end %>
+<% if metadata_level == 2 or chat_level > 0 then %>
 <p><strong>IRC Room</strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass">Join</a></p>
+<% end %>
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('metadata-edit')..stream.id %>" enctype="multipart/form-data">
 
 <div class="pure-control-group"><label for="title">Title</label>
-<input type="text" id="title" name="title" <% if stream:get('title') then %>value="<%= stream:get('title') %>"<% end %> /></div>
+<input type="text" id="title" name="title" <% if stream:get('title') then %>value="<%= stream:get('title') %>"<% end %> <%= metadata_level < 2 and 'readonly' or '' %>/></div>
 
 <div class="pure-control-group"><label for="description">Description</label>
-<textarea id="description" name="description"><% if stream:get('description') then %><%= stream:get('description') %><% end %></textarea></div>
+<textarea id="description" name="description" <%= metadata_level < 2 and 'readonly' or '' %>><% if stream:get('description') then %><%= stream:get('description') %><% end %></textarea></div>
 
+<% if metadata_level == 2 then %>
 <div class="pure-control-group"><label>Copy above fields to below fields</label>
 <button id="copyDownBtn" type="button" class="pure-button">Copy</button>
 </div>
+<% end %>
 
 <% for _,account in pairs(accounts) do %>
 <fieldset><legend><%= account.name %> (<%= account.network.displayname %>) Settings</legend>
@@ -27,13 +33,13 @@
 <div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= v.label %></label>
 
 <% if v.type == 'text' then %>
-<input type="text" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> />
+<input type="text" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> <%= metadata_level < 2 and 'readonly' or ''%> />
 
 <% elseif v.type == 'textarea' then %>
-<textarea id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>"><%= v.value ~= nil and v.value or '' %></textarea>
+<textarea id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>><%= v.value ~= nil and v.value or '' %></textarea>
 
 <% elseif v.type == 'select' then %>
-<select id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>">
+<select id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>>
 <option value="" disabled <% if not v.value then %>selected<% end %>>Select</option>
 <% for i,o in ipairs(v.options) do %>
 <option value="<%= o.value %>" <%= o.value == v.value and 'selected' or '' %>><%= o.label %></option>
@@ -49,15 +55,17 @@
 
 <% local ffmpeg_args = stream:get_stream_account(account).ffmpeg_args %>
 <div class="pure-control-group"><label for="ffmpeg_args.<%= account.id %>">FFMPEG Args (blank for default)</label>
-<input type="text" id="ffmpeg_args.<%= account.id %>" name="ffmpeg_args.<%= account.id %>" <% if ffmpeg_args then %>value="<%= ffmpeg_args %>" <% end %> />
+<input type="text" id="ffmpeg_args.<%= account.id %>" name="ffmpeg_args.<%= account.id %>" <% if ffmpeg_args then %>value="<%= ffmpeg_args %>" <% end %> <%= metadata_level < 2 and 'readonly' or '' %> />
 </div>
 
 </fieldset>
 <% end %>
 
+<% if metadata_level == 2 then %>
 <div class="pure-controls">
 <button class="pure-button pure-button-primary" type="submit" id="submitBtn">Submit</button>
 </div>
+<% end %>
 </form>
 
 <script type="text/javascript">

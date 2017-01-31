@@ -13,6 +13,7 @@ local Account = require'models.account'
 local Stream = require'models.stream'
 local StreamAccount = require'models.stream_account'
 local SharedAccount = require'models.shared_account'
+local SharedStream  = require'models.shared_stream'
 
 local respond_to = lapis.application.respond_to
 local encode_with_secret = lapis.application.encode_with_secret
@@ -128,7 +129,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     local sas = self.user:get_shared_accounts()
     for _,sa in pairs(sas) do
       local account = sa:get_account()
+      local u = account:get_user()
       account.shared = true
+      account.shared_from = u.username
       account.network = networks[account.network]
       insert(self.accounts,account)
     end
@@ -170,8 +173,9 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
     if not self.stream then
       return err_out(self,'Stream not found')
     end
-    local level = self.stream:check_meta(self.user)
-    if level == 0 then
+    self.chat_level = self.stream:check_chat(self.user)
+    self.metadata_level = self.stream:check_meta(self.user)
+    if self.metadata_level == 0 then
       return err_out(self,'Stream not found')
     end
     self.accounts = self.stream:get_accounts()
@@ -190,6 +194,9 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
     return { render = 'metadata' }
   end,
   POST = function(self)
+    if self.metadata_level < 2 then
+      return err_out(self,'Nice try buddy')
+    end
     if self.params.title then
       self.stream:set('title',self.params.title)
     end
@@ -317,7 +324,9 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   local sas = self.user:get_shared_accounts()
   for _,sa in pairs(sas) do
     local account = sa:get_account()
+    local u = account:get_user()
     account.shared = true
+    account.shared_from = u.username
     insert(self.accounts,account)
   end
   for k,v in pairs(self.accounts) do
@@ -326,6 +335,20 @@ app:get('site-root', config.http_prefix .. '/', function(self)
       v.errors = v.network.check_errors(v:get_keystore())
     end
   end
+
+  local sss = self.user:get_shared_streams()
+  for _,ss in pairs(sss) do
+    if ss.chat_level > 0 or ss.metadata_level > 0 then
+      local stream = ss:get_stream()
+      local u = stream:get_user()
+      stream.shared = true
+      stream.shared_from = u.username
+      stream.chat_level = ss.chat_level
+      stream.metadata_level = ss.metadata_level
+      insert(self.streams,stream)
+    end
+  end
+
   for k,v in pairs(self.streams) do
     local ok = ngx.shared.streams:get(v.id)
     if ok then
@@ -416,14 +439,15 @@ app:match('stream-ws', config.http_prefix .. '/ws/:id',respond_to({
     if not stream then
       return plain_err_out(self,'Not authorized', 403)
     end
-    local level = stream:check_chat(self.user)
-    if level == 0 then
+    local chat_level = stream:check_chat(self.user)
+    if chat_level == 0 then
       return plain_err_out(self,'Not authorized', 403)
     end
+    self.chat_level = chat_level
     self.stream = stream
   end,
   GET = function(self)
-    local wb_server = WebsocketServer:new(self.user,self.stream)
+    local wb_server = WebsocketServer:new(self.user,self.stream,self.chat_level)
     wb_server:run()
   end,
 }))
@@ -479,6 +503,58 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
       self.session.status_msg = { type = 'success', msg = 'Account deleted' }
     end
     return { redirect_to = self:url_for('site-root') }
+  end,
+}))
+
+app:match('stream-share',config.http_prefix .. '/stream/:id/share', respond_to({
+  before = function(self)
+    if not require_login(self) then
+      return { redirect_to = 'login' }
+    end
+    local stream = Stream:find({ id = self.params.id })
+    if not stream or not stream:check_owner(self.user) then
+      return err_out(self,'Stream not found')
+    end
+    self.stream = stream
+    self.users = User:select('where id != ?',self.user.id)
+    for i,other_user in pairs(self.users) do
+      local ss = SharedStream:find({ stream_id = self.stream.id, user_id = other_user.id})
+      if not ss then
+        self.users[i].chat_level = 0
+        self.users[i].metadata_level = 0
+      else
+        self.users[i].chat_level = ss.chat_level
+        self.users[i].metadata_level = ss.metadata_level
+      end
+    end
+  end,
+  GET = function(self)
+    return { render = 'stream-share' }
+  end,
+  POST = function(self)
+    for _,other_user in pairs(self.users) do
+      local chat_level = 0
+      local metadata_level = 0
+      if self.params['user.'..other_user.id..'.chat'] then
+        chat_level = tonumber(self.params['user.'..other_user.id..'.chat'])
+      end
+      if self.params['user.'..other_user.id..'.metadata'] then
+        metadata_level = tonumber(self.params['user.'..other_user.id..'.metadata'])
+      end
+      local ss = SharedStream:find({ stream_id = self.stream.id, user_id = other_user.id })
+      if ss then
+        ss:update({chat_level = chat_level, metadata_level = metadata_level})
+      else
+        SharedStream:create({
+          stream_id = self.stream.id,
+          user_id = other_user.id,
+          chat_level = chat_level,
+          metadata_level = metadata_level,
+        })
+      end
+    end
+    self.session.status_msg = { type = 'success', msg = 'Sharing settings updated' }
+    return { redirect_to = self:url_for('stream-share', { id = self.stream.id }) }
   end,
 }))
 

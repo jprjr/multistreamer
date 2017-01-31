@@ -65,6 +65,8 @@ function buildChatPickerList(accounts) {
 
     chatPickerList = document.createElement('div');
     chatPickerList.id = 'chatpickerlist';
+    var pickerMade = false;
+
     if(accounts !== undefined && accounts !== null) {
         accounts.forEach(function(account) {
             if(icons[account.network] && account.writable === true) {
@@ -75,10 +77,12 @@ function buildChatPickerList(accounts) {
                     buildChatInput(account);
                 };
                 chatPickerList.appendChild(chatPicker);
+                pickerMade = true;
             }
         });
     }
-    else {
+
+    if(pickerMade === false) {
         var chatPicker = document.createElement('div');
         chatPicker.className = 'chatpicker';
         if(live) {
@@ -305,6 +309,9 @@ function start_chat(endpoint) {
                 var sp = document.createElement('span');
                 if(v.viewcount === undefined) {
                     v.viewcount = 'unknown';
+                }
+                if(v.http_url) {
+                  v.network.displayname = '<a href="' + v.http_url + '" target="_new">' + v.network.displayname + '</a>';
                 }
                 sp.innerHTML = v.network.displayname + ': ' + v.viewcount;
                 el.appendChild(sp);

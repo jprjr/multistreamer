@@ -1,5 +1,6 @@
 local ngx = ngx
 local config = require'multistreamer.config'
+local string = require'multistreamer.string'
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
 local publish = redis.publish
@@ -76,11 +77,13 @@ function ChatMgr:handleViewCountRequest(msg)
   for i,sa in ipairs(sas) do
     local acc = sa:get_account()
     acc.network = networks[acc.network]
+    local http_url = sa:get('http_url')
 
     if acc.network.get_view_count then
       insert(result.viewcounts, {
         account_id = acc.id,
         viewcount = acc.network.get_view_count(acc:get_all(),sa:get_all()),
+        http_url = http_url,
         network = {
           name = acc.network.name,
           displayname = acc.network.displayname,
@@ -96,6 +99,17 @@ function ChatMgr:handleChatWriterRequest(msg)
   if msg.worker ~= ngx.worker.pid() then
     return nil
   end
+
+  -- check if there's a writer already running
+  local writer_id = msg.stream_id .. '-' .. msg.account_id
+  local writer_info_raw = ngx.shared.writers:get(writer_id)
+  if writer_info_raw then
+    local t = from_json(writer_info_raw)
+    t.user_id = msg.user_id
+    publish('stream:writerresult',t)
+    return nil
+  end
+
   local account = Account:find({id = msg.account_id})
   local sa = StreamAccount:find({stream_id = msg.stream_id, account_id = msg.cur_stream_account_id})
 
@@ -109,6 +123,10 @@ function ChatMgr:handleChatWriterRequest(msg)
   local t = {
     read_started = false,
     write_started = false,
+    stream_id = msg.stream_id,
+    account_id = msg.account_id,
+    user_id = msg.user_id,
+    cur_stream_account_id = msg.cur_stream_account_id,
   }
   if read_func then
     self.streams[msg.stream_id][account.id].read_thread = ngx.thread.spawn(read_func)
@@ -118,14 +136,8 @@ function ChatMgr:handleChatWriterRequest(msg)
     self.streams[msg.stream_id][account.id].send = write_func
     t.write_started = true
   end
-  publish('stream:writerresult', {
-    stream_id = msg.stream_id,
-    account_id = msg.account_id,
-    user_id = msg.user_id,
-    cur_stream_account_id = msg.cur_stream_account_id,
-    read_started = t.read_started,
-    write_started = t.write_started,
-  })
+  publish('stream:writerresult', t)
+  ngx.shared.writers:set(writer_id, to_json(t))
 end
 
 function ChatMgr:handleStreamStart(msg)
@@ -179,12 +191,14 @@ function ChatMgr:handleStreamEnd(msg)
     return nil
   end
 
+
   if self.streams[stream.id] then
-    for k,v in pairs(self.streams[stream.id]) do
+    for k,v in pairs(self.streams[stream.id]) do -- k is account id
       if v and v.read_thread then
         local ok, err = ngx.thread.kill(v.read_thread)
       end
       self.streams[stream.id][k] = nil
+      ngx.shared.writers:set(stream.id .. '-' .. k, nil)
     end
   end
 
