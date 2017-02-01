@@ -12,6 +12,7 @@ local Account = require'models.account'
 local StreamAccount = require'models.stream_account'
 local setmetatable = setmetatable
 local insert = table.insert
+local tonumber = tonumber
 
 local ChatMgr = {}
 ChatMgr.__index = ChatMgr
@@ -100,8 +101,17 @@ function ChatMgr:handleChatWriterRequest(msg)
     return nil
   end
 
+  if not (msg.stream_id and msg.cur_stream_account_id and msg.account_id and msg.user_id) then
+    return nil
+  end
+
+  msg.stream_id = tonumber(msg.stream_id)
+  msg.cur_stream_account_id = tonumber(msg.cur_stream_account_id)
+  msg.account_id = tonumber(msg.account_id)
+  msg.user_id = tonumber(msg.user_id)
+
   -- check if there's a writer already running
-  local writer_id = msg.stream_id .. '-' .. msg.account_id
+  local writer_id = msg.stream_id .. '-' .. msg.cur_stream_account_id .. '-' .. msg.account_id
   local writer_info_raw = ngx.shared.writers:get(writer_id)
   if writer_info_raw then
     local t = from_json(writer_info_raw)
@@ -118,7 +128,10 @@ function ChatMgr:handleChatWriterRequest(msg)
   if not self.streams[msg.stream_id] then
     self.streams[msg.stream_id] = {}
   end
-  self.streams[msg.stream_id][account.id] = {}
+  if not self.streams[msg.stream_id][msg.cur_stream_account_id] then
+    self.streams[msg.stream_id][msg.cur_stream_account_id] = { aux = {} }
+  end
+  self.streams[msg.stream_id][msg.cur_stream_account_id].aux[account.id] = {}
   local read_func, write_func = account.network.create_comment_funcs(
     account:get_keystore():get_all(),
     sa:get_keystore():get_all()
@@ -132,11 +145,11 @@ function ChatMgr:handleChatWriterRequest(msg)
     cur_stream_account_id = msg.cur_stream_account_id,
   }
   if read_func then
-    self.streams[msg.stream_id][account.id].read_thread = ngx.thread.spawn(read_func)
+    self.streams[msg.stream_id][msg.cur_stream_account_id].aux[account.id].read_thread = ngx.thread.spawn(read_func)
     t.read_started = true
   end
   if write_func then
-    self.streams[msg.stream_id][account.id].send = write_func
+    self.streams[msg.stream_id][msg.cur_stream_account_id].aux[account.id].send = write_func
     t.write_started = true
   end
   publish('stream:writerresult', t)
@@ -176,16 +189,26 @@ function ChatMgr:handleStreamStart(msg)
     if write_func then
       self.streams[stream.id][acc.id].send = write_func
     end
+    self.streams[stream.id][acc.id].aux = {}
   end
 end
 
 function ChatMgr:handleCommentOut(msg)
-  if not msg.stream_id or not msg.account_id then return end
-  if self.streams[msg.stream_id] and
-     self.streams[msg.stream_id][msg.account_id] and
-     self.streams[msg.stream_id][msg.account_id].send then
-   self.streams[msg.stream_id][msg.account_id].send(msg.text)
- end
+  if not msg.stream_id or not msg.account_id or not msg.cur_stream_account_id then return end
+  if msg.account_id == msg.cur_stream_account_id then
+    if self.streams[msg.stream_id] and
+       self.streams[msg.stream_id][msg.account_id] and
+       self.streams[msg.stream_id][msg.account_id].send then
+     self.streams[msg.stream_id][msg.account_id].send(msg.text)
+    end
+  else
+    if self.streams[msg.stream_id] and
+       self.streams[msg.stream_id][msg.cur_stream_account_id] and
+       self.streams[msg.stream_id][msg.cur_stream_account_id].aux[msg.account_id] and
+       self.streams[msg.stream_id][msg.cur_stream_account_id].aux[msg.account_id].send then
+      self.streams[msg.stream_id][msg.cur_stream_account_id].aux[msg.account_id].send(msg.text)
+    end
+  end
 end
 
 function ChatMgr:handleStreamEnd(msg)
@@ -197,8 +220,16 @@ function ChatMgr:handleStreamEnd(msg)
 
   if self.streams[stream.id] then
     for k,v in pairs(self.streams[stream.id]) do -- k is account id
-      if v and v.read_thread then
-        local ok, err = ngx.thread.kill(v.read_thread)
+      if v then
+        if v.read_thread then
+          local ok, err = ngx.thread.kill(v.read_thread)
+        end
+        for i,j in pairs(v.aux) do
+          if j and j.read_thread then
+            ngx.thread.kill(j.read_thread)
+          end
+          ngx.shared.writers:set(stream.id .. '-' .. k .. '-' .. i, nil)
+        end
       end
       self.streams[stream.id][k] = nil
       ngx.shared.writers:set(stream.id .. '-' .. k, nil)

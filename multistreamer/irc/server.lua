@@ -120,14 +120,22 @@ function IRCServer.new(socket,user,parentServer)
       func = IRCServer.botCommandHelp,
       help = {'Usage: !help <command> '},
     },
+    ['chat'] = {
+      func = IRCServer.botCommandChatWriter,
+      help = {
+        '!chat -- create a bot for relaying your chat',
+        'Usage:',
+        '!chat <network> -- list accounts for bot-creation',
+        '!chat <network> <your account> -- create a bot to post comments',
+        '!chat <existing bot> <your account> -- create a bot to post comments',
+      },
+    },
     ['summon'] = {
       func = IRCServer.botCommandSummon,
       help = {
-        '!summon - summon a user, or create a bot',
+        '!summon - summon a usert',
         'Usage:',
         '!summon <user> -- bring a user into this room',
-        '!summon <existing room bot> -- list accounts for bot-creation',
-        '!summon <existing room bot> <your account> -- create a bot to post comments',
       },
     },
     ['viewcount'] = {
@@ -288,8 +296,24 @@ function IRCServer:processWriterResult(update)
   local user = User:find({ id = update.user_id })
   local og_account = Account:find({ id = update.cur_stream_account_id })
   account.network = networks[account.network]
-  local accountUsername = slugify(account.network.name) .. '-' .. account.slug .. '-' .. og_account.slug
+
   local roomName = slugify(stream:get_user().username) .. '-' .. stream.slug
+  local accountUsername
+
+  local c = 0
+  for _,sa in pairs(stream:get_streams_accounts()) do
+    local acc = sa:get_account()
+    if acc.network == account.network.name then
+      c = c + 1
+    end
+  end
+
+  if c == 1 then
+    accountUsername = slugify(account.network.name) .. '-' .. account.slug
+  else
+    accountUsername = slugify(account.network.name) .. '-' .. account.slug .. '-' .. og_account.slug
+  end
+
   self.users[accountUsername] = {
     user = {
       nick = accountUsername,
@@ -297,6 +321,7 @@ function IRCServer:processWriterResult(update)
       realname = accountUsername,
     },
     account_id = account.id,
+    cur_stream_account_id = og_account.id,
     network = account.network,
   }
   if self.rooms[roomName] and self.rooms[roomName].users then
@@ -330,6 +355,7 @@ function IRCServer:processStreamStart(update)
           realname = accountUsername
         },
         account_id = account.id,
+        cur_stream_account_id = account.id,
         network = account.network,
       }
     end
@@ -426,9 +452,10 @@ end
 
 function IRCServer:processCommentUpdate(update)
   local account = Account:find({ id = update.account_id })
-  local user = account:get_user()
   account.network = networks[account.network]
+
   local stream = Stream:find({ id = update.stream_id })
+  local user = stream:get_user()
   local username = slugify(update.from.name)..'-'..update.network
   local roomname = slugify(user.username) .. '-' .. stream.slug
 
@@ -805,37 +832,38 @@ function IRCServer:botCommandViewcount(nick,room,stream_nick)
   end
 end
 
-function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
+function IRCServer:botCommandChatWriter(nick,room,target,account_slug)
   local message = ''
-  local user = User:find({username = nick})
-  if not stream_nick then
+  if not target then
     botPublish(nick,room,'Missing parameters')
-    botPublish(nick,room,'try !help summon')
+    botPublish(nick,room,'try !help chat')
     return
   end
 
-  if not self.users[stream_nick] then
-    botPublish(nick,room,'No such nick')
+  local user = User:find({username = nick})
+  local target = target:lower()
+  local stream = self.rooms[room]
+  local network
+  local tar_account_id
+  local shortname = false
+
+  if networks[target] then
+    network = target
+  elseif self.users[target] and self.users[target].cur_stream_account_id then
+    network = self.users[target].network.name
+    tar_account_id = self.users[target].cur_stream_account_id
+  else
+    botPublish(nick,room,'Not a network or bot: ' .. target)
     return
-  elseif self.users[stream_nick].user and not self.users[stream_nick].account_id then
-    if not self.rooms[room].users[stream_nick] then
-      publish('irc:events:join', {
-        nick = stream_nick,
-        room = room,
-      })
-    else
-      botPublish(nick,room,'That user is already here')
-    end
-    return
-  elseif not self.users[stream_nick].account_id then
-    botPublish(nick,room,'Not an active bot: ' ..stream_nick)
-    return
-  elseif not account_slug or account_slug:len() == 0 then
+  end
+
+  -- user checking what accounts are available
+  if not account_slug or account_slug:len() == 0 then
     local accounts = Account:select(
-      'where network = ? and user_id = ? and id <> ?',
-      self.users[stream_nick].network.name,
-      self.users[nick].user.id,
-      self.users[stream_nick].account_id)
+        'where network = ? and user_id = ?',
+        network,
+        self.users[nick].user.id
+    )
     local sas = SharedAccount:select(
       'where user_id = ?',
       self.users[nick].user.id)
@@ -854,14 +882,44 @@ function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
     return
   end
 
-  local account = Account:find({network = self.users[stream_nick].network.name, slug = account_slug })
+  if not tar_account_id then
+    -- see if there's only 1 account for the network
+    local l_network = {}
+    local c = 0
+    local stream = self.rooms[room].stream
+    for _,sa in pairs(stream:get_streams_accounts()) do
+      local acc = sa:get_account()
+      if acc.network == network then
+        insert(l_network,acc)
+        c = c + 1
+      end
+    end
+    if c == 1 then
+      shortname = true
+      tar_account_id = l_network[1].id
+    end
+  end
+
+  if not tar_account_id then
+    botPublish(nick,room,'Please specify a bot instead of a network')
+    return
+  end
+  local tar_account = Account:find({id = tar_account_id})
+
+  if self.rooms[room].users[network .. '-' .. account_slug] or self.rooms[room].users[network .. '-' .. account_slug .. '-' .. tar_account.slug] then
+    botPublish(nick,room,'Relay bot already exists')
+    return
+  end
+
+  local account = Account:find({network = network, slug = account_slug })
   if not account then
     botPublish(nick,room,'Account not found')
     return
   end
 
   if not account:check_user(user) then
-    botPublish(nick,room,'You don\'t own that account')
+    botPublish(nick,room,'You can\'t use that account')
+    return
   end
 
   publish('stream:writer', {
@@ -869,8 +927,36 @@ function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
     account_id = account.id,
     user_id = self.users[nick].user.id,
     stream_id = self.rooms[room].stream_id,
-    cur_stream_account_id = self.users[stream_nick].account_id,
+    cur_stream_account_id = tar_account_id,
   })
+
+end
+
+function IRCServer:botCommandSummon(nick,room,stream_nick,account_slug)
+  local message = ''
+  local user = User:find({username = nick})
+  if not stream_nick then
+    botPublish(nick,room,'Missing parameters')
+    botPublish(nick,room,'try !help summon')
+    return
+  end
+
+  if not self.users[stream_nick] then
+    botPublish(nick,room,'No such nick')
+    return
+  end
+
+  if self.users[stream_nick].user and not self.users[stream_nick].account_id then
+    if not self.rooms[room].users[stream_nick] then
+      publish('irc:events:join', {
+        nick = stream_nick,
+        room = room,
+      })
+    else
+      botPublish(nick,room,'That user is already here')
+    end
+    return
+  end
 end
 
 function IRCServer:botCommandHelp(nick,room,cmd)
@@ -915,13 +1001,13 @@ function IRCServer:relayMessage(nick,room,message)
     local chat_level = self.rooms[room].stream:check_chat(self.users[nick].user)
     if user_ok or chat_level == 2 then
       if self.users[username].network.write_comments then
-        local stream_id = self.rooms[room].stream_id
-        local account_id = self.users[username].account_id
-        publish('comment:out', {
-          stream_id = stream_id,
-          account_id = account_id,
+        local t = {
+          stream_id = self.rooms[room].stream_id,
+          account_id = self.users[username].account_id,
+          cur_stream_account_id = self.users[username].cur_stream_account_id,
           text = msg,
-        })
+        }
+        publish('comment:out', t)
       else
         publish('irc:events:message',{
           nick = username,

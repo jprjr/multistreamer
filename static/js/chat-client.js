@@ -13,6 +13,7 @@ var parser = new commonmark.Parser();
 var writer = new commonmark.HtmlRenderer();
 var curInput;
 var curAccount;
+var tarAccount;
 var ws;
 var live = false;
 var refresher;
@@ -103,8 +104,10 @@ function buildChatPickerList(accounts) {
     chatWrapper.appendChild(chatPickerList);
 }
 
-function buildChatBox(account) {
+function buildChatBox(account, target_account) {
     var inputElement = document.createElement('input');
+    var account_id = account.id
+    var target_id = target_account.id
     inputElement.onkeypress = function(e) {
         var event = e || window.event;
         var charCode = event.which || event.keyCode;
@@ -114,7 +117,8 @@ function buildChatBox(account) {
             inputElement.value = '';
             ws.send(JSON.stringify({
                 type: 'comment',
-                account_id: account.id,
+                account_id: account_id,
+                cur_stream_account_id: target_id,
                 text: msg
             }));
         }
@@ -143,9 +147,10 @@ function buildChatInput(account) {
 
     if(account !== null) {
         nameElement.innerHTML = icons[account.network] + '<p>' + account.name + '</p>';
-        curAccount = account;
+        curAccount = account; // the 'from' account
         if(account.ready === true) {
-            inputElement = buildChatBox(account);
+            inputElement = buildChatBox(account, account);
+            tarAccount = account;
             curInput = inputElement;
         }
         else {
@@ -156,8 +161,9 @@ function buildChatInput(account) {
               }
             });
             if(liveAccounts.length == 1) {
-                inputElement = buildChatBox(account);
+                inputElement = buildChatBox(account,liveAccounts[0]);
                 inputElement.disabled = true;
+                tarAccount = liveAccounts[0];
                 curInput = inputElement;
                 ws.send(JSON.stringify({
                     type: 'writer',
@@ -171,15 +177,23 @@ function buildChatInput(account) {
                 var firstOpt = document.createElement('option');
                 firstOpt.disabled = true;
                 firstOpt.selected = true;
+                firstOpt.innerHTML = 'Choose which stream to chat on'
                 inputElement.appendChild(firstOpt);
                 liveAccounts.forEach(function(a) {
                     var optionElement = document.createElement('option');
                     optionElement.innerHTML = a.name;
                     optionElement.value = a.id;
+                    optionElement.tarAccount = a;
                     inputElement.appendChild(optionElement);
                 });
                 inputElement.onchange = function() {
                     inputElement.disabled = true;
+                    liveAccounts.forEach(function(a) {
+                      if (a.id === parseInt(inputElement.value,10)) {
+                        tarAccount = a;
+                        nameElement.innerHTML = icons[account.network] + '<p>' + account.name + ' -> ' + a.name + '</p>';
+                      }
+                    });
                     ws.send(JSON.stringify({
                         type: 'writer',
                         account_id: account.id,
@@ -337,12 +351,15 @@ function start_chat(endpoint) {
         }
     }
     if(data.type === 'writerresult') {
-        var inputElement = buildChatBox(curAccount)
+        var inputElement = buildChatBox(curAccount,tarAccount)
         var p = curInput.parentElement;
         p.removeChild(curInput);
         p.appendChild(inputElement);
         curInput = inputElement;
         curInput.focus();
+        p.parentElement.firstChild.firstChild.onclick = function() {
+            buildChatPickerList(accountList);
+        };
     }
     if(data.type == 'status') {
         if(data.status === 'live') {

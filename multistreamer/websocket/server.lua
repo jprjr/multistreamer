@@ -115,6 +115,7 @@ function Server:websocket_relay()
         publish('comment:out', {
           stream_id = self.stream.id,
           account_id = msg.account_id,
+          cur_stream_account_id = msg.cur_stream_account_id,
           text = msg.text,
         })
       elseif msg.type == 'viewcount' then
