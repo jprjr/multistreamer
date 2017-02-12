@@ -64,10 +64,12 @@ local function google_client(base_url,access_token)
       body = body,
     })
     if err then
+      ngx.log(ngx.ERR,err)
       return false, err
     end
 
     if res.status >= 400 then
+      ngx.log(ngx.ERR,res.body)
       return false, from_json(res.body)
     end
 

@@ -65,10 +65,12 @@ local function twitch_api_client(access_token)
     if body then ngx.log(ngx.DEBUG,body) end
 
     if err then
+      ngx.log(ngx.ERR,err)
       return false, { error = err }
     end
 
     if res.status == 400 then
+      ngx.log(ngx.ERR,res.body)
       return false, from_json(res.body)
     end
 

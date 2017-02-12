@@ -56,12 +56,12 @@ local function facebook_client(access_token)
       body = body,
     })
     if err then
-      ngx.log(ngx.DEBUG,err)
+      ngx.log(ngx.ERR,err)
       return false, err
     end
 
     if res.status >= 400 then
-      ngx.log(ngx.DEBUG,res.body)
+      ngx.log(ngx.ERR,res.body)
       return false, res.body
     end
     ngx.log(ngx.DEBUG,res.body)
