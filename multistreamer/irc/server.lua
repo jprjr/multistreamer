@@ -293,7 +293,6 @@ end
 function IRCServer:processWriterResult(update)
   local stream = Stream:find({ id = update.stream_id })
   local account = Account:find({ id = update.account_id })
-  local user = User:find({ id = update.user_id })
   local og_account = Account:find({ id = update.cur_stream_account_id })
   account.network = networks[account.network]
 
