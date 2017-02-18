@@ -195,6 +195,92 @@ function buildChatInput(account) {
     }
 }
 
+function linkify(p) {
+    var w;
+    var e;
+    var i;
+    var prevText;
+    var postText;
+    var testSpace;
+    var curUrl;
+    var nodeList;
+    var re = /https?:\/\//;
+    w = p.walker();
+
+    while((e = w.next())) {
+        if(e.node.type == 'text') {
+            i = e.node.literal.search(re);
+
+            if(i > -1) {
+                prevText = e.node.literal.substr(0,i);
+                curUrl = e.node.literal.substr(i);
+                nodeList = [];
+                nodeList.push(e.node);
+            }
+            else if(curUrl !== undefined) {
+                testSpace = e.node.literal.substr(0,e.node.literal.indexOf(' '));
+
+                if(testSpace.length > 0) {
+                    nodeList.push(e.node);
+                    curUrl += testSpace;
+                    postText = e.node.literal.substr(e.node.literal.indexOf(' ')+1);
+
+                    if(prevText !== undefined && prevText.length > 0) {
+                        prevText = parser.parse(prevText);
+                        prevText.firstChild.firstChild.literal += ' ';
+                        nodeList[0].insertBefore(prevText.firstChild.firstChild);
+                    }
+
+                    if(postText !== undefined && postText.length > 0) {
+                        postText = parser.parse(postText);
+                        postText.firstChild.firstChild.literal = ' ' + postText.firstChild.firstChild.literal;
+                        nodeList[nodeList.length - 1].insertAfter(postText.firstChild.firstChild);
+                    }
+
+                    curUrl = parser.parse('[' + curUrl + '](' + curUrl +')');
+                    nodeList[0].insertAfter(curUrl.firstChild.firstChild);
+
+                    nodeList.forEach(function(n) {
+                        n.unlink();
+                    });
+
+                    prevText = undefined;
+                    postText = undefined;
+                    curUrl = undefined;
+                    nodeList = undefined;
+                }
+                else {
+                    curUrl += e.node.literal
+                    nodeList.push(e.node);
+                }
+            }
+        }
+    }
+
+    if(curUrl !== undefined) {
+        if(prevText !== undefined && prevText.length > 0) {
+            prevText = parser.parse(prevText);
+            prevText.firstChild.firstChild.literal += ' ';
+            nodeList[0].insertBefore(prevText.firstChild.firstChild);
+        }
+
+        if(postText !== undefined && postText.length > 0) {
+            postText = parser.parse(postText);
+            postText.firstChild.firstChild.literal = ' ' + postText.firstChild.firstChild.literal;
+            nodeList[nodeList.length - 1].insertAfter(postText.firstChild.firstChild);
+        }
+
+        curUrl = parser.parse('[' + curUrl + '](' + curUrl +')');
+        nodeList[0].insertAfter(curUrl.firstChild.firstChild);
+
+        nodeList.forEach(function(n) {
+            n.unlink();
+        });
+    }
+
+    return p;
+}
+
 
 function appendMessage(msg) {
   var newMsg = document.createElement('div');
@@ -213,7 +299,7 @@ function appendMessage(msg) {
   if(msg.type === "emote") {
     if(msg.markdown !== undefined && msg.markdown !== null) {
       t = msg.from.name + ' ' + msg.markdown;
-      p = parser.parse(t);
+      p = linkify(parser.parse(t));
 
       nameDiv.innerHTML = nameDiv.innerHTML + writer.render(p);
     }
@@ -225,7 +311,8 @@ function appendMessage(msg) {
   else {
     nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';
     if(msg.markdown !== undefined && msg.markdown !== null) {
-      p = parser.parse(msg.markdown)
+      p = linkify(parser.parse(msg.markdown));
+
       msgDiv.innerHTML = writer.render(p);
     }
     else {
@@ -286,7 +373,7 @@ function updateViewCountResult(data) {
                    count = v.viewer_count;
                }
                if(v.http_url !== undefined) {
-                 displayName = '<a href="' + v.http_url + '" target="_new">' + displayName + '</a>';
+                 displayName = '<a href="' + v.http_url + '" target="_blank">' + displayName + '</a>';
                }
                sp.innerHTML = displayName + ': ' + count;
                el.appendChild(sp);

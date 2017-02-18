@@ -17,13 +17,14 @@
       <% end %>
   };
   </script>
+  <base target="_blank">
 </head>
 <body>
 <div id="viewwrapper">
   <div class="pure-g header">
   <div class="pure-u-1 title">
-  <h1><a href="<%= url_for("site-root") %>">multistreamer</a></h1>
-  <p><% if user then %>Logged in as <%= user.username %> (<a href="<%= url_for('logout') %>">Logout</a>)<% end %></p>
+  <h1><a target="_self" href="<%= url_for("site-root") %>">multistreamer</a></h1>
+  <p><% if user then %>Logged in as <%= user.username %> (<a target="_self" href="<%= url_for('logout') %>">Logout</a>)<% end %></p>
   </div>
   </div>
   <div id="chatwrapper">
