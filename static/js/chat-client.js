@@ -398,6 +398,16 @@ function start_chat(endpoint) {
       ws.send(JSON.stringify(msg));
   };
 
+  ws.onclose = function(e) {
+      live = false;
+      updateViewCountResult();
+  };
+  
+  ws.onerror = function(e) {
+      live = false;
+      updateViewCountResult();
+  };
+
   ws.onmessage = function(msg) {
     var data = null;
     try {
