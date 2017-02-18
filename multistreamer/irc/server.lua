@@ -268,25 +268,14 @@ end
 
 function IRCServer:processViewCountResult(update)
   local stream = Stream:find({ id = update.stream_id })
-  local roomName = slugify(stream:get_user().username) .. '-' .. stream.slug
+  local account = Account:find({ id = update.account_id })
+  account.network = networks[account.network]
 
-  if self.rooms[roomName] and self.rooms[roomName].users then
-    for i,v in ipairs(update.viewcounts) do
-      local account = Account:find({ id = v.account_id })
-      account.network = networks[account.network]
-      local accountName = slugify(account.network.name) .. '-' .. account.slug
-      local message
-      if v.viewcount then
-        message = v.viewcount .. ' viewers'
-      else
-        message = 'unknown viewers'
-      end
-      for u,user in pairs(self.rooms[roomName].users) do
-        if self.users[u] and self.users[u].socket then
-          self:sendPrivMessage(u,accountName,'#'..roomName,message)
-        end
-      end
-    end
+  local roomName = slugify(stream:get_user().username) .. '-' .. stream.slug
+  local accountName = slugify(account.network.name) .. '-' .. account.slug
+
+  if self.users[accountName] then
+    self.users[accountName].viewer_count = update.viewer_count
   end
 end
 
@@ -356,6 +345,7 @@ function IRCServer:processStreamStart(update)
         account_id = account.id,
         cur_stream_account_id = account.id,
         network = account.network,
+        viewer_count = nil,
       }
     end
     self.rooms[roomName].users[accountUsername] = true
@@ -812,21 +802,42 @@ function IRCServer:botCommandViewcount(nick,room,stream_nick)
   local message = ''
   local user = User:find({username = nick})
   if not stream_nick then
-    publish('stream:viewcount' ,{
-      worker = ngx.worker.pid(),
-      stream_id = self.rooms[room].stream_id
-    })
+    for u,user in pairs(self.rooms[room].users) do
+      if self.users[u] and self.users[u].account_id then
+        if self.users[u].viewer_count ~= nil then
+          publish('irc:events:message', {
+            nick = u,
+            target = '#'..room,
+            message = self.users[u].viewer_count .. ' viewers'
+          })
+        else
+          publish('irc:events:message', {
+            nick = u,
+            target = '#'..room,
+            message = 'unknown viewers'
+          })
+        end
+      end
+    end
   else
     if not self.users[stream_nick] then
       botPublish(nick,room,'No such nick')
     elseif not self.users[stream_nick].account_id then
       botPublish(nick,room,'Not an active bot: ' .. stream_nick)
     else
-      publish('stream:viewcount', {
-        worker = ngx.worker.pid(),
-        stream_id = self.rooms[room].stream_id,
-        account_id = self.users[stream_nick].account_id,
-      })
+      if self.users[stream_nick].viewer_count ~= nil then
+        publish('irc:events:message', {
+          nick = stream_nick,
+          target = '#'..room,
+          message = self.users[u].viewer_count .. ' viewers'
+        })
+      else
+        publish('irc:events:message', {
+          nick = u,
+          target = '#'..room,
+          message = 'unknown viewers'
+        })
+      end
     end
   end
 end

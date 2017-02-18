@@ -544,21 +544,29 @@ local function textify(emote)
   return text
 end
 
-function M.get_view_count(account, stream)
+function M.create_viewcount_func(account,stream,send)
+  if not send then return nil end
+
   local targets = from_json(account.targets)
   local target = targets[stream.target]
   local access_token = target.token
 
   local video_id = stream.video_id
   local fb_client = facebook_client(access_token)
-  local res, err = fb_client:get('/' .. video_id, {
-    fields = 'id,live_views' })
 
-  if not err then
-    return tonumber(res.live_views)
+  return function()
+    while true do
+      local res, err = fb_client:get('/' .. video_id, {
+        fields = 'id,live_views' })
+
+      if not err then
+        local viewer_count = tonumber(res.live_views)
+        if not viewer_count then viewer_count = 0 end
+        send({viewer_count = viewer_count})
+      end
+      ngx.sleep(60)
+    end
   end
-
-  return nil
 
 end
 

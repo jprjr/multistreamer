@@ -480,7 +480,7 @@ function M.notify_update(account, stream)
 
   local stream_info, err = yt:get('/liveStreams', {
     id = stream_id,
-    part = 'status',
+    part = 'id,status',
   })
 
   if err then
@@ -546,24 +546,37 @@ function M.check_errors(account)
   return false,nil
 end
 
-function M.get_view_count(account, stream)
-  local httpc = http.new()
+function M.create_viewcount_func(account,stream,send)
+  local refresh_token = account['refresh_token']
 
-  local url = 'https://www.youtube.com/live_stats?v=' .. stream['broadcast_id']
-  local res, err = httpc:request_uri(url , {
-    method = 'GET',
-  })
+  local access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
 
-  if err then
-    return nil, err
+  if not send then
+    return nil
   end
 
-  if res.status >= 400 then
-    return nil, res.body
+  return function()
+    while true do
+      access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+      if access_token then
+        local yt = youtube_client(access_token)
+        local res, err = yt:get('/videos',{
+          part = 'id,liveStreamingDetails',
+          id = stream['broadcast_id']
+        })
+        if res then
+          local viewer_count = tonumber(res.items[1].liveStreamingDetails.concurrentViewers)
+          if not viewer_count then
+            viewer_count = 0
+          end
+          send({viewer_count = viewer_count})
+        end
+      end
+      ngx.sleep(60)
+    end
   end
-
-  return tonumber(res.body)
 end
+
 
 function M.create_comment_funcs(account, stream, send)
   local read_func = nil

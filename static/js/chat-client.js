@@ -16,44 +16,10 @@ var curAccount;
 var tarAccount;
 var ws;
 var live = false;
-var refresher;
 var scroller = zenscroll.createScroller(chatMessages);
 
 function atBottom(elem) {
     return elem.scrollHeight - elem.scrollTop === elem.clientHeight;
-}
-
-function buildRefreshTimer() {
-    while(chatViewers.firstChild) {
-        chatViewers.removeChild(chatViewers.firstChild);
-    }
-    var el = document.createElement('div');
-    var sp = document.createElement('span');
-    sp.className = 'live';
-    sp.innerHTML = 'Live';
-    el.appendChild(sp);
-    chatViewers.appendChild(el);
-
-    refresher = function() {
-        if (live === true) {
-            ws.send(JSON.stringify({
-                type: 'viewcount',
-            }));
-            setTimeout(refresher,60 * 1000);
-        }
-        else {
-            while(chatViewers.firstChild) {
-                chatViewers.removeChild(chatViewers.firstChild);
-            }
-            var el = document.createElement('div');
-            var sp = document.createElement('span');
-            sp.className = 'offline';
-            sp.innerHTML = 'Offline';
-            el.appendChild(sp);
-            chatViewers.appendChild(el);
-        }
-    };
-    refresher();
 }
 
 function buildChatPickerList(accounts) {
@@ -281,15 +247,59 @@ function updateAccountList(accounts) {
     accountList = [];
     Object.keys(accounts).forEach(function(id) {
         accounts[id].id = parseInt(id,10);
+        accounts[id].viewer_count = null;
         accountList.push(accounts[id]);
     });
     accountList.sort(function(a,b) {
-        var netSort = a.network.localeCompare(b.network);
+        var netSort = a.network.displayName.localeCompare(b.network.displayName);
         if(netSort == 0) {
             return a.name.localeCompare(b.name);
         }
         return netSort;
     });
+}
+
+function updateViewCountResult(data) {
+   while(chatViewers.firstChild) {
+       chatViewers.removeChild(chatViewers.firstChild);
+   }
+   var live_div = document.createElement('div');
+   var live_sp = document.createElement('span');
+
+   if(live) {
+       live_sp.className = 'live';
+       live_sp.innerHTML = 'Live';
+       live_div.appendChild(live_sp);
+       chatViewers.appendChild(live_div);
+
+       accountList.forEach(function(v) {
+           if(v.live === true) {
+               var count = 'unknown';
+               var displayName = v.network.displayName;
+
+               if (data !== undefined && v.id === data.account_id) {
+                 v.viewer_count = data.viewer_count
+               }
+               var el = document.createElement('div');
+               var sp = document.createElement('span');
+               if(v.viewer_count !== null) {
+                   count = v.viewer_count;
+               }
+               if(v.http_url !== undefined) {
+                 displayName = '<a href="' + v.http_url + '" target="_new">' + displayName + '</a>';
+               }
+               sp.innerHTML = displayName + ': ' + count;
+               el.appendChild(sp);
+               chatViewers.appendChild(el);
+           }
+       });
+   }
+   else {
+       live_sp.className = 'offline';
+       live_sp.innerHTML = 'Offline';
+       live_div.appendChild(live_sp);
+       chatViewers.appendChild(live_div);
+    }
 }
 
 function start_chat(endpoint) {
@@ -315,40 +325,7 @@ function start_chat(endpoint) {
         appendMessage(data);
     }
     if(data.type === 'viewcountresult') {
-        while(chatViewers.firstChild) {
-            chatViewers.removeChild(chatViewers.firstChild);
-        }
-        var live_div = document.createElement('div');
-        var live_sp = document.createElement('span');
-
-        if(live) {
-            live_sp.className = 'live';
-            live_sp.innerHTML = 'Live';
-            live_div.appendChild(live_sp);
-            chatViewers.appendChild(live_div);
-            data.viewcounts.sort(function(a,b) {
-                return a.network.displayname.localeCompare(b.network.displayname);
-            });
-            data.viewcounts.forEach(function(v) {
-                var el = document.createElement('div');
-                var sp = document.createElement('span');
-                if(v.viewcount === undefined) {
-                    v.viewcount = 'unknown';
-                }
-                if(v.http_url) {
-                  v.network.displayname = '<a href="' + v.http_url + '" target="_new">' + v.network.displayname + '</a>';
-                }
-                sp.innerHTML = v.network.displayname + ': ' + v.viewcount;
-                el.appendChild(sp);
-                chatViewers.appendChild(el);
-            });
-        }
-        else {
-            live_sp.className = 'offline';
-            live_sp.innerHTML = 'Offline';
-            live_div.appendChild(live_sp);
-            chatViewers.appendChild(live_div);
-        }
+        updateViewCountResult(data);
     }
     if(data.type === 'writerresult') {
         var inputElement = buildChatBox(curAccount,tarAccount)
@@ -365,8 +342,8 @@ function start_chat(endpoint) {
         if(data.status === 'live') {
             live = true;
             updateAccountList(data.accounts);
+            updateViewCountResult();
             buildChatInput(null);
-            buildRefreshTimer();
         }
         else if(data.status === 'end') {
             live = false;

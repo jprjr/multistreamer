@@ -24,7 +24,6 @@ ChatMgr.new = function()
     [endpoint('stream:start')] = ChatMgr.handleStreamStart,
     [endpoint('stream:end')] = ChatMgr.handleStreamEnd,
     [endpoint('stream:writer')] = ChatMgr.handleChatWriterRequest,
-    [endpoint('stream:viewcount')] = ChatMgr.handleViewCountRequest,
     [endpoint('comment:out')] = ChatMgr.handleCommentOut,
   }
   setmetatable(t,ChatMgr)
@@ -57,44 +56,7 @@ function ChatMgr:run()
   end
 end
 
-function ChatMgr:handleViewCountRequest(msg)
-  if msg.worker ~= ngx.worker.pid() then
-    return nil
-  end
 
-  local sas
-
-  if msg.account_id then
-    sas = { StreamAccount:find({ stream_id = msg.stream_id, account_id = msg.account_id }) }
-  else
-    sas = StreamAccount:select('where stream_id = ?', msg.stream_id)
-  end
-  StreamAccount:preload_relation(sas,'account')
-
-  local result = {
-    stream_id = msg.stream_id,
-    viewcounts = {},
-  }
-  for i,sa in ipairs(sas) do
-    local account = sa:get_account()
-    account.network = networks[account.network]
-    local http_url = sa:get('http_url')
-
-    if account.network.get_view_count then
-      insert(result.viewcounts, {
-        account_id = account.id,
-        viewcount = account.network.get_view_count(account:get_all(),sa:get_all()),
-        http_url = http_url,
-        network = {
-          name = account.network.name,
-          displayname = account.network.displayname,
-        }
-      })
-    end
-  end
-
-  publish('stream:viewcountresult',result)
-end
 
 function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
   local t = {
@@ -125,6 +87,15 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
     relay
   )
 
+  local viewcount_func = account.network.create_viewcount_func(
+    account:get_keystore():get_all(),
+    sa:get_keystore():get_all(),
+    function(data)
+      data.stream_id = stream.id
+      data.account_id = account.id
+      publish('stream:viewcountresult',data)
+  end)
+
   if read_func then
     self.streams[stream.id][tarAccount.id].aux[account.id].read_thread = ngx.thread.spawn(read_func)
     t.read_started = true
@@ -134,6 +105,11 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
     self.streams[stream.id][tarAccount.id].aux[account.id].send = write_func
     t.write_started = true
   end
+
+  if viewcount_func then
+    self.streams[stream.id][tarAccount.id].aux[account.id].viewcount_thread = ngx.thread.spawn(viewcount_func)
+  end
+
 
   ngx.shared.writers:set(stream.id .. '-' .. tarAccount.id .. '-' .. account.id, to_json(t))
 
@@ -239,6 +215,9 @@ function ChatMgr:handleStreamEnd(msg)
         for i,j in pairs(v.aux) do
           if j and j.read_thread then
             ngx.thread.kill(j.read_thread)
+          end
+          if j and j.viewcount_thread then
+            ngx.thread.kill(j.viewcount_thread)
           end
           j.send = nil
           ngx.shared.writers:set(stream.id .. '-' .. k .. '-' .. i, nil)

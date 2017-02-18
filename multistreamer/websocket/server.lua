@@ -17,7 +17,10 @@ local function add_account(l_networks,msg,accounts,account)
   if not accounts[account.id] and l_networks[account.network] then
     local id_string = string.format('%d',account.id)
     msg.accounts[id_string] = {
-      network = account.network,
+      network = {
+        ['displayName'] = networks[account.network].displayname,
+        ['name'] = account.network,
+      },
       name = account.name,
       ready = false,
       live = false,
@@ -156,11 +159,15 @@ function Server:send_stream_status(ok)
     local sa = StreamAccount:find({ stream_id = self.stream.id, account_id = id })
     local id_string = string.format('%d',id)
     msg.accounts[id_string] = {
-      network = v.network,
+      network = {
+        ['name'] = v.network,
+        ['displayName'] = networks[v.network].displayname,
+      },
       name = v.name,
       ready = true,
       live = true,
       writable = false,
+      http_url = sa:get('http_url'),
     }
     if networks[v.network].write_comments and self.chat_level == 2 then
       msg.accounts[id_string].writable = true
