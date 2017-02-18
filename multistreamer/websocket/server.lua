@@ -97,14 +97,17 @@ function Server:websocket_relay()
     if not data and not typ then
       if self.ws.fatal then
         return nil, err
+      else
+        ngx.log(ngx.DEBUG,'sending ping')
+        self.ws:send_ping('ping')
       end
 
     elseif typ == 'close' then
       self.ws:send_close()
       return true, nil
 
-    elseif typ == 'ping' then
-      self.ws:send_pong(data)
+    elseif typ == 'pong' then
+      ngx.log(ngx.DEBUG,'received pong')
 
     elseif typ == 'text' then
       local msg = from_json(data)
@@ -194,7 +197,7 @@ function Server:send_stream_status(ok)
 end
 
 function Server:run()
-  local ws, err = ws_server:new()
+  local ws, err = ws_server:new({ timeout = 30000 })
 
   if err then
     ngx.log(ngx.ERR, 'websocket err ' .. err)
