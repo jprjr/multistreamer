@@ -380,8 +380,9 @@ end)
 
 app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_to({
   before = function(self)
-    if not require_login(self) then
-      return { redirect_to = 'login' }
+    local ok, err = require_login(self)
+    if not ok then
+      return err_out(self,err)
     end
     local stream = Stream:find({ id = self.params.id })
     if not stream then
@@ -412,9 +413,11 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
 
 app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
   before = function(self)
-    if not require_login(self) then
-      return { redirect_to = 'login' }
+    local ok, err = require_login(self)
+    if not ok then
+      return err_out(self,err)
     end
+
     local stream = Stream:find({ id = self.params.id })
     if not stream then
       return err_out(self, 'Not authorized to view this chat')
@@ -455,8 +458,9 @@ app:match('stream-ws', config.http_prefix .. '/ws/:id',respond_to({
 
 app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond_to({
   before = function(self)
-    if not require_login(self) then
-      return { redirect_to = 'login' }
+    local ok, err = require_login(self)
+    if not ok then
+      return err_out(self,err)
     end
     local account = Account:find({ id = self.params.id })
     if not account or not account:check_owner(self.user) then
@@ -508,8 +512,9 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
 
 app:match('stream-share',config.http_prefix .. '/stream/:id/share', respond_to({
   before = function(self)
-    if not require_login(self) then
-      return { redirect_to = 'login' }
+    local ok, err = require_login(self)
+    if not ok then
+      return err_out(self,err)
     end
     local stream = Stream:find({ id = self.params.id })
     if not stream or not stream:check_owner(self.user) then
@@ -560,9 +565,11 @@ app:match('stream-share',config.http_prefix .. '/stream/:id/share', respond_to({
 
 app:match('account-share', config.http_prefix .. '/account/:id/share', respond_to({
   before = function(self)
-    if not require_login(self) then
-      return { redirect_to = 'login' }
+    local ok, err = require_login(self)
+    if not ok then
+      return err_out(self,err)
     end
+
     local account = Account:find({ id = self.params.id })
     if not account or not account:check_owner(self.user) or not networks[account.network].allow_sharing then
       return err_out(self,'Not authorized to share that account')
