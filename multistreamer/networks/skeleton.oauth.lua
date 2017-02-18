@@ -179,4 +179,8 @@ function M.create_comment_funcs(account, stream, send)
   return nil,nil
 end
 
+function M.create_viewcount_func(account, stream, send)
+  return nil,nil
+end
+
 return M
