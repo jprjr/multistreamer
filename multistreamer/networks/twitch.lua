@@ -296,7 +296,11 @@ local function emojify(message,emotes)
   end
   sort(keys)
   for i,k in ipairs(keys) do
-    insert(outmsg,msgTable[k])
+    local text = msgTable[k]
+    if text:len() == 1 then
+      text = text:escape_markdown()
+    end
+    insert(outmsg,text)
   end
   return table.concat(outmsg,'')
 end

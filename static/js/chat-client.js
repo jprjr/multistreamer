@@ -36,10 +36,10 @@ function buildChatPickerList(accounts) {
 
     if(accounts !== undefined && accounts !== null) {
         accounts.forEach(function(account) {
-            if(icons[account.network] && account.writable === true) {
+            if(icons[account.network.name] && account.writable === true) {
                 var chatPicker = document.createElement('div');
                 chatPicker.className = 'chatpicker';
-                chatPicker.innerHTML = icons[account.network] + '<p>' + account.name + '</p>';
+                chatPicker.innerHTML = icons[account.network.name] + '<p>' + account.name + '</p>';
                 chatPicker.onclick = function() {
                     buildChatInput(account);
                 };
@@ -112,7 +112,7 @@ function buildChatInput(account) {
     var inputElement;
 
     if(account !== null) {
-        nameElement.innerHTML = icons[account.network] + '<p>' + account.name + '</p>';
+        nameElement.innerHTML = icons[account.network.name] + '<p>' + account.name + '</p>';
         curAccount = account; // the 'from' account
         if(account.ready === true) {
             inputElement = buildChatBox(account, account);
@@ -122,7 +122,7 @@ function buildChatInput(account) {
         else {
             var liveAccounts = []
             accountList.forEach(function(a) {
-              if(a.live === true && a.network.localeCompare(account.network) === 0) {
+              if(a.live === true && a.network.displayName.localeCompare(account.network.displayName) === 0) {
                   liveAccounts.push(a);
               }
             });
@@ -157,7 +157,7 @@ function buildChatInput(account) {
                     liveAccounts.forEach(function(a) {
                       if (a.id === parseInt(inputElement.value,10)) {
                         tarAccount = a;
-                        nameElement.innerHTML = icons[account.network] + '<p>' + account.name + ' -> ' + a.name + '</p>';
+                        nameElement.innerHTML = icons[account.network.name] + '<p>' + account.name + ' -> ' + a.name + '</p>';
                       }
                     });
                     ws.send(JSON.stringify({
