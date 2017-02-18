@@ -608,6 +608,7 @@ function M.create_comment_funcs(account, stream, send)
                   id = v.authorDetails.channelId,
                 },
                 text = v.snippet.textMessageDetails.messageText,
+                markdown = v.snippet.textMessageDetails.messageText:escape_markdown()
               })
             end
             sleeptime = ceil(res.pollingIntervalMillis/1000)

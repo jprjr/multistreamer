@@ -606,6 +606,7 @@ function M.create_comment_funcs(account, stream, send)
                 id = v.from.id,
               },
               text = v.message,
+              markdown = v.message:escape_markdown(),
             })
           end
         end
