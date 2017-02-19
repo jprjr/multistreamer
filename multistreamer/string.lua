@@ -23,7 +23,7 @@ function string:to_table()
   local res = {}
   local max = self:len()
   for i=1,max,1 do
-    res[i] = char(self:byte(i))
+    res[i] = self:sub(i,i)
   end
   return res
 end

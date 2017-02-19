@@ -24,10 +24,13 @@ local from_json = require('lapis.util').from_json
 local WebsocketServer = require'multistreamer.websocket.server'
 
 local tonumber = tonumber
+local pairs = pairs
 local len = string.len
 local insert = table.insert
 local sort = table.sort
 local streams_dict = ngx.shared.streams
+
+local pid = ngx.worker.pid()
 
 app:enable('etlua')
 app.layout = require'views.layout'
@@ -254,7 +257,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     -- just going to ignore any errors
     local ok, err = streams_dict:set(stream.id,true)
     publish('stream:start', {
-      worker = ngx.worker.pid(),
+      worker = pid,
       id = stream.id,
     })
 
@@ -350,7 +353,7 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   end
 
   for k,v in pairs(self.streams) do
-    local ok = ngx.shared.streams:get(v.id)
+    local ok = streams_dict:get(v.id)
     if ok then
       v.live = true
     else

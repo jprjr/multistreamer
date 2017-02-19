@@ -2,6 +2,7 @@ local db = require'lapis.db'
 local date = db.format_date
 local time = os.time
 local insert = table.insert
+local pairs = pairs
 
 local Keystore = {}
 

@@ -4,6 +4,9 @@ local table_sort = table.sort
 local pairs = pairs
 local pcall = pcall
 
+local ngx_log = ngx.log
+local ngx_err = ngx.ERR
+
 local M = {}
 local networks = {}
 
@@ -17,7 +20,7 @@ for k,v in pairs(config.networks) do
       networks[k].redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/' .. k
     end
   else
-    ngx.log(ngx.ERR,helper)
+    ngx_log(ngx_err,helper)
   end
 end
 

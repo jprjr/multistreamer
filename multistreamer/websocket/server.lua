@@ -7,6 +7,22 @@ local subscribe = redis.subscribe
 local publish = redis.publish
 local endpoint = redis.endpoint
 
+local ngx_log = ngx.log
+local ngx_eof = ngx.eof
+local ngx_exit = ngx.exit
+local ngx_error = ngx.ERROR
+local ngx_debug = ngx.DEBUG
+local ngx_err = ngx.ERR
+local ngx_ok = ngx.OK
+
+local setmetatable = setmetatable
+local format = string.format
+local pairs = pairs
+local coro_status = coroutine.status
+local kill = ngx.thread.kill
+local spawn = ngx.thread.spawn
+local streams = ngx.shared.streams
+
 local StreamAccount = require'models.stream_account'
 local Account = require'models.account'
 
@@ -15,7 +31,7 @@ Server.__index = Server
 
 local function add_account(l_networks,msg,accounts,account)
   if not accounts[account.id] and l_networks[account.network] then
-    local id_string = string.format('%d',account.id)
+    local id_string = format('%d',account.id)
     msg.accounts[id_string] = {
       network = {
         ['displayName'] = networks[account.network].displayname,
@@ -98,7 +114,7 @@ function Server:websocket_relay()
       if self.ws.fatal then
         return nil, err
       else
-        ngx.log(ngx.DEBUG,'sending ping')
+        ngx_log(ngx_debug,'sending ping')
         self.ws:send_ping('ping')
       end
 
@@ -107,18 +123,19 @@ function Server:websocket_relay()
       return true, nil
 
     elseif typ == 'pong' then
-      ngx.log(ngx.DEBUG,'received pong')
+      ngx_log(ngx_debug,'received pong')
 
     elseif typ == 'text' then
       local msg = from_json(data)
       if msg.type == 'status' then
-        local ok = ngx.shared.streams:get(self.stream.id)
+        local ok = streams:get(self.stream.id)
         if not ok then
             ok = false
         end
         self:send_stream_status(ok)
       elseif msg.type == 'comment' then
         publish('comment:out', {
+          ['type'] = msg.comment_type,
           stream_id = self.stream.id,
           account_id = msg.account_id,
           cur_stream_account_id = msg.cur_stream_account_id,
@@ -160,7 +177,7 @@ function Server:send_stream_status(ok)
   for id,v in pairs(accounts) do
     l_networks[v.network] = true
     local sa = StreamAccount:find({ stream_id = self.stream.id, account_id = id })
-    local id_string = string.format('%d',id)
+    local id_string = format('%d',id)
     msg.accounts[id_string] = {
       network = {
         ['name'] = v.network,
@@ -200,29 +217,29 @@ function Server:run()
   local ws, err = ws_server:new({ timeout = 30000 })
 
   if err then
-    ngx.log(ngx.ERR, 'websocket err ' .. err)
-    ngx.eof()
-    ngx.exit(ngx.ERROR)
+    ngx_log(ngx_err, 'websocket err ' .. err)
+    ngx_eof()
+    ngx_exit(ngx_error)
     return
   end
 
   self.ws = ws
 
-  local write_thread = ngx.thread.spawn(Server.redis_relay,self)
-  local read_thread = ngx.thread.spawn(Server.websocket_relay,self)
+  local write_thread = spawn(Server.redis_relay,self)
+  local read_thread  = spawn(Server.websocket_relay,self)
 
   local ok, write_res, read_res = ngx.thread.wait(write_thread,read_thread)
-  if coroutine.status(write_thread) == 'running' then
-    ngx.thread.kill(write_thread)
+  if coro_status(write_thread) == 'running' then
+    kill(write_thread)
   end
-  if coroutine.status(read_thread) == 'running' then
-    ngx.thread.kill(read_thread)
+  if coro_status(read_thread) == 'running' then
+    kill(read_thread)
   end
 
   self.ws:send_close()
 
-  ngx.eof()
-  ngx.exit(ngx.OK)
+  ngx_eof()
+  ngx_exit(ngx_ok)
 end
 
 return Server

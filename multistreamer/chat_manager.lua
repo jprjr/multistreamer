@@ -13,6 +13,16 @@ local StreamAccount = require'models.stream_account'
 local setmetatable = setmetatable
 local insert = table.insert
 local tonumber = tonumber
+local pairs = pairs
+
+local ngx_err = ngx.ERR
+local ngx_error = ngx.ERROR
+local ngx_log = ngx.log
+local ngx_exit = ngx.exit
+local writers = ngx.shared.writers
+local pid = ngx.worker.pid()
+local kill = ngx.thread.kill
+local spawn = ngx.thread.spawn
 
 local ChatMgr = {}
 ChatMgr.__index = ChatMgr
@@ -34,8 +44,8 @@ function ChatMgr:run()
   local running = true
   local ok, red = subscribe('stream:start')
   if not ok then
-    ngx.log(ngx.ERR,'[Chat Manager] Unable to connect to redis: ' .. red)
-    ngx.exit(ngx.ERROR)
+    ngx_log(ngx_err,'[Chat Manager] Unable to connect to redis: ' .. red)
+    ngx_exit(ngx_error)
   end
   subscribe('stream:end',red)
   subscribe('stream:writer',red)
@@ -44,8 +54,8 @@ function ChatMgr:run()
   while(running) do
     local res, err = red:read_reply()
     if err and err ~= 'timeout' then
-      ngx.log(ngx.ERR,'[Chat Manager] Redis Disconnected!')
-      ngx.exit(ngx.ERROR)
+      ngx_log(ngx_err,'[Chat Manager] Redis Disconnected!')
+      ngx_exit(ngx_error)
     end
     if res then
       local func = self.messageFuncs[res[2]]
@@ -97,7 +107,7 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
   end)
 
   if read_func then
-    self.streams[stream.id][tarAccount.id].aux[account.id].read_thread = ngx.thread.spawn(read_func)
+    self.streams[stream.id][tarAccount.id].aux[account.id].read_thread = spawn(read_func)
     t.read_started = true
   end
 
@@ -107,17 +117,16 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
   end
 
   if viewcount_func then
-    self.streams[stream.id][tarAccount.id].aux[account.id].viewcount_thread = ngx.thread.spawn(viewcount_func)
+    self.streams[stream.id][tarAccount.id].aux[account.id].viewcount_thread = spawn(viewcount_func)
   end
 
-
-  ngx.shared.writers:set(stream.id .. '-' .. tarAccount.id .. '-' .. account.id, to_json(t))
+  writers:set(stream.id .. '-' .. tarAccount.id .. '-' .. account.id, to_json(t))
 
   return t
 end
 
 function ChatMgr:handleChatWriterRequest(msg)
-  if msg.worker ~= ngx.worker.pid() then
+  if msg.worker ~= pid then
     return nil
   end
 
@@ -132,7 +141,7 @@ function ChatMgr:handleChatWriterRequest(msg)
 
   -- check if there's a writer already running
   local writer_id = msg.stream_id .. '-' .. msg.cur_stream_account_id .. '-' .. msg.account_id
-  local writer_info_raw = ngx.shared.writers:get(writer_id)
+  local writer_info_raw = writers:get(writer_id)
   if writer_info_raw then
     local t = from_json(writer_info_raw)
     t.user_id = msg.user_id
@@ -154,7 +163,7 @@ function ChatMgr:handleChatWriterRequest(msg)
 end
 
 function ChatMgr:handleStreamStart(msg)
-  if msg.worker ~= ngx.worker.pid() then
+  if msg.worker ~= pid then
     return nil
   end
   local stream = Stream:find({id = msg.id})
@@ -188,7 +197,7 @@ function ChatMgr:handleStreamStart(msg)
     local t = self:createChatFuncs(stream,account,account,relay)
     local writer_id = stream.id .. '-' .. account.id .. '-' .. account.id
 
-    ngx.shared.writers:set(writer_id, to_json(t))
+    writers:set(writer_id, to_json(t))
   end
 end
 
@@ -199,7 +208,7 @@ function ChatMgr:handleCommentOut(msg)
      self.streams[msg.stream_id][msg.cur_stream_account_id] and
      self.streams[msg.stream_id][msg.cur_stream_account_id].aux[msg.account_id] and
      self.streams[msg.stream_id][msg.cur_stream_account_id].aux[msg.account_id].send then
-    self.streams[msg.stream_id][msg.cur_stream_account_id].aux[msg.account_id].send(msg.text)
+    self.streams[msg.stream_id][msg.cur_stream_account_id].aux[msg.account_id].send(msg)
   end
 end
 
@@ -214,13 +223,13 @@ function ChatMgr:handleStreamEnd(msg)
       if v then
         for i,j in pairs(v.aux) do
           if j and j.read_thread then
-            ngx.thread.kill(j.read_thread)
+            kill(j.read_thread)
           end
           if j and j.viewcount_thread then
-            ngx.thread.kill(j.viewcount_thread)
+            kill(j.viewcount_thread)
           end
           j.send = nil
-          ngx.shared.writers:set(stream.id .. '-' .. k .. '-' .. i, nil)
+          writers:set(stream.id .. '-' .. k .. '-' .. i, nil)
         end
       end
       self.streams[stream.id][k] = nil

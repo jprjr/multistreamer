@@ -83,6 +83,7 @@ function buildChatBox(account, target_account) {
             inputElement.value = '';
             ws.send(JSON.stringify({
                 type: 'comment',
+                comment_type: 'text',
                 account_id: account_id,
                 cur_stream_account_id: target_id,
                 text: msg

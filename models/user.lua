@@ -4,6 +4,10 @@ local http = require'resty.http'
 local encode_base64 = ngx.encode_base64
 local hmac_sha1 = ngx.hmac_sha1
 
+local ngx_log = ngx.log
+local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
+
 local User = Model:extend('users', {
   timestamp = true,
   relations = {
@@ -24,7 +28,7 @@ function User:login(username,password)
   local error = nil
   local user = nil
 
-  ngx.log(ngx.DEBUG, 'checking if username is valid with auth_endpoint');
+  ngx_log(ngx_debug, 'checking if username is valid with auth_endpoint');
 
   local httpc = http.new()
   local res, err = httpc:request_uri(config.auth_endpoint, {
@@ -34,16 +38,16 @@ function User:login(username,password)
     }
   })
   if not res then
-    ngx.log(ngx.ERR, 'User: login - connection failed: ' .. err)
+    ngx_log(ngx_err, 'User: login - connection failed: ' .. err)
     error = err
   elseif(res.status >= 200 and res.status < 300) then
-    ngx.log(ngx.DEBUG, 'login succeeded');
+    ngx_log(ngx_debug, 'login succeeded');
     user = self:find({ username = username:lower() })
     if not user then
       user = self:create({username = username:lower() })
     end
   else
-    ngx.log(ngx.DEBUG, 'login failed');
+    ngx_log(ngx_debug, 'login failed');
   end
 
   return user, error

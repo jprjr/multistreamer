@@ -13,10 +13,19 @@ local string = require'multistreamer.string'
 
 local insert = table.insert
 local remove = table.remove
+local concat = table.concat
 local char = string.char
 local find = string.find
 local len = string.len
 local sub = string.sub
+local pairs = pairs
+local ipairs = ipairs
+local ngx_log = ngx.log
+local ngx_exit = ngx.exit
+local ngx_error = ngx.ERROR
+local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
+local coro_status = coroutine.status
 local unpack = unpack
 if not unpack then
   unpack = table.unpack
@@ -156,7 +165,7 @@ function IRCServer:run()
 
   local ok, red = subscribe('irc:events:login')
   if not ok then
-    ngx.exit(ngx.ERROR)
+    ngx_exit(ngx_error)
   end
   subscribe('irc:events:logout',red)
   subscribe('irc:events:join',red)
@@ -176,7 +185,7 @@ function IRCServer:run()
     while true do
       local res, err = red:read_reply()
       if err and err ~= 'timeout' then
-        ngx.log(ngx.ERR,'[IRC] Redis disconnected!')
+        ngx_log(ngx_err,'[IRC] Redis disconnected!')
         self.ready = false
         return false
       end
@@ -195,7 +204,7 @@ function IRCServer:run()
         local data, err, partial = self.socket:receive('*l')
         local msg
         if data then
-          ngx.log(ngx.DEBUG,data)
+          ngx_log(ngx_debug,data)
           msg = irc.parse_line(data)
         elseif partial then
           msg = irc.parse_line(partial)
@@ -206,7 +215,7 @@ function IRCServer:run()
         if not err or err ~= 'timeout' then
           local ok, err = self:processClientMessage(self.user.nick,msg)
           if not ok then
-            ngx.log(ngx.ERR,'[IRC] ' .. err)
+            ngx_log(ngx_err,'[IRC] ' .. err)
             return
           end
         end
@@ -228,7 +237,7 @@ function IRCServer:run()
     end
 
     local ok, irc_res, red_res = ngx.thread.wait(irc_func,red_func)
-    if coroutine.status(red_func) == 'dead' then
+    if coro_status(red_func) == 'dead' then
       ngx.thread.kill(irc_func)
     else
       ngx.thread.kill(red_func)
@@ -253,9 +262,9 @@ function IRCServer:run()
     end
     local ok, res = ngx.thread.wait(red_func)
     if res == false then
-      ngx.exit(ngx.ERROR)
+      ngx_exit(ngx_error)
     end
-    ngx.exit(ngx.OK)
+    ngx_exit(ngx.OK)
   end
 end
 
@@ -302,20 +311,21 @@ function IRCServer:processWriterResult(update)
     accountUsername = slugify(account.network.name) .. '-' .. account.slug .. '-' .. og_account.slug
   end
 
-  self.users[accountUsername] = {
-    user = {
-      nick = accountUsername,
-      username = accountUsername,
-      realname = accountUsername,
-    },
-    account_id = account.id,
-    cur_stream_account_id = og_account.id,
-    network = account.network,
-  }
-  if self.rooms[roomName] and self.rooms[roomName].users then
-    self.rooms[roomName].users[accountUsername] = true
+  if not self.users[accountUsername] then
+    self.users[accountUsername] = {
+      user = {
+        nick = accountUsername,
+        username = accountUsername,
+        realname = accountUsername,
+      },
+      account_id = account.id,
+      cur_stream_account_id = og_account.id,
+      network = account.network,
+    }
   end
-  if self.rooms[roomName] and self.rooms[roomName].users then
+
+  if not self.rooms[roomName].users[accountUsername] then
+    self.rooms[roomName].users[accountUsername] = true
     for u,user in pairs(self.rooms[roomName].users) do
       if self.users[u] and self.users[u].socket then
         self:sendRoomJoin(u,accountUsername,roomName)
@@ -995,11 +1005,26 @@ function IRCServer:botCommandHelp(nick,room,cmd)
 end
 
 function IRCServer:relayMessage(nick,room,message)
+  local t = 'text'
+  local message = message
+
+  -- check if this is a CTCP ACTION (aka emote)
+  if message:byte(1) == 1 then
+    local m = message:sub(2,message:len()-1)
+    local p = m:split(' ')
+    if p[1] == 'ACTION' then
+      t = 'emote'
+      message = concat(p,' ',2)
+    end
+  end
+
   if(message:sub(1,1) == '@') then
     message = message:sub(2)
   end
+
   local i = message:find(' ')
   if not i then return end
+
   local username = message:sub(1,i-1):lower()
   username = username:gsub('[^a-z]$','')
   local msg = message:sub(i+1)
@@ -1012,6 +1037,7 @@ function IRCServer:relayMessage(nick,room,message)
     if user_ok or chat_level == 2 then
       if self.users[username].network.write_comments then
         local t = {
+          ['type'] = t,
           stream_id = self.rooms[room].stream_id,
           account_id = self.users[username].account_id,
           cur_stream_account_id = self.users[username].cur_stream_account_id,
@@ -1149,7 +1175,7 @@ end
 function IRCServer:sendFromClient(to,from,...)
   local full_from = from .. '!' .. from .. '@' .. config.irc_hostname
   local msg = irc.format_line(':'..full_from,...)
-  ngx.log(ngx.DEBUG,msg)
+  ngx_log(ngx_debug,msg)
   local bytes, err = self.users[to].socket:send(msg .. '\r\n')
   if not bytes then
     return false, err
@@ -1166,7 +1192,7 @@ end
 function IRCServer:sendFromServer(nick,...)
   local msg = irc.format_line(':' .. config.irc_hostname,...)
   if self.users[nick] and self.users[nick].socket then
-    ngx.log(ngx.DEBUG,msg)
+    ngx_log(ngx_debug,msg)
     local bytes, err = self.users[nick].socket:send(msg .. '\r\n')
     if not bytes then
       return false, err
@@ -1215,7 +1241,7 @@ function IRCServer.startClient(sock,server)
       msg = irc.parse_line(partial)
     end
     if err then
-      ngx.exit(ngx.ERROR)
+      ngx_exit(ngx_error)
     end
 
     if msg.command == 'PASS' then

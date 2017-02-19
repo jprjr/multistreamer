@@ -2,6 +2,9 @@ local config = require'multistreamer.config'
 local redis = require'resty.redis'
 local to_json = require('lapis.util').to_json
 
+local ngx_log = ngx.log
+local ngx_err = ngx.err
+
 local M = {}
 
 M.endpoint = function(point)
@@ -12,7 +15,7 @@ M.publish = function(point,message)
   local red = redis.new()
   local ok, err = red:connect(config.redis_host)
   if not ok then
-    ngx.log(ngx.ERR,'Unable to connect to redis: ' .. err)
+    ngx_log(ngx_err,'Unable to connect to redis: ' .. err)
     return false, err
   end
   local ok, err = red:publish(M.endpoint(point), to_json(message))
@@ -26,7 +29,7 @@ M.subscribe = function(point,red)
     red = redis.new()
     local ok, err = red:connect(config.redis_host)
     if not ok then
-      ngx.log(ngx.ERR,'Unable to connect to redis: ' .. err)
+      ngx_log(ngx_err,'Unable to connect to redis: ' .. err)
       return false, err
     end
   end

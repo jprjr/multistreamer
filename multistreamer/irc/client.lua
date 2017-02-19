@@ -14,12 +14,16 @@ end
 local remove = table.remove
 local concat = table.concat
 
+local ngx_log = ngx.log
+local ngx_debug = ngx.DEBUG
+local ngx_err = ngx.ERR
+
 local IRCClient = {}
 IRCClient.__index = IRCClient
 
 local function ircline(...)
   local line = irc.format_line(...)
-  ngx.log(ngx.DEBUG,line)
+  ngx_log(ngx_debug,line)
   return line .. '\r\n'
 end
 
@@ -119,13 +123,13 @@ function IRCClient:login(nickname,username,realname,password)
   while(logging_in) do
     local data, err, partial = self.socket:receive('*l')
     if err then
-      ngx.log(ngx.ERR,err)
+      ngx_log(ngx_err,err)
       self:emitEvent('error',err)
       return false, err
     end
 
     if data then
-      ngx.log(ngx.DEBUG,data)
+      ngx_log(ngx_debug,data)
     end
 
     local msg = irc.parse_line(data)
@@ -179,7 +183,7 @@ function IRCClient:cruise()
     end
     local msg
     if data then
-      ngx.log(ngx.DEBUG,data)
+      ngx_log(ngx_debug,data)
       msg = irc.parse_line(data)
     else
       msg = irc.parse_line(partial)

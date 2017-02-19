@@ -5,6 +5,7 @@ local find = string.find
 local len  = string.len
 local insert = table.insert
 local ipairs = ipairs
+local type = type
 
 local IRC = {}
 IRC.__index = IRC

@@ -388,27 +388,21 @@ function M.create_comment_funcs(account, stream, send)
   end
 
   local write_func = function(message)
-    irc:message(channel,message)
+    if message.type == 'text' then
+      irc:message(channel,message.text)
+    elseif message.type == 'emote' then
+      irc:emote(channel,message.text)
+    end
     -- we don't get messages echo'd back
     -- from IRC, so we'll echo on our own here
     if send then
-      local t = 'text'
-      local message = message
-      if message:byte(1) == 1 then
-        message = msg.args[2]:sub(2,msg.args[2]:len()-1)
-        local parts = message:split(' ')
-        if parts[1] == 'ACTION' then
-          t = 'emote'
-          message = concat(parts,' ',2)
-        end
-      end
       local msg = {
         from = {
           name = account.channel,
         },
-        text = message,
-        markdown = message,
-        type = t,
+        text = message.text,
+        markdown = message.text:escape_markdown(),
+        type = message.type,
       }
       send(msg)
     end

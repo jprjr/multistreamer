@@ -624,7 +624,8 @@ function M.create_comment_funcs(account, stream, send)
                   name = v.name,
                   id = v.id,
                 },
-                text = textify(v.type)
+                text = textify(v.type),
+                markdown = textify(v.type):escape_markdown(),
               })
             end
           end

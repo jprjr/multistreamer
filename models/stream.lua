@@ -5,6 +5,7 @@ local StreamAccount = require'models.stream_account'
 local SharedStream = require'models.shared_stream'
 local format = string.format
 local slugify = require('lapis.util').slugify
+local pairs = pairs
 
 local Stream = Model:extend('streams', {
   timestamp = true,

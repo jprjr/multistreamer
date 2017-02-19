@@ -619,7 +619,7 @@ function M.create_comment_funcs(account, stream, send)
     end
   end
 
-  local write_func = function(text)
+  local write_func = function(message)
     access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
     if access_token then
       local yt = youtube_client(access_token)
@@ -631,7 +631,7 @@ function M.create_comment_funcs(account, stream, send)
           liveChatId = stream.chat_id,
           type = 'textMessageEvent',
           textMessageDetails = {
-            messageText = text,
+            messageText = message.text,
           },
         }
       })
