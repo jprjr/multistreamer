@@ -1,6 +1,3 @@
-/* messages look like: {"account_id":7,"stream_id":1,"markdown":"test","type":"text","from":{"name":"jprjr","id":"80787634"},"network":"twitch","text":"test"} */
-/* emotes: {"account_id":7,"stream_id":1,"markdown":"is loving this thing yay","type":"emote","from":{"name":"jprjr","id":"80787634"},"network":"twitch","text":"is loving this thing yay"} */
-
 /* var icons created by chat.lua */
 var chatWrapper = document.getElementById('chatwrapper');
 var chatMessages = document.getElementById('chatmessages');
@@ -79,15 +76,25 @@ function buildChatBox(account, target_account) {
         var charCode = event.which || event.keyCode;
 
         if(charCode === 13) {
-            var msg = inputElement.value;
-            inputElement.value = '';
-            ws.send(JSON.stringify({
-                type: 'comment',
-                comment_type: 'text',
+            var text = inputElement.value;
+            var parts = text.split(' ');
+            var t = {
                 account_id: account_id,
                 cur_stream_account_id: target_id,
-                text: msg
-            }));
+            };
+
+            if(parts[0] == '/me') {
+                parts.splice(0,1);
+                text = parts.join(' ');
+                t.type = 'emote';
+            }
+            else {
+                t.type = 'text';
+            }
+            t.text = text;
+
+            ws.send(JSON.stringify(t));
+            inputElement.value = '';
         }
     };
     return inputElement;

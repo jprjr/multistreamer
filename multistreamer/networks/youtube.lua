@@ -623,6 +623,11 @@ function M.create_comment_funcs(account, stream, send)
     access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
     if access_token then
       local yt = youtube_client(access_token)
+
+      if message.type == 'emote' then
+        message.text = '*'..message.text..'*'
+      end
+
       local res, err = yt:postJSON('/liveChat/messages',{
         part = 'snippet',
         liveChatId = stream.chat_id,

@@ -133,14 +133,9 @@ function Server:websocket_relay()
             ok = false
         end
         self:send_stream_status(ok)
-      elseif msg.type == 'comment' then
-        publish('comment:out', {
-          ['type'] = msg.comment_type,
-          stream_id = self.stream.id,
-          account_id = msg.account_id,
-          cur_stream_account_id = msg.cur_stream_account_id,
-          text = msg.text,
-        })
+      elseif msg.type == 'text' or msg.type =='emote' then
+        msg.stream_id = self.stream.id
+        publish('comment:out', msg)
       elseif msg.type == 'viewcount' then
         publish('stream:viewcount', {
             worker = ngx.worker.pid(),
