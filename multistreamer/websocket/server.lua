@@ -1,6 +1,7 @@
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local ws_server = require'resty.websocket.server'
+local slugify = require('lapis.util').slugify
 
 local redis = require'multistreamer.redis'
 local subscribe = redis.subscribe
@@ -23,6 +24,7 @@ local kill = ngx.thread.kill
 local spawn = ngx.thread.spawn
 local streams = ngx.shared.streams
 
+local Stream = require'models.stream'
 local StreamAccount = require'models.stream_account'
 local Account = require'models.account'
 
@@ -49,10 +51,12 @@ local function add_account(l_networks,msg,accounts,account)
 end
 
 function Server:new(user, stream, chat_level)
-  local t = {}
-  t.user = user
-  t.stream = stream
-  t.chat_level = chat_level
+  local t = {
+    uuid = uuid(),
+    user = user,
+    stream = stream,
+    chat_level = chat_level,
+  }
 
   setmetatable(t,Server)
   return t
@@ -63,6 +67,7 @@ function Server:redis_relay()
   local ok, red = subscribe('comment:in')
   subscribe('stream:start', red);
   subscribe('stream:end', red);
+  subscribe('stream:update', red);
   subscribe('stream:writerresult', red);
   subscribe('stream:viewcountresult', red);
 
@@ -80,18 +85,22 @@ function Server:redis_relay()
 
     if res then
       local msg = from_json(res[3])
-      if res[2] == endpoint('comment:in') and msg.stream_id == self.stream.id then
-        self.ws:send_text(res[3])
+      if res[2] == endpoint('comment:in') and ( (msg.stream_id == self.stream.id) or (msg.user_id and (msg.user_id == self.user.id or msg.from.id == self.user.id))) then
+        msg.uuid = nil
+        self.ws:send_text(to_json(msg))
       elseif res[2] == endpoint('stream:start') and msg.id == self.stream.id then
         self:send_stream_status(true)
       elseif res[2] == endpoint('stream:end') and msg.id == self.stream.id then
         self:send_stream_status(false)
-      elseif res[2] == endpoint('stream:writerresult') 
-             and msg.stream_id == self.stream.id 
+      elseif res[2] == endpoint('stream:update') and msg.id == self.stream.id then
+        self.stream = Stream:find({ id = msg.id })
+      elseif res[2] == endpoint('stream:writerresult')
+             and msg.stream_id == self.stream.id
              and msg.user_id == self.user.id then
         self.ws:send_text(to_json({
             ['type'] = 'writerresult',
             account_id = msg.account_id,
+            cur_stream_account_id = msg.cur_stream_account_id,
         }))
       elseif res[2] == endpoint('stream:viewcountresult') and msg.stream_id == self.stream.id then
         msg['type'] = 'viewcountresult'
@@ -135,7 +144,18 @@ function Server:websocket_relay()
         self:send_stream_status(ok)
       elseif msg.type == 'text' or msg.type =='emote' then
         msg.stream_id = self.stream.id
-        publish('comment:out', msg)
+        msg.uuid = self.uuid
+        if msg.account_id == 0 then
+          msg.from = {
+            name = self.user.username,
+            id = self.user.id,
+          }
+          msg.markdown = msg.text:escape_markdown()
+          msg.network = 'irc'
+          publish('comment:in', msg)
+        else
+          publish('comment:out', msg)
+        end
       elseif msg.type == 'viewcount' then
         publish('stream:viewcount', {
             worker = ngx.worker.pid(),
@@ -157,7 +177,19 @@ end
 
 function Server:send_stream_status(ok)
   local msg = {
-    ['type'] = 'status'
+    ['type'] = 'status',
+    ['accounts'] = {
+      ['0'] = {
+        network = {
+          name = 'irc',
+          displayName = 'IRC',
+        },
+        name = self.user.username,
+        ready = true,
+        live = false,
+        writable = true,
+      }
+    }
   }
   if not ok then
     msg.status = 'end'
@@ -165,7 +197,6 @@ function Server:send_stream_status(ok)
     return
   end
   msg.status = 'live'
-  msg.accounts = {}
 
   local l_networks = {}
   local accounts = self.stream:get_accounts()
@@ -220,6 +251,18 @@ function Server:run()
 
   self.ws = ws
 
+  publish('irc:events:login', {
+    nick = self.user.username,
+    username = self.user.username,
+    realname = self.user.username,
+    id = self.user.id,
+  })
+
+  publish('irc:events:join', {
+    nick = self.user.username,
+    room = slugify(self.user.username) .. '-' .. self.stream.slug,
+  })
+
   local write_thread = spawn(Server.redis_relay,self)
   local read_thread  = spawn(Server.websocket_relay,self)
 
@@ -230,6 +273,16 @@ function Server:run()
   if coro_status(read_thread) == 'running' then
     kill(read_thread)
   end
+
+  publish('irc:events:part', {
+    nick = self.user.username,
+    room = slugify(self.user.username) .. '-' .. self.stream.slug,
+    message = 'closed multistreamer chat',
+  })
+
+  publish('irc:events:logout', {
+    nick = self.user.username,
+  })
 
   self.ws:send_close()
 

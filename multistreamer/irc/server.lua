@@ -49,8 +49,10 @@ function botPublish(nick,room,message)
 end
 
 function IRCServer.new(socket,user,parentServer)
-  local server = {}
-  server.ready = false
+  local server = {
+    ready = false,
+    uuid = uuid(),
+  }
   if parentServer then
     curState = parentServer:getState()
     server.socket = socket
@@ -60,6 +62,7 @@ function IRCServer.new(socket,user,parentServer)
     server.users[user.nick] = {}
     server.users[user.nick].user = user
     server.users[user.nick].socket = socket
+    server.users[user.nick].conns = 0
 
     for _,r in pairs(server.rooms) do
       r.user = User:find({id = r.user_id})
@@ -450,29 +453,43 @@ function IRCServer:processStreamEnd(update)
 end
 
 function IRCServer:processCommentUpdate(update)
-  local account = Account:find({ id = update.account_id })
-  account.network = networks[account.network]
+  -- a comment:in can be for local IRC
+  if update.type == 'emote' then
+    update.text = char(1) .. 'ACTION '..update.text..char(1)
+  end
 
+  if update.user_id then
+    if not self.user then return end
+    if self.user.id == update.user_id and self.uuid ~= update.uuid then
+      self:sendPrivMessage(self.user.nick,update.from.name,self.user.nick,update.text)
+    end
+    return
+  end
+
+  local username
   local stream = Stream:find({ id = update.stream_id })
   local user = stream:get_user()
-  local username = slugify(update.from.name)..'-'..update.network
   local roomname = slugify(user.username) .. '-' .. stream.slug
 
-  for u,user in pairs(self.rooms[roomname].users) do
-    local r = '#' .. roomname
-    if self.users[u].socket then
-      if update.type == 'text' then
-        self:sendPrivMessage(u,username,r,update.text)
-      elseif update.type == 'emote' then
-        self:sendPrivMessage(u,username,r,char(1)..'ACTION ' ..update.text ..char(1))
-      end
-    end
+  if update.account_id == 0 then
+    username = update.from.name
+  else
+    username = slugify(update.from.name) .. '-' .. update.network
   end
+
+  if (not(update.uuid) or (update.uuid and update.uuid ~= self.uuid)) and self.socket and self.rooms[roomname].users[self.user.nick] then
+    self:sendPrivMessage(self.user.nick,username,'#'..roomname,update.text)
+  end
+
 end
 
 function IRCServer:processIrcJoin(msg)
   if not self.rooms[msg.room].users[msg.nick] then
-    self.rooms[msg.room].users[msg.nick] = true
+    self.rooms[msg.room].users[msg.nick] = 0
+  end
+  self.rooms[msg.room].users[msg.nick] = self.rooms[msg.room].users[msg.nick] + 1
+
+  if self.rooms[msg.room].users[msg.nick] == 1 then
     for to,_ in pairs(self.rooms[msg.room].users) do
       if self.users[to] and self.users[to].socket then
         self:sendRoomJoin(to,msg.nick,msg.room)
@@ -483,6 +500,9 @@ end
 
 function IRCServer:processIrcPart(msg)
   if self.rooms[msg.room] and self.rooms[msg.room].users[msg.nick] then
+    self.rooms[msg.room].users[msg.nick] = self.rooms[msg.room].users[msg.nick] - 1
+  end
+  if not self.rooms[msg.room].users[msg.nick] or self.rooms[msg.room].users[msg.nick] == 0 then
     self.rooms[msg.room].users[msg.nick] = false
     for to,_ in pairs(self.rooms[msg.room].users) do
       if self.users[to].socket then
@@ -500,23 +520,30 @@ function IRCServer:processIrcLogin(msg)
         username = msg.username,
         realname = msg.realname,
         id = msg.id,
-      }
+      },
+      conns = 0
     }
   end
+  self.users[msg.nick].conns = self.users[msg.nick].conns + 1
 end
 
 function IRCServer:processIrcLogout(msg)
-  for r,room in pairs(self.rooms) do
-    if room.users[msg.nick] then
-      for u,user in pairs(room.users) do
-        if self.users[u] and self.users[u].socket then
-          self:sendRoomPart(u,msg.nick,r)
+  if self.users and self.users[msg.nick] then
+    self.users[msg.nick].conns = self.users[msg.nick].conns - 1
+    if self.users[msg.nick].conns == 0 then
+      for r,room in pairs(self.rooms) do
+        if room.users[msg.nick] then
+          for u,user in pairs(room.users) do
+            if self.users[u] and self.users[u].socket then
+              self:sendRoomPart(u,msg.nick,r)
+            end
+          end
+          room.users[msg.nick] = nil
         end
       end
-      room.users[msg.nick] = nil
+      self.users[msg.nick] = nil
     end
   end
-  self.users[msg.nick] = nil
 end
 
 function IRCServer:processIrcMessage(msg)
@@ -780,18 +807,21 @@ function IRCServer:clientMessage(nick,msg)
     end
   else
     if not self.users[target] then
-      return self:sendClientFromServer(nick,'401','No such nick')
+      local u = User:find({username = target})
+      if u then
+        self.users[target] = {
+          user = u
+        }
+      else
+        return self:sendClientFromServer(nick,'401','No such nick')
+      end
     end
   end
-  publish('irc:events:message',{
-    nick = nick,
-    target = msg.args[1],
-    message = msg.args[2],
-  })
   if room then
-    self:relayMessage(nick,target,msg.args[2])
     self:checkBotCommand(nick,target,msg.args[2])
   end
+
+  self:relayMessage(nick,room,target,msg.args[2])
   return true,nil
 end
 
@@ -1004,7 +1034,7 @@ function IRCServer:botCommandHelp(nick,room,cmd)
   end
 end
 
-function IRCServer:relayMessage(nick,room,message)
+function IRCServer:relayMessage(nick,isroom,target,message)
   local t = 'text'
   local message = message
 
@@ -1018,43 +1048,73 @@ function IRCServer:relayMessage(nick,room,message)
     end
   end
 
+  local m = {
+    ['type'] = t,
+    account_id = 0,
+    text = message,
+    uuid = self.uuid,
+    network = 'irc',
+    markdown = message:escape_markdown(),
+    from = {
+        name = self.user.nick,
+        id = self.user.id,
+    }
+  }
+
+  if not isroom then
+    m.user_id = self.users[target].user.id
+    m.user_nick = target
+    publish('comment:in',m)
+    return
+  end
+
+  m.stream_id = self.rooms[target].stream_id
+
   if(message:sub(1,1) == '@') then
     message = message:sub(2)
   end
 
   local i = message:find(' ')
-  if not i then return end
+  if not i then
+    publish('comment:in',m)
+    return
+  end
 
   local username = message:sub(1,i-1):lower()
   username = username:gsub('[^a-z]$','')
   local msg = message:sub(i+1)
-  if msg:len() == 0 then return end
+  if msg:len() == 0 then
+    publish('comment:in',m)
+    return
+  end
 
-  if self.users[username] and self.users[username].account_id and self.rooms[room].users[username] == true then
+  publish('comment:in',m)
+
+  if self.users[username] and self.users[username].account_id and self.rooms[target].users[username] == true then
     local account = Account:find({id = self.users[username].account_id})
     local user_ok = account:check_user(self.users[nick].user)
-    local chat_level = self.rooms[room].stream:check_chat(self.users[nick].user)
+    local chat_level = self.rooms[target].stream:check_chat(self.users[nick].user)
     if user_ok or chat_level == 2 then
       if self.users[username].network.write_comments then
-        local t = {
-          ['type'] = t,
-          stream_id = self.rooms[room].stream_id,
-          account_id = self.users[username].account_id,
-          cur_stream_account_id = self.users[username].cur_stream_account_id,
-          text = msg,
-        }
-        publish('comment:out', t)
+        m.network = nil
+        m.from = nil
+        m.uuid = nil
+        m.markdown = nil
+        m.account_id = self.users[username].account_id
+        m.cur_stream_account_id = self.users[username].cur_stream_account_id
+        m.text = msg
+        publish('comment:out', m)
       else
         publish('irc:events:message',{
           nick = username,
-          target = '#' .. room,
+          target = '#' .. target,
           message = nick .. ': not supported',
         })
       end
     else
       publish('irc:events:message',{
         nick = username,
-        target = '#' .. room,
+        target = '#' .. target,
         message = nick .. ': not authorized',
       })
     end
@@ -1128,14 +1188,6 @@ function IRCServer:clientList(nick,msg)
     return self:listRooms(nick,{ [room] = self.rooms[room] })
   end
   return self:listRooms(nick,self.rooms)
-end
-
-
-function IRCServer:checkNick(nick)
-  if self.users[nick] then
-    return true
-  end
-  return false
 end
 
 function IRCServer:clientQuit(nick,msg)
@@ -1258,13 +1310,6 @@ function IRCServer.startClient(sock,server)
         break
       end
 
-      local res, err = server:checkNick(msg.args[1])
-
-      if res == true then
-        sock:send(':' .. config.irc_hostname .. ' 443 * '..msg.args[1]..' :Nick already in use\r\n')
-        logging_in = false
-        break
-      end
       nickname = msg.args[1]
     end
 

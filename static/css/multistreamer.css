@@ -151,6 +151,10 @@ div.chatmessage, div#chatinput {
     border-width: 1px;
 }
 
+div.chatmessage.private {
+    background-color: #ff7aab;
+}
+
 div #chatpickerlist {
     margin-top: .5em;
     display: -webkit-flex;
@@ -254,5 +258,8 @@ svg.chaticon.twitch {
 }
 svg.chaticon.youtube {
     background-color: #cd201f;
+}
+svg.chaticon.irc {
+    background-color: #6b6f75;
 }
 

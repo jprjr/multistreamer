@@ -15,6 +15,8 @@ var ws;
 var live = false;
 var scroller = zenscroll.createScroller(chatMessages);
 
+icons['irc'] = '<svg class="chaticon irc" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="m 18.477051,7.5280762 h -4.390137 l -1.212891,4.9570308 h 4.060547 v 1.779786 h -4.521972 l -1.371094,5.550293 H 9.3408203 L 10.711914,14.264893 H 7.1523437 L 5.78125,19.815186 H 4.0805664 L 5.4516602,14.264893 H 1.5229492 V 12.485107 H 5.9130859 L 7.1259766,7.5280762 H 3.0654297 V 5.748291 H 7.5874023 L 8.9716797,0.18481445 H 10.672363 L 9.2880859,5.748291 h 3.5595701 l 1.384278,-5.56347655 h 1.700683 L 14.54834,5.748291 h 3.928711 z M 12.425781,7.501709 H 8.8134766 l -1.2392579,5.009766 h 3.6123043 z" /></svg>';
+
 function atBottom(elem) {
     return elem.scrollHeight - elem.scrollTop === elem.clientHeight;
 }
@@ -60,6 +62,7 @@ function buildChatPickerList(accounts) {
         };
         chatPickerList.appendChild(chatPicker);
     }
+
     if(chatInput !== undefined) {
         chatWrapper.removeChild(chatInput);
         chatInput = undefined;
@@ -298,6 +301,10 @@ function appendMessage(msg) {
   var p;
 
   newMsg.className = 'chatmessage';
+  if(msg.user_id) {
+    newMsg.className += ' private';
+    msg.from.name = msg.from.name + ' -> ' + msg.user_nick
+  }
 
   nameDiv.className = 'name';
   nameDiv.innerHTML = icons[msg.network];
@@ -433,27 +440,34 @@ function start_chat(endpoint) {
         updateViewCountResult(data);
     }
     if(data.type === 'writerresult') {
-        var inputElement = buildChatBox(curAccount,tarAccount)
-        var p = curInput.parentElement;
-        p.removeChild(curInput);
-        p.appendChild(inputElement);
-        curInput = inputElement;
-        curInput.focus();
-        p.parentElement.firstChild.firstChild.onclick = function() {
-            buildChatPickerList(accountList);
-        };
+        if(data.account_id == curAccount.id &&
+           data.cur_stream_account_id == tarAccount.id) {
+          var inputElement = buildChatBox(curAccount,tarAccount)
+          var p = curInput.parentElement;
+          p.removeChild(curInput);
+          p.appendChild(inputElement);
+          curInput = inputElement;
+          curInput.focus();
+          p.parentElement.firstChild.firstChild.onclick = function() {
+              buildChatPickerList(accountList);
+          };
+        }
     }
     if(data.type == 'status') {
         if(data.status === 'live') {
             live = true;
             updateAccountList(data.accounts);
             updateViewCountResult();
-            buildChatInput(null);
+            if(curInput === undefined || curAccount.id > 0) {
+                buildChatInput(null);
+            }
         }
         else if(data.status === 'end') {
             live = false;
-            accountList = undefined;
-            buildChatInput(null);
+            updateAccountList(data.accounts);
+            if(curInput === undefined || curAccount.id > 0) {
+                buildChatInput(null);
+            }
         }
     }
   };
