@@ -466,6 +466,10 @@ function IRCServer:processCommentUpdate(update)
     return
   end
 
+  if update.uuid and update.uuid == self.uuid then
+    return
+  end
+
   local username
   local stream = Stream:find({ id = update.stream_id })
   local user = stream:get_user()
@@ -1061,7 +1065,8 @@ function IRCServer:relayMessage(nick,isroom,target,message)
     from = {
         name = self.user.nick,
         id = self.user.id,
-    }
+    },
+    relay = false
   }
 
   if not isroom then
@@ -1072,6 +1077,10 @@ function IRCServer:relayMessage(nick,isroom,target,message)
   end
 
   m.stream_id = self.rooms[target].stream_id
+
+  if message:sub(1,1) == '!' then
+    m.relay = true
+  end
 
   if(message:sub(1,1) == '@') then
     message = message:sub(2)
@@ -1091,9 +1100,11 @@ function IRCServer:relayMessage(nick,isroom,target,message)
     return
   end
 
-  publish('comment:in',m)
 
   if self.users[username] and self.users[username].account_id and self.rooms[target].users[username] == true then
+    m.relay = true
+    publish('comment:in',m)
+
     local account = Account:find({id = self.users[username].account_id})
     local user_ok = account:check_user(self.users[nick].user)
     local chat_level = self.rooms[target].stream:check_chat(self.users[nick].user)
@@ -1121,6 +1132,8 @@ function IRCServer:relayMessage(nick,isroom,target,message)
         message = nick .. ': not authorized',
       })
     end
+  else
+    publish('comment:in',m)
   end
 end
 

@@ -88,7 +88,7 @@ function Server:redis_relay()
 
     if res then
       local msg = from_json(res[3])
-      if res[2] == endpoint('comment:in') and ( (msg.stream_id == self.stream.id) or (msg.user_id and (msg.user_id == self.user.id or msg.from.id == self.user.id))) then
+      if res[2] == endpoint('comment:in') and not msg.relay and ( (msg.stream_id == self.stream.id) or (msg.user_id and (msg.user_id == self.user.id or msg.from.id == self.user.id))) then
         msg.uuid = nil
         self.ws:send_text(to_json(msg))
       elseif res[2] == endpoint('stream:start') and msg.id == self.stream.id then
