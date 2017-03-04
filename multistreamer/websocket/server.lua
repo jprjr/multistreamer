@@ -24,6 +24,9 @@ local kill = ngx.thread.kill
 local spawn = ngx.thread.spawn
 local streams = ngx.shared.streams
 
+local concat = table.concat
+
+local User = require'models.user'
 local Stream = require'models.stream'
 local StreamAccount = require'models.stream_account'
 local Account = require'models.account'
@@ -150,9 +153,23 @@ function Server:websocket_relay()
             name = self.user.username,
             id = self.user.id,
           }
-          msg.markdown = msg.text:escape_markdown()
           msg.network = 'irc'
-          publish('comment:in', msg)
+          local parts = msg.text:split(' ')
+          if parts[1] == '/msg' then
+            local un = parts[2]
+            msg.text = concat(parts,' ',3)
+            msg.stream_id = nil
+            local u = User:find({ username = un })
+            if u then
+              msg.user_id = u.id
+              msg.user_nick = u.username
+              msg.markdown = msg.text:escape_markdown()
+              publish('comment:in', msg)
+            end
+          else
+            msg.markdown = msg.text:escape_markdown()
+            publish('comment:in', msg)
+          end
         else
           publish('comment:out', msg)
         end
