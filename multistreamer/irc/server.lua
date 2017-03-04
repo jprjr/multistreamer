@@ -524,6 +524,9 @@ function IRCServer:processIrcLogin(msg)
       conns = 0
     }
   end
+  if not self.users[msg.nick].conns then
+    self.users[msg.nick].conns = 0
+  end
   self.users[msg.nick].conns = self.users[msg.nick].conns + 1
 end
 
