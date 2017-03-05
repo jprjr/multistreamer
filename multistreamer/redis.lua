@@ -3,7 +3,7 @@ local redis = require'resty.redis'
 local to_json = require('lapis.util').to_json
 
 local ngx_log = ngx.log
-local ngx_err = ngx.err
+local ngx_err = ngx.ERR
 
 local M = {}
 
