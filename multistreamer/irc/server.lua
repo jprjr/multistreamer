@@ -507,12 +507,12 @@ function IRCServer:processIrcPart(msg)
     self.rooms[msg.room].users[msg.nick] = self.rooms[msg.room].users[msg.nick] - 1
   end
   if not self.rooms[msg.room].users[msg.nick] or self.rooms[msg.room].users[msg.nick] == 0 then
-    self.rooms[msg.room].users[msg.nick] = false
     for to,_ in pairs(self.rooms[msg.room].users) do
       if self.users[to].socket then
         self:sendRoomPart(to,msg.nick,msg.room,msg.message)
       end
     end
+    self.rooms[msg.room].users[msg.nick] = nil
   end
 end
 
