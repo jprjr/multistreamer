@@ -411,8 +411,9 @@ function IRCServer:processStreamUpdate(update)
       ctime = date.diff(stream.created_at,date.epoch()):spanseconds(),
       users = {
         ['root'] = true,
-      }
+      },
     }
+    if self.socket then room.stream = stream end
     local oldroomName, oldroom
     for k,v in pairs(self.rooms) do
       if v.stream_id == stream.id then
