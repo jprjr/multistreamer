@@ -12,6 +12,7 @@ local Stream = Model:extend('streams', {
   relations = {
     {'user', belongs_to = 'User' },
     {'streams_accounts', has_many = 'StreamAccount' },
+    {'stream_shares', has_many = 'SharedStream' },
   },
   check_user = function(self,user)
     if self.user_id == user.id then

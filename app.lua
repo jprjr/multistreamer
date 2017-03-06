@@ -402,12 +402,17 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
     return { render = 'stream-delete' }
   end,
   POST = function(self)
+    self.stream.user = self.stream:get_user()
     local sas = self.stream:get_streams_accounts()
     for _,sa in pairs(sas) do
       sa:get_keystore():unset_all()
       sa:delete()
     end
+    for _,ss in pairs(self.stream:get_stream_shares()) do
+      ss:delete()
+    end
     self.stream:get_keystore():unset_all()
+    publish('stream:delete',self.stream)
     self.stream:delete()
     self.session.status_msg = { type = 'success', msg = 'Stream removed' }
     return { redirect_to = self:url_for('site-root') }

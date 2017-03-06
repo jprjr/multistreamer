@@ -117,6 +117,7 @@ function IRCServer.new(socket,user,parentServer)
     [endpoint('stream:start')] = IRCServer.processStreamStart,
     [endpoint('stream:end')] = IRCServer.processStreamEnd,
     [endpoint('stream:update')] = IRCServer.processStreamUpdate,
+    [endpoint('stream:delete')] = IRCServer.processStreamDelete,
     [endpoint('stream:writerresult')] = IRCServer.processWriterResult,
     [endpoint('stream:viewcountresult')] = IRCServer.processViewCountResult,
     [endpoint('comment:in')] = IRCServer.processCommentUpdate,
@@ -178,6 +179,7 @@ function IRCServer:run()
   subscribe('stream:start',red)
   subscribe('stream:end',red)
   subscribe('stream:update',red)
+  subscribe('stream:delete',red)
   subscribe('stream:viewcountresult',red)
   subscribe('comment:in',red)
   subscribe('stream:writerresult',red)
@@ -383,6 +385,15 @@ function IRCServer:processStreamStart(update)
       })
     end
   end
+end
+
+function IRCServer:processStreamDelete(update)
+  local roomName = slugify(update.user.username) .. '-' .. update.slug
+  if not self.rooms[roomName] then return end
+  if self.user and self.rooms[roomName].users[self.user.username] then
+    self:sendFromClient(self.user.username,'root','KICK','#'..roomName,self.user.username,'Stream deleted')
+  end
+  self.rooms[roomName] = nil
 end
 
 function IRCServer:processStreamUpdate(update)
