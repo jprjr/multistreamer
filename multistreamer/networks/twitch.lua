@@ -17,9 +17,14 @@ local insert = table.insert
 local concat = table.concat
 local sort = table.sort
 local tonumber = tonumber
+local ngx_log = ngx.log
+local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
 local IRCClient = require'multistreamer.irc.client'
 
 local Account = require'models.account'
+
+local inspect = require'inspect'
 
 local M = {}
 
@@ -46,7 +51,7 @@ local function twitch_api_client(access_token)
     local uri = api_uri .. endpoint
     local req_headers = {
       ['Authorization'] = 'OAuth ' .. self.access_token,
-      ['Accept'] = 'application/vnd.twitchtv.v3+json',
+      ['Accept'] = 'application/vnd.twitchtv.v5+json',
     }
     if params then
       uri = uri .. '?' .. encode_query_string(params)
@@ -62,17 +67,18 @@ local function twitch_api_client(access_token)
       headers = req_headers,
       body = body,
     })
-    if body then ngx.log(ngx.DEBUG,body) end
+    if body then ngx_log(ngx_debug,body) end
 
     if err then
-      ngx.log(ngx.ERR,err)
+      ngx_log(ngx_err,err)
       return false, { error = err }
     end
 
     if res.status == 400 then
-      ngx.log(ngx.ERR,res.body)
+      ngx_log(ngx_err,res.body)
       return false, from_json(res.body)
     end
+    ngx_log(ngx_debug,res.body)
 
     return from_json(res.body), nil
   end
@@ -209,6 +215,7 @@ function M.register_oauth(params)
   -- the access token, channel etc anyway but return an error
   account:set('token',creds.access_token)
   account:set('channel',channel_info.name)
+  account:set('channel_id',channel_info._id)
   account:set('stream_key',channel_info.stream_key)
 
   if(account.user_id ~= user.id) then
@@ -233,7 +240,7 @@ function M.publish_start(account, stream)
   end
 
   local tclient = twitch_api_client(account.token)
-  local res, err = tclient:put('/channels/'..account.channel..'/', {
+  local res, err = tclient:put('/channels/'..account.channel_id, {
     channel = {
       status = stream.title,
       game = stream.game,
@@ -262,6 +269,21 @@ function M.publish_stop(account, stream)
 end
 
 function M.check_errors(account)
+  local token = account:get('token')
+
+  if not token then return 'No OAuth token' end
+
+  local channel_id = account:get('channel_id')
+
+  if not channel_id then
+    local tclient = twitch_api_client(token)
+    local channel_info, err = tclient:get('/channel')
+    if err then
+      return err
+    end
+    account:set('channel_id', channel_info._id)
+  end
+
   return false
 end
 
@@ -333,12 +355,12 @@ function M.create_comment_funcs(account, stream, send)
     local ok, err
     ok, err = irc:connect('irc.chat.twitch.tv',6667)
     if not ok then
-      ngx.log(ngx.ERR,err)
+      ngx_log(ngx_err,err)
       return false,err
     end
     ok, err = irc:login(nick,nil,nil,'oauth:'..account.token)
     if not ok then
-      ngx.log(ngx.ERR,err)
+      ngx_log(ngx_err,err)
       return false,err
     end
     irc:join(channel)
@@ -377,10 +399,10 @@ function M.create_comment_funcs(account, stream, send)
     end
     while running do
       local ok, err = irc:cruise()
-      if not ok then ngx.log(ngx.ERR,'[Twitch] IRC Client error: ' .. err) end
+      if not ok then ngx_log(ngx_err,'[Twitch] IRC Client error: ' .. err) end
       ok, err = irc_connect()
       if not ok then
-        ngx.log(ngx.ERR,'[Twitch] IRC Connection error: ' .. err)
+        ngx_log(ngx_err,'[Twitch] IRC Connection error: ' .. err)
         running = false
       end
     end

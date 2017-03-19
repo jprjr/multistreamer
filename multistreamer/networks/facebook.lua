@@ -16,6 +16,9 @@ local insert = table.insert
 local sort = table.sort
 local floor = math.floor
 local date = require'date'
+local ngx_log = ngx.log
+local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
 local facebook_config = config.networks.facebook
 
 local Account = require'models.account'
@@ -47,7 +50,7 @@ local function facebook_client(access_token)
     end
 
     if body then
-      ngx.log(ngx.DEBUG,body)
+      ngx_log(ngx_debug,body)
     end
 
     local res, err = self.httpc:request_uri(uri, {
@@ -56,15 +59,15 @@ local function facebook_client(access_token)
       body = body,
     })
     if err then
-      ngx.log(ngx.ERR,err)
+      ngx_log(ngx_err,err)
       return false, err
     end
 
     if res.status >= 400 then
-      ngx.log(ngx.ERR,res.body)
+      ngx_log(ngx_err,res.body)
       return false, res.body
     end
-    ngx.log(ngx.DEBUG,res.body)
+    ngx_log(ngx_debug,res.body)
 
     return from_json(res.body), nil
   end
@@ -213,7 +216,7 @@ function M.register_oauth(params)
   if err or res.status >= 400 then
     return false, err
   end
-  ngx.log(ngx.DEBUG,res.body)
+  ngx_log(ngx_debug,res.body)
 
   local creds = from_json(res.body)
 
@@ -228,7 +231,7 @@ function M.register_oauth(params)
   if err or res.status >= 400 then
       return false, err
   end
-  ngx.log(ngx.DEBUG,res.body)
+  ngx_log(ngx_debug,res.body)
   creds = from_json(res.body)
 
   if not creds.expires_in then
@@ -237,13 +240,13 @@ function M.register_oauth(params)
         input_token = creds.access_token,
         access_token = facebook_config.app_id .. '|' .. facebook_config.app_secret}))
     if err then
-      ngx.log(ngx.DEBUG,err)
+      ngx_log(ngx_debug,err)
     end
     if res.status ~= 200 then
-      ngx.log(ngx.DEBUG,res.body)
+      ngx_log(ngx_debug,res.body)
     end
     if res and res.status == 200 then
-      ngx.log(ngx.DEBUG,res.body)
+      ngx_log(ngx_debug,res.body)
       local info = from_json(res.body)
 
       -- check if this is a non-expiring token
@@ -263,7 +266,7 @@ function M.register_oauth(params)
 
   local user_info, err = fb_client:get('/me')
   if err then return false, err end
-  ngx.log(ngx.DEBUG,res.body)
+  ngx_log(ngx_debug,res.body)
 
   local sha1 = resty_sha1:new()
   sha1:update(user_info.id)

@@ -24,6 +24,9 @@ local ceil = math.ceil
 local len = string.len
 local tonumber = tonumber
 
+local ngx_log = ngx.log
+local ngx_err = ngx.ERR
+
 local M = {}
 
 M.displayname = 'YouTube'
@@ -64,12 +67,12 @@ local function google_client(base_url,access_token)
       body = body,
     })
     if err then
-      ngx.log(ngx.ERR,err)
+      ngx_log(ngx_err,err)
       return false, err
     end
 
     if res.status >= 400 then
-      ngx.log(ngx.ERR,res.body)
+      ngx_log(ngx_err,res.body)
       return false, from_json(res.body)
     end
 
