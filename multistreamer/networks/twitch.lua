@@ -24,8 +24,6 @@ local IRCClient = require'multistreamer.irc.client'
 
 local Account = require'models.account'
 
-local inspect = require'inspect'
-
 local M = {}
 
 M.displayname = 'Twitch'
