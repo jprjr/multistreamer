@@ -268,6 +268,8 @@ function Server:run()
 
   self.ws = ws
 
+  local stream_user = self.stream:get_user().username
+
   publish('irc:events:login', {
     nick = self.user.username,
     username = self.user.username,
@@ -277,31 +279,35 @@ function Server:run()
 
   publish('irc:events:join', {
     nick = self.user.username,
-    room = slugify(self.user.username) .. '-' .. self.stream.slug,
+    room = slugify(stream_user) .. '-' .. self.stream.slug,
+    uuid = self.uuid,
   })
 
   local write_thread = spawn(Server.redis_relay,self)
   local read_thread  = spawn(Server.websocket_relay,self)
 
   local ok, write_res, read_res = ngx.thread.wait(write_thread,read_thread)
+
   if coro_status(write_thread) == 'running' then
     kill(write_thread)
   end
+
   if coro_status(read_thread) == 'running' then
+    self.ws:send_close()
     kill(read_thread)
   end
 
+
   publish('irc:events:part', {
     nick = self.user.username,
-    room = slugify(self.user.username) .. '-' .. self.stream.slug,
+    room = slugify(stream_user) .. '-' .. self.stream.slug,
     message = 'closed multistreamer chat',
+    uuid = self.uuid,
   })
 
   publish('irc:events:logout', {
     nick = self.user.username,
   })
-
-  self.ws:send_close()
 
   ngx_eof()
   ngx_exit(ngx_ok)

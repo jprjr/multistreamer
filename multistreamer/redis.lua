@@ -14,10 +14,12 @@ end
 M.publish = function(point,message)
   local red = redis.new()
   local ok, err = red:connect(config.redis_host)
+
   if not ok then
     ngx_log(ngx_err,'Unable to connect to redis: ' .. err)
     return false, err
   end
+
   local ok, err = red:publish(M.endpoint(point), to_json(message))
   if not ok then return false, err end
   return true, nil

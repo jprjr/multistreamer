@@ -505,6 +505,10 @@ function IRCServer:processIrcJoin(msg)
   end
   self.rooms[msg.room].users[msg.nick] = self.rooms[msg.room].users[msg.nick] + 1
 
+  if msg.uuid and msg.uuid == self.uuid then
+    return
+  end
+
   if self.rooms[msg.room].users[msg.nick] == 1 then
     for to,_ in pairs(self.rooms[msg.room].users) do
       if self.users[to] and self.users[to].socket then
@@ -515,16 +519,24 @@ function IRCServer:processIrcJoin(msg)
 end
 
 function IRCServer:processIrcPart(msg)
+
   if self.rooms[msg.room] and self.rooms[msg.room].users[msg.nick] then
     self.rooms[msg.room].users[msg.nick] = self.rooms[msg.room].users[msg.nick] - 1
   end
+
+
   if not self.rooms[msg.room].users[msg.nick] or self.rooms[msg.room].users[msg.nick] == 0 then
+    self.rooms[msg.room].users[msg.nick] = nil
+
+    if msg.uuid and msg.uuid == self.uuid then
+      return
+    end
+
     for to,_ in pairs(self.rooms[msg.room].users) do
       if self.users[to].socket then
         self:sendRoomPart(to,msg.nick,msg.room,msg.message)
       end
     end
-    self.rooms[msg.room].users[msg.nick] = nil
   end
 end
 
@@ -791,9 +803,13 @@ function IRCServer:clientJoinRoom(nick,msg)
   if chat_level < 1 then
     return self:sendClientFromServer(nick,'403','Channel does not exist')
   end
+
+  self:sendRoomJoin(nick,nick,room)
+  
   local ok, err = publish('irc:events:join', {
     nick = nick,
-    room = room
+    room = room,
+    uuid = self.uuid
   })
   if not ok then return false, err end
 
@@ -806,10 +822,14 @@ function IRCServer:clientPartRoom(nick,msg)
     if room:sub(1,1) == '#' then
       room = room:sub(2)
     end
+
+    self:sendRoomPart(nick,nick,room,msg.args[2] or '')
+
     publish('irc:events:part', {
       nick = nick,
       room = room,
       message = msg.args[2],
+      uuid = self.uuid,
     })
   end
   return true,nil
