@@ -334,7 +334,7 @@ function M.create_viewcount_func(account, stream, send)
 
   return function()
     while true do
-      local res, err = tclient:get('/streams/' .. account['channel'])
+      local res, err = tclient:get('/streams/' .. account['channel_id'])
       if not err then
         if type(res.stream) == 'table' then
           send({viewer_count = tonumber(res.stream.viewers)})
