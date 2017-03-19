@@ -400,6 +400,16 @@ function M.metadata_fields()
           { value = 'REGULAR', label = 'No' },
           { value = 'AMBIENT', label = 'Yes' },
       },
+    },
+    [6] = {
+      type = 'select',
+      label = 'Sticky Mode',
+      key = 'sticky',
+      required = true,
+      options = {
+          { value = 'NO', label = 'No' },
+          { value = 'YES', label = 'Yes' },
+      },
     }
   }
 
@@ -418,6 +428,11 @@ function M.publish_start(account, stream)
   local stream_type = stream.stream_type
   local description = stream.description
   local title = stream.title
+
+  if stream.sticky == 'YES' and stream.rtmp_url then
+    -- rtmp url already set
+    return stream.rtmp_url, nil
+  end
 
   local params = {}
 
@@ -448,6 +463,7 @@ function M.publish_start(account, stream)
 
   stream_o:set('http_url','https://facebook.com' .. more_vid_info.permalink_url)
   stream_o:set('video_id',vid_info.id)
+  stream_o:set('rtmp_url',vid_info.stream_url)
 
   return vid_info.stream_url, nil
 end
@@ -458,8 +474,13 @@ function M.publish_stop(account, stream)
   local account = account:get_all()
   local stream = stream:get_all()
 
+  if stream.sticky == 'YES' then
+    return true
+  end
+
   stream_o:unset('http_url')
   stream_o:unset('video_id')
+  stream_o:unset('rtmp_url')
 
   local targets = from_json(account.targets)
   local target = targets[stream.target]
