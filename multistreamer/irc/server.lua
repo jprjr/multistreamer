@@ -1402,7 +1402,7 @@ function IRCServer.startClient(sock,server)
         elseif msg.args[1] ~= 'PLAIN' then
           insert(send_buffer,':{hostname} 908 {nick} PLAIN :Available SASL methods')
         else
-          insert(send_buffer,':{hostname} AUTHENTICATE +')
+          insert(send_buffer,'AUTHENTICATE +')
           pass_incoming = true
         end
       end
