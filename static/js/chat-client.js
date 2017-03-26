@@ -454,7 +454,7 @@ function start_chat(endpoint) {
         }
     }
     if(data.type == 'status') {
-        if(data.status === 'live') {
+        if(data.status.data_pushing === true) {
             live = true;
             updateAccountList(data.accounts);
             updateViewCountResult();
@@ -462,7 +462,7 @@ function start_chat(endpoint) {
                 buildChatInput(null);
             }
         }
-        else if(data.status === 'end') {
+        else if(data.status.data_pushing === false) {
             live = false;
             updateAccountList(data.accounts);
             if(curInput === undefined || curAccount.id > 0) {

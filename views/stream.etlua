@@ -9,12 +9,27 @@
 <div class="pure-control-group"><label for="stream_name">Stream Name (Internal)</label>
 <input type="text" name="stream_name" <% if stream then %>value="<%= stream.name %>"<% end %> /></div>
 
+<div class="pure-control-group"><label for="preview_required">Require Preview before going live</label>
+<select name="preview_required">
+<option value="0" <% if stream and stream.preview_required == 0 then %>selected<% end %>>No</option>
+<option value="1" <% if stream and stream.preview_required == 1 then %>selected<% end %>>Yes</option>
+</select>
+</div>
+
 <% for i, account in pairs(accounts) do %>
 <div class="pure-control-group">
 <label for="account.<%= account.id %>"><%= account.shared and '(Shared) ' or '' %><%= account.network.displayname %> - <%= account.name %></label>
 <input type="checkbox" id="account.<%= account.id %>" name="account.<%= account.id %>" <% if stream and stream:get_account(account) then %>checked<% end %> />
 </div>
 <% end %>
+
+<div class="pure-control-group">
+<fieldset><legend>Advanced</legend>
+<label for="ffmpeg_pull_args">FFMPEG Pull Args</label>
+<input type="text" name="ffmpeg_pull_args" <% if stream and stream.ffmpeg_pull_args then %>value="<%= stream.ffmpeg_pull_args %>"<% end %>/>
+</fieldset>
+</div>
+
 
 <div class="pure-control-group"><label>Save</label>
 <input class="pure-button" type="submit" value="Submit" id="submitBtn" />

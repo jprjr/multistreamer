@@ -29,6 +29,7 @@ local len = string.len
 local insert = table.insert
 local sort = table.sort
 local streams_dict = ngx.shared.streams
+local capture = ngx.location.capture
 
 local pid = ngx.worker.pid()
 
@@ -178,6 +179,17 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
     end
     self.chat_level = self.stream:check_chat(self.user)
     self.metadata_level = self.stream:check_meta(self.user)
+
+    self.stream_status = streams_dict:get(self.stream.id)
+    if self.stream_status then
+      self.stream_status = from_json(self.stream_status)
+    else
+      self.stream_status = {
+          data_incoming = false,
+          data_pushing = false,
+          data_pulling = false,
+      }
+    end
     if self.metadata_level == 0 then
       return err_out(self,'Stream not found')
     end
@@ -200,12 +212,35 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
     if self.metadata_level < 2 then
       return err_out(self,'Nice try buddy')
     end
+
+    if self.params['customPullBtn'] ~= nil then
+      self.stream_status.data_pulling = true
+      streams_dict:set(self.stream.id, to_json(self.stream_status))
+      publish('process:start:pull', {
+        worker = pid,
+        id = self.stream.id,
+      })
+      self.session.status_msg = { type = 'success', msg = 'Custom Puller Started' }
+      return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
+    end
+
+    if self.params['customPullBtnStop'] ~= nil then
+      self.stream_status.data_pulling = false
+      streams_dict:set(self.stream.id, to_json(self.stream_status))
+      publish('process:end:pull', {
+        id = self.stream.id,
+      })
+      self.session.status_msg = { type = 'success', msg = 'Custom Puller Stopped' }
+      return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
+    end
+
     if self.params.title then
       self.stream:set('title',self.params.title)
     end
     if self.params.description then
       self.stream:set('description',self.params.description)
     end
+
     for _,account in pairs(self.accounts) do
       local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
       if ffmpeg_args and len(ffmpeg_args) > 0 then
@@ -227,9 +262,39 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
         end
       end
     end
+
     publish('stream:update',self.stream)
 
-    self.session.status_msg = { type = 'success', msg = 'Settings saved' }
+    local success_msg = 'Settings saved'
+
+    -- is there incoming data, and the user clicked the golivebutton? start the stream
+    if self.stream_status.data_incoming == true and self.stream_status.data_pushing == false and self.params['goLiveBtn'] ~= nil then
+      success_msg = 'Stream started'
+      self.stream_status.data_pushing = true
+
+      for _,account in pairs(self.accounts) do
+        local sa = StreamAccount:find({stream_id = self.stream.id, account_id = account.id})
+        local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
+        if (not rtmp_url) or err then
+          return err_out(self,err)
+        end
+        sa:update({rtmp_url = rtmp_url})
+      end
+
+      publish('process:start:push', {
+        worker = pid,
+        id = self.stream.id,
+      })
+
+      publish('stream:start', {
+        worker = pid,
+        id = self.stream.id,
+        status = self.stream_status,
+      })
+    end
+
+    streams_dict:set(self.stream.id, to_json(self.stream_status))
+    self.session.status_msg = { type = 'success', msg = success_msg }
     return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
   end,
 }))
@@ -244,21 +309,45 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
       return plain_err_out(self,err)
     end
 
-    for _,v in pairs(sas) do
-      local account = v[1]
-      local sa = v[2]
-      local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
-      if (not rtmp_url) or err then
-        return plain_err_out(self,err)
-      end
-      sa:update({rtmp_url = rtmp_url})
+    local stream_status = streams_dict:get(stream.id)
+    if stream_status then
+      stream_status = from_json(stream_status)
+    else
+      stream_status = {
+        data_incoming = false,
+        data_pushing = false,
+        data_pulling = false,
+      }
     end
 
-    -- just going to ignore any errors
-    local ok, err = streams_dict:set(stream.id,true)
+    stream_status.data_incoming = true
+    streams_dict:set(stream.id, to_json(stream_status))
+
+    if stream.preview_required == 0 then
+      for _,v in pairs(sas) do
+        local account = v[1]
+        local sa = v[2]
+        local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
+        if (not rtmp_url) or err then
+          return plain_err_out(self,err)
+        end
+        sa:update({rtmp_url = rtmp_url})
+      end
+
+      stream_status.data_pushing = true
+      streams_dict:set(stream.id, to_json(stream_status))
+
+      publish('process:start:push', {
+        worker = pid,
+        id = stream.id,
+      })
+
+    end
+
     publish('stream:start', {
       worker = pid,
       id = stream.id,
+      status = stream_status,
     })
 
     return plain_err_out(self,'OK',200)
@@ -298,9 +387,14 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
     return plain_err_out(self,err)
   end
 
+  publish('process:end:push', {
+    id = stream.id,
+  })
+
   publish('stream:end', {
     id = stream.id,
   })
+
   streams_dict:set(stream.id,nil)
 
   for _,v in pairs(sas) do
@@ -353,8 +447,13 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   end
 
   for k,v in pairs(self.streams) do
-    local ok = streams_dict:get(v.id)
-    if ok then
+    local stream_status = streams_dict:get(v.id)
+    if stream_status then
+      stream_status = from_json(stream_status)
+    else
+      stream_status = { data_pushing = false }
+    end
+    if stream_status.data_pushing == true then
       v.live = true
     else
       v.live = false
@@ -438,6 +537,38 @@ app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
   end,
   GET = function(self)
     return { layout = 'chatlayout', render = 'chat' }
+  end,
+}))
+
+app:match('stream-video', config.http_prefix .. '/stream/:id/video(/*)', respond_to({
+  before = function(self)
+    local stream = Stream:find({ id = self.params.id })
+    if not stream then
+      return plain_err_out(self, 'Stream not found')
+    end
+    local ok = streams_dict:get(stream.id)
+    if ok == nil or ok == 0 then
+      return plain_err_out(self, 'Stream not live', 404)
+    end
+    self.stream = stream
+  end,
+  GET = function(self)
+    local fn = self.params.splat
+    if not fn then
+      fn = 'index.m3u8'
+    end
+    local res = capture(config.http_prefix .. '/video_raw/' .. self.stream.uuid .. '/' .. fn)
+    if res then
+      if res.status == 302 then
+        return plain_err_out(self, 'Stream not live', 404)
+      end
+      return self:write({
+        layout = 'plain',
+        content_type = res.header['content-type'],
+        status = res.status,
+      }, res.body)
+    end
+    return plain_err_out(self,'An error occured', 500)
   end,
 }))
 

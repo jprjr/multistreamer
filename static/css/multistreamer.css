@@ -262,4 +262,6 @@ svg.chaticon.youtube {
 svg.chaticon.irc {
     background-color: #6b6f75;
 }
-
+video {
+    width: 100%;
+}
