@@ -140,6 +140,10 @@ config({'development','production'}, {
   -- defaults to $HOME/.multistreamer if not set
   -- work_dir = '/path/to/some/folder',
 
+  -- set the path to sockexec's socket
+  -- see https://github.com/jprjr/sockexec for installation details
+  -- sockexec_path = '/tmp/exec.sock',
+
 })
 
 

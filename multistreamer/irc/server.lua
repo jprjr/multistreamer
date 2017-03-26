@@ -340,6 +340,11 @@ function IRCServer:processWriterResult(update)
 end
 
 function IRCServer:processStreamStart(update)
+
+  if update.status.data_pushing ~= true then
+    return nil
+  end
+
   local stream = Stream:find({ id = update.id })
   local sas = stream:get_streams_accounts()
   local user = stream:get_user()

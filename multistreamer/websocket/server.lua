@@ -92,9 +92,11 @@ function Server:redis_relay()
         msg.uuid = nil
         self.ws:send_text(to_json(msg))
       elseif res[2] == endpoint('stream:start') and msg.id == self.stream.id then
-        self:send_stream_status(true)
+        self:send_stream_status(msg.status)
+
       elseif res[2] == endpoint('stream:end') and msg.id == self.stream.id then
-        self:send_stream_status(false)
+        self:send_stream_status({data_pushing = false, data_pulling = false, data_incoming = false })
+
       elseif res[2] == endpoint('stream:update') and msg.id == self.stream.id then
         self.stream = Stream:find({ id = msg.id })
       elseif res[2] == endpoint('stream:writerresult')
@@ -140,11 +142,17 @@ function Server:websocket_relay()
     elseif typ == 'text' then
       local msg = from_json(data)
       if msg.type == 'status' then
-        local ok = streams:get(self.stream.id)
-        if not ok then
-            ok = false
+        local stream_status = streams:get(self.stream.id)
+        if stream_status then
+          stream_status = from_json(stream_status)
+        else
+          stream_status = {
+              data_pushing = false,
+              data_pulling = false,
+              data_incoming = false
+          }
         end
-        self:send_stream_status(ok)
+        self:send_stream_status(stream_status)
       elseif msg.type == 'text' or msg.type =='emote' then
         msg.stream_id = self.stream.id
         msg.uuid = self.uuid
@@ -192,7 +200,7 @@ function Server:websocket_relay()
   return true, nil
 end
 
-function Server:send_stream_status(ok)
+function Server:send_stream_status(status)
   local msg = {
     ['type'] = 'status',
     ['accounts'] = {
@@ -208,12 +216,13 @@ function Server:send_stream_status(ok)
       }
     }
   }
-  if not ok then
-    msg.status = 'end'
+
+  msg.status = status
+
+  if status.data_pushing == false then
     self.ws:send_text(to_json(msg))
     return
   end
-  msg.status = 'live'
 
   local l_networks = {}
   local accounts = self.stream:get_accounts()

@@ -6,6 +6,7 @@ local SharedStream = require'models.shared_stream'
 local format = string.format
 local slugify = require('lapis.util').slugify
 local pairs = pairs
+local db = require'lapis.db'
 
 local Stream = Model:extend('streams', {
   timestamp = true,
@@ -113,6 +114,10 @@ function Stream:save_stream(user,stream,params)
   local stream = stream
   local slug = slugify(params.stream_name)
   local slug_stream = Stream:find({ user_id = user.id, slug = slug })
+  params.preview_required = tonumber(params.preview_required)
+  if not params.ffmpeg_pull_args or params.ffmpeg_pull_args:len() == 0 then
+    params.ffmpeg_pull_args = db.NULL
+  end
   if not stream then
     if slug_stream then
       return false, 'Stream name conflicts with ' .. slug_stream.name
@@ -120,7 +125,9 @@ function Stream:save_stream(user,stream,params)
     stream = self:create({
       user_id = user.id,
       name = params.stream_name,
-      slug = slug
+      slug = slug,
+      preview_required = params.preview_required,
+      ffmpeg_pull_args = params.ffmpeg_pull_args,
     })
   else
     if slug_stream and slug_stream.id ~= stream.id then
@@ -129,6 +136,8 @@ function Stream:save_stream(user,stream,params)
     stream:update({
       name = params.stream_name,
       slug = slug,
+      preview_required = params.preview_required,
+      ffmpeg_pull_args = params.ffmpeg_pull_args,
     })
   end
 

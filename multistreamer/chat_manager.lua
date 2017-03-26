@@ -166,6 +166,9 @@ function ChatMgr:handleStreamStart(msg)
   if msg.worker ~= pid then
     return nil
   end
+  if msg.status.data_pushing ~= true then
+    return nil
+  end
   local stream = Stream:find({id = msg.id})
 
   if not stream then

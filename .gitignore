@@ -3,3 +3,4 @@
 /static/favicon.ico
 /.lua-version
 *.swp
+/local/

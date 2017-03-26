@@ -34,6 +34,7 @@ I also have a YouTube video about installing this available here: https://youtu.
   + [Alternative: Install nginx with Lua and rtmp](#alternative-install-nginx-with-lua-and-rtmp)
   + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
   + [Setup Redis](#setup-redis)
+  + [Setup Sockexec](#setup-sockexec)
   + [Setup Authentication Server](#setup-authentication-server)
   + [Clone and setup](#clone-and-setup)
   + [Install Lua modules](#install-lua-modules)
@@ -150,6 +151,16 @@ postgres=# \q
 I'm not going to write up instructions for setting up Redis - this is more
 of a checklist item.
 
+### Setup Sockexec
+
+`multistreamer` uses the `lua-resty-exec` module for managing ffmpeg processes,
+which requires a running instance of [`sockexec`](https://github.com/jprjr/sockexec).
+The `sockexec` repo has instructions for installation - you can either compile from
+source, or just download a static binary.
+
+Make sure you change `sockexec`'s default timeout value. The default is pretty
+conservative (60 seconds). I'd recommend making it infinite (ie, `sockexec -t0 /tmp/exec.sock`).
+
 ### Setup Authentication Server
 
 `multistreamer` doesn't handle its own authentication - instead, it will
@@ -222,6 +233,7 @@ Each module has more details in the [wiki.](https://github.com/jprjr/multistream
 
 You'll need some Lua modules installed:
 
+* lua-resty-exec
 * lua-resty-jit-uuid
 * lua-resty-string
 * lua-resty-http
@@ -315,13 +327,19 @@ It's important to note that updating the web interface does *not* immediately
 change anything on the user's streaming services - it's saved for later,
 when the user starts pushing video.
 
-When the user starts pushing video to the RTMP endpoint, `multistreamer` will
-update each account as needed - like updating the Twitch's broadcast title
-and game, or make a new Live Video for Facebook. It will then start relaying
-video to the different accounts.
+The user can setup a stream to either start pushing video to their streaming
+services as soon as an incoming video stream is detected, or to wait until
+they've had a chance to preview the stream. Either way, `multistreamer` will
+update each account as needed just before it starts pushing video out - things
+like updating the Twitch's broadcast title and game, or make a new Live Video
+for Facebook.
 
 Once the user stops pushing video, `multistreamer` will take any needed
 shutdown/stop actions - like ending the Facebook Live Video.
+
+I highly recommend that users browse each network's section within the
+[Wiki](https://github.com/jprjr/multistreamer/wiki) - I tried to detail
+each of the metadata settings and what they mean/do.
 
 ### IRC Usage
 

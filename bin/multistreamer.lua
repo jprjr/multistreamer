@@ -16,6 +16,7 @@ local insert = table.insert
 
 local script_path = posix.realpath(arg[0])
 local streamer_dir = posix.dirname(posix.dirname(script_path))
+local bash_path   = streamer_dir ..'/bin/multistreamer'
 posix.chdir(streamer_dir)
 
 local commands = {
@@ -23,6 +24,7 @@ local commands = {
   ['initdb'] = 1,
   ['psql'] = 1,
   ['push'] = 1, -- internal command
+  ['pull'] = 1, -- internal command
 }
 
 local sql_files = {
@@ -31,6 +33,7 @@ local sql_files = {
   [3] = streamer_dir .. '/sql/1485029477.sql',
   [4] = streamer_dir .. '/sql/1485036089.sql',
   [5] = streamer_dir .. '/sql/1485788609.sql',
+  [6] = streamer_dir .. '/sql/1489949143.sql',
 }
 
 if(not arg[1] or not commands[arg[1]]) then
@@ -70,9 +73,14 @@ if(arg[1] == 'run') then
     print('Error: path to ffmpeg not set')
     exit(1)
   end
+  if not config.sockexec_path then
+    print('Error: path to sockexec socket not set')
+    exit(1)
+  end
 
   config.lua_bin = lua_bin
   config.script_path = script_path;
+  config.bash_path   = bash_path;
 
   if not config.work_dir then
     config.work_dir = getenv('HOME') .. '/.multistreamer'
@@ -179,6 +187,32 @@ elseif(arg[1] == 'push') then
     insert(ffmpeg_args,sa.rtmp_url)
   end
 
+  local _, err = posix.exec(config.ffmpeg,ffmpeg_args)
+  print(err)
+  exit(1)
+
+elseif(arg[1] == 'pull') then
+  if not arg[2] then
+    print('pull requires uuid argument')
+    exit(1)
+  end
+
+  local shell = require'multistreamer.shell'
+  local StreamModel = require'models.stream'
+  local stream = StreamModel:find({uuid = arg[2]})
+
+  local ffmpeg_args = {
+    '-v',
+    'error',
+  }
+
+  local args = shell.parse(stream.ffmpeg_pull_args)
+  for i,v in pairs(args) do
+    insert(ffmpeg_args,v)
+  end
+  insert(ffmpeg_args,'-f')
+  insert(ffmpeg_args,'flv')
+  insert(ffmpeg_args,config.private_rtmp_url ..'/'..config.rtmp_prefix..'/'..arg[2])
   local _, err = posix.exec(config.ffmpeg,ffmpeg_args)
   print(err)
   exit(1)
