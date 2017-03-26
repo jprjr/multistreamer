@@ -283,6 +283,12 @@ Alternatively, you could run something like:
 
 `psql -U <username> -h <host> -f sql/1477785578.sql`
 
+### Customization
+
+Starting with Multistreamer 6.0.0, you can override CSS and images.
+
+Just copy the `static` folder to `local`, then edit/replace files as needed.
+
 ## Usage
 
 ### Start the server
