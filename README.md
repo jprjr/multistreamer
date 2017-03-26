@@ -22,7 +22,9 @@ available via the regular Facebook web interface, as far as I know. :)
 Please note: you're responsible for ensuring you're not violating each
 service's Terms of Service via simulcasting.
 
-I have a YouTube video going over to to use this here: https://youtu.be/BukSywMuf5E
+I have a YouTube video going over how to to use this here: https://youtu.be/BukSywMuf5E
+
+Version 6 has some cool new features - I made a video on those here: https://youtu.be/d5mOV3YzHxU
 
 I also have a YouTube video about installing this available here: https://youtu.be/Wr4CD6RU_CU
 
