@@ -200,7 +200,6 @@ elseif(arg[1] == 'pull') then
   local shell = require'multistreamer.shell'
   local StreamModel = require'models.stream'
   local stream = StreamModel:find({uuid = arg[2]})
-  local sas = stream:get_streams_accounts()
 
   local ffmpeg_args = {
     '-v',
