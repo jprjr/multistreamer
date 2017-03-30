@@ -355,6 +355,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
 }))
 
 app:match('on-update',config.http_prefix .. '/on-update', respond_to({
+
   GET = function(self)
     return plain_err_out(self,'Not Found')
   end,
@@ -366,6 +367,20 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     local stream, sas, err = get_all_streams_accounts(self.params.name)
     if not stream then
       return plain_err_out(self,err)
+    end
+
+    local stream_status = streams_dict:get(stream.id)
+    if stream_status then
+      stream_status = from_json(stream_status)
+    else
+      stream_status = {
+        data_incoming = false,
+        data_pushing = false,
+        data_pulling = false,
+      }
+    end
+    if stream_status.data_pushing == false then
+      return plain_err_out(self,'OK',200)
     end
 
     for _,v in pairs(sas) do
@@ -386,6 +401,16 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
   if not stream then
     return plain_err_out(self,err)
   end
+  local stream_status = streams_dict:get(stream.id)
+  if stream_status then
+    stream_status = from_json(stream_status)
+  else
+    stream_status = {
+      data_incoming = false,
+      data_pushing = false,
+      data_pulling = false,
+    }
+  end
 
   publish('process:end:push', {
     id = stream.id,
@@ -397,12 +422,14 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
 
   streams_dict:set(stream.id,nil)
 
-  for _,v in pairs(sas) do
-    local account = v[1]
-    local sa = v[2]
+  if stream_status.data_pushing == true then
+    for _,v in pairs(sas) do
+      local account = v[1]
+      local sa = v[2]
 
-    sa:update({rtmp_url = db.NULL})
-    account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+      sa:update({rtmp_url = db.NULL})
+      account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+    end
   end
 
   return plain_err_out(self,'OK',200)
