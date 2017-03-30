@@ -584,6 +584,7 @@ app:match('stream-video', config.http_prefix .. '/stream/:id/video(/*)', respond
     if not fn then
       fn = 'index.m3u8'
     end
+
     local res = capture(config.http_prefix .. '/video_raw/' .. self.stream.uuid .. '/' .. fn)
     if res then
       if res.status == 302 then
