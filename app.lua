@@ -323,7 +323,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     stream_status.data_incoming = true
     streams_dict:set(stream.id, to_json(stream_status))
 
-    if stream.preview_required == 0 then
+    if stream.preview_required == 0 and #sas > 0 then
       for _,v in pairs(sas) do
         local account = v[1]
         local sa = v[2]

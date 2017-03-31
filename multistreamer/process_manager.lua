@@ -104,12 +104,30 @@ function ProcessMgr:startPush(msg)
   self.pushers[stream.id] = spawn(function()
     local prog = exec.new(config.sockexec_path)
     prog.timeout_fatal = false
-    while true do
+
+    local running = true
+    while running do
       local res = prog(bash_path,'-l',lua_bin,'-e',os.getenv('LAPIS_ENVIRONMENT'),'push',stream.uuid)
-      ngx_log(ngx_debug,'[Process Manager] Pusher ended')
-      log_result(res,'Pusher')
+
+      ngx_log(ngx.NOTICE,'[Process Manager] Pusher ended')
+      -- log_result(res,'Pusher')
+
       ngx_sleep(10)
+      local stream_status = streams_dict:get(stream.id)
+      if stream_status then
+        stream_status = from_json(stream_status)
+      else
+        stream_status = {
+          data_incoming = false,
+          data_pushing = false,
+          data_pulling = false,
+        }
+      end
+      if stream_status.data_incoming == false then
+        running = false
+      end
     end
+    
   end)
 
   return true
