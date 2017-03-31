@@ -796,27 +796,31 @@ function IRCServer:clientUnknown(nick,msg)
 end
 
 function IRCServer:clientJoinRoom(nick,msg)
-  local room = msg.args[1]
-  if not room then return self:sendClientFromServer(nick,'403','Channel does not exist') end
-  if room:sub(1,1) == '#' then
-    room = room:sub(2)
-  end
-  if not self.rooms[room] then
-    return self:sendClientFromServer(nick,'403','Channel does not exist')
-  end
-  local chat_level = self.rooms[room].stream:check_chat(self.user)
-  if chat_level < 1 then
-    return self:sendClientFromServer(nick,'403','Channel does not exist')
-  end
+  if not msg.args[1] then return self:sendClientFromServer(nick,'403','Channel does not exist') end
 
-  self:sendRoomJoin(nick,nick,room)
-  
-  local ok, err = publish('irc:events:join', {
-    nick = nick,
-    room = room,
-    uuid = self.uuid
-  })
-  if not ok then return false, err end
+  local rooms = msg.args[1]:split(',') 
+
+  for _,room in ipairs(rooms) do
+
+    if room:sub(1,1) == '#' then
+      room = room:sub(2)
+    end
+    if not self.rooms[room] then
+      self:sendClientFromServer(nick,'403','Channel does not exist')
+    end
+    local chat_level = self.rooms[room].stream:check_chat(self.user)
+    if chat_level < 1 then
+      self:sendClientFromServer(nick,'403','Channel does not exist')
+    end
+
+    self:sendRoomJoin(nick,nick,room)
+    
+    local ok, err = publish('irc:events:join', {
+      nick = nick,
+      room = room,
+      uuid = self.uuid
+    })
+  end
 
   return true,nil
 end
