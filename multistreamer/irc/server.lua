@@ -110,6 +110,7 @@ function IRCServer.new(socket,user,parentServer)
     ['TOPIC'] = IRCServer.clientTopic,
     ['USERHOST'] = IRCServer.clientUnknown,
     ['USERS'] = IRCServer.clientUsers,
+    ['USERHOST'] = IRCServer.clientUserhost,
     ['WHO'] = IRCServer.clientWho,
     ['WHOIS'] = IRCServer.clientWhois,
   }
@@ -662,6 +663,20 @@ function IRCServer:clientIson(nick,msg)
     resp = ':'
   end
   return self:sendClientFromServer(nick,'303',resp)
+end
+
+function IRCServer:clientUserhost(nick,msg)
+  local resp = ':'
+  local i = 1
+  for _,u in pairs(msg.args) do
+    if self.users[u] then
+      if i > 1 then
+        u = ' ' .. u
+      end
+      resp = resp .. u .. '=' .. u .. '@' .. config.irc_hostname
+    end
+  end
+  return self:sendClientFromServer(nick,'302', resp)
 end
 
 function IRCServer:clientWhois(nick,msg)
