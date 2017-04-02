@@ -90,11 +90,11 @@ function IRCServer.new(socket,user,parentServer)
   end
 
   server.clientFunctions = {
-    ['AWAY'] = IRCServer.clientUnknown,
+    ['AWAY'] = IRCServer.clientAway,
     ['INVITE'] = IRCServer.clientInvite,
     ['ISON'] = IRCServer.clientIson,
     ['JOIN'] = IRCServer.clientJoinRoom,
-    ['KICK'] = IRCServer.clientKick,
+    ['KICK'] = IRCServer.clientNotChanOp,
     ['LIST'] = IRCServer.clientList,
     ['MODE'] = IRCServer.clientMode,
     ['NOTICE'] = IRCServer.clientMessage,
@@ -104,13 +104,12 @@ function IRCServer.new(socket,user,parentServer)
     ['PING'] = IRCServer.clientPing,
     ['PRIVMSG'] = IRCServer.clientMessage,
     ['QUIT'] = IRCServer.clientQuit,
-    ['REHASH'] = IRCServer.clientUnknown,
-    ['RESTART'] = IRCServer.clientUnknown,
-    ['SUMMON'] = IRCServer.clientUnknown,
-    ['TOPIC'] = IRCServer.clientTopic,
-    ['USERHOST'] = IRCServer.clientUnknown,
-    ['USERS'] = IRCServer.clientUsers,
+    ['REHASH'] = IRCServer.clientNotOp,
+    ['RESTART'] = IRCServer.clientNotOp,
+    ['SUMMON'] = IRCServer.clientSummon,
+    ['TOPIC'] = IRCServer.clientNotChanOp,
     ['USERHOST'] = IRCServer.clientUserhost,
+    ['USERS'] = IRCServer.clientUsers,
     ['WHO'] = IRCServer.clientWho,
     ['WHOIS'] = IRCServer.clientWhois,
   }
@@ -648,6 +647,14 @@ function IRCServer:listRooms(nick,rooms)
   return true, nil
 end
 
+function IRCServer:clientAway(nick,msg)
+  if #msg.args > 0 then
+    return self:sendClientFromServer(nick,'306','You have been marked as being away')
+  else
+    return self:sendClientFromServer(nick,'305','You are no longer marked as being away')
+  end
+end
+
 function IRCServer:clientIson(nick,msg)
   local resp = ''
   local i = 1
@@ -666,14 +673,15 @@ function IRCServer:clientIson(nick,msg)
 end
 
 function IRCServer:clientUserhost(nick,msg)
-  local resp = ':'
+  local resp = ''
   local i = 1
   for _,u in pairs(msg.args) do
     if self.users[u] then
       if i > 1 then
-        u = ' ' .. u
+        resp = resp .. ' '
       end
       resp = resp .. u .. '=' .. u .. '@' .. config.irc_hostname
+      i = i + 1
     end
   end
   return self:sendClientFromServer(nick,'302', resp)
@@ -794,12 +802,16 @@ function IRCServer:clientOper(nick,msg)
   return self:sendClientFromServer(nick,'464','Password incorrect')
 end
 
-function IRCServer:clientKick(nick,msg)
+function IRCServer:clientNotOp(nick,msg)
+  return self:sendClientFromServer(nick,'481','Permission Denied- You\'re not an IRC operator')
+end
+
+function IRCServer:clientNotChanOp(nick,msg)
   return self:sendClientFromServer(nick,'482',msg.args[1],'You\'re not channel operator')
 end
 
-function IRCServer:clientTopic(nick,msg)
-  return self:sendClientFromServer(nick,'482',msg.args[1],'You\'re not channel operator')
+function IRCServer:clientSummon(nick,msg)
+  return self:sendClientFromServer(nick,'445','SUMMON has been disabled')
 end
 
 function IRCServer:clientUsers(nick,msg)
