@@ -213,27 +213,6 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       return err_out(self,'Nice try buddy')
     end
 
-    if self.params['customPullBtn'] ~= nil then
-      self.stream_status.data_pulling = true
-      streams_dict:set(self.stream.id, to_json(self.stream_status))
-      publish('process:start:pull', {
-        worker = pid,
-        id = self.stream.id,
-      })
-      self.session.status_msg = { type = 'success', msg = 'Custom Puller Started' }
-      return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
-    end
-
-    if self.params['customPullBtnStop'] ~= nil then
-      self.stream_status.data_pulling = false
-      streams_dict:set(self.stream.id, to_json(self.stream_status))
-      publish('process:end:pull', {
-        id = self.stream.id,
-      })
-      self.session.status_msg = { type = 'success', msg = 'Custom Puller Stopped' }
-      return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
-    end
-
     if self.params.title then
       self.stream:set('title',self.params.title)
     end
@@ -264,6 +243,27 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
     end
 
     publish('stream:update',self.stream)
+
+    if self.params['customPullBtn'] ~= nil then
+      self.stream_status.data_pulling = true
+      streams_dict:set(self.stream.id, to_json(self.stream_status))
+      publish('process:start:pull', {
+        worker = pid,
+        id = self.stream.id,
+      })
+      self.session.status_msg = { type = 'success', msg = 'Custom Puller Started' }
+      return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
+    end
+
+    if self.params['customPullBtnStop'] ~= nil then
+      self.stream_status.data_pulling = false
+      streams_dict:set(self.stream.id, to_json(self.stream_status))
+      publish('process:end:pull', {
+        id = self.stream.id,
+      })
+      self.session.status_msg = { type = 'success', msg = 'Custom Puller Stopped' }
+      return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
+    end
 
     local success_msg = 'Settings saved'
 
