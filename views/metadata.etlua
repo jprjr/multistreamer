@@ -26,6 +26,7 @@
 <% end %>
 <% end %>
 <button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled>Go Live!</button>
+<button class="pure-button pure-button-primary" type="submit" id="stopLiveBtn" name="stopLiveBtn" <%= stream_status.data_pushing and '' or 'disabled'%>>Stop Pushing</button>
 </div
 <% end %>
 </div>

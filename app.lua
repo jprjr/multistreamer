@@ -293,6 +293,18 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       })
     end
 
+    if self.stream_status.data_pushing == true and self.params['stopLiveBtn'] ~= nil then
+      self.stream_status.data_pushing = false
+
+      publish('stream:end', {
+        id = self.stream.id,
+      })
+
+      publish('process:end:push', {
+        id = self.stream.id,
+      })
+    end
+
     streams_dict:set(self.stream.id, to_json(self.stream_status))
     self.session.status_msg = { type = 'success', msg = success_msg }
     return { redirect_to = self:url_for('metadata-edit') .. self.stream.id }
