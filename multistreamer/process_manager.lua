@@ -110,7 +110,7 @@ function ProcessMgr:startPush(msg)
       local res = prog(bash_path,'-l',lua_bin,'-e',os.getenv('LAPIS_ENVIRONMENT'),'push',stream.uuid)
 
       ngx_log(ngx.NOTICE,'[Process Manager] Pusher ended')
-      -- log_result(res,'Pusher')
+      log_result(res,'Pusher')
 
       ngx_sleep(10)
       local stream_status = streams_dict:get(stream.id)
