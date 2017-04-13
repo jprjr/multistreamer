@@ -166,6 +166,21 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
   end,
 }))
 
+app:match('profile-edit', config.http_prefix .. '/profile/:id', respond_to({
+  before = function(self)
+    if not require_login(self) then return err_out(self,'login required') end
+  end,
+  GET = function(self)
+    return { render = 'profile' }
+  end,
+  POST = function(self)
+    if self.params['resetTokenBtn'] ~= nil then
+      self.user:reset_token()
+    end
+    return { render = 'profile' }
+  end,
+}))
+
 app:match('metadata-dummy', config.http_prefix .. '/metadata', function(self)
   return { redirect_to = self:url_for('site-root') }
 end)

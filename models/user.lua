@@ -3,6 +3,9 @@ local config = require'multistreamer.config'
 local http = require'resty.http'
 local encode_base64 = ngx.encode_base64
 local hmac_sha1 = ngx.hmac_sha1
+local resty_random = require'resty.random'
+local resty_md5 = require "resty.md5"
+local str = require'resty.string'
 
 local ngx_log = ngx.log
 local ngx_err = ngx.ERR
@@ -22,6 +25,17 @@ local User = Model:extend('users', {
       key = encode_base64(hmac_sha1(config.secret,self.username))
     }
   end,
+  reset_token = function(self)
+    local rand = resty_random.bytes(16,true)
+    while rand == nil do
+      rand = resty_random.bytes(16,true)
+    end
+    local md5 = resty_md5:new()
+    md5:update(rand)
+    local digest = md5:final()
+    local token = str.to_hex(digest):upper():sub(1,20)
+    self:update({access_token = token})
+  end
 })
 
 function User:login(username,password)
@@ -59,6 +73,9 @@ function User:read_session(res)
     if(encode_base64(hmac_sha1(config.secret,u_session.username)) == u_session.key) then
       return self:find({ username = u_session.username })
     end
+  end
+  if res.params.token then
+    return self:find({ access_token = res.params.token })
   end
   return nil
 end

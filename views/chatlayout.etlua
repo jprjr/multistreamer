@@ -18,9 +18,17 @@
   };
   </script>
   <base target="_blank">
+  <% if params.font_size then %>
+  <style>
+  body {
+      font-size: <%= params.font_size %>px;
+  }
+  </style>
+  <% end %>
 </head>
 <body>
 <div id="viewwrapper">
+<% if not params.widget then %>
   <div class="pure-g header">
   <div class="pure-u-1 title">
   <h1><a target="_self" href="<%= url_for("site-root") %>">multistreamer</a></h1>
@@ -28,8 +36,11 @@
   </div>
   </div>
   <div id="chatwrapper">
+<% end %>
     <% content_for('inner') %>
+<% if not params.widget then %>
   </div>
+<% end %>
 </div>
 </body>
 </html>

@@ -17,7 +17,23 @@ var scroller = zenscroll.createScroller(chatMessages);
 
 icons['irc'] = '<svg class="chaticon irc" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="m 18.477051,7.5280762 h -4.390137 l -1.212891,4.9570308 h 4.060547 v 1.779786 h -4.521972 l -1.371094,5.550293 H 9.3408203 L 10.711914,14.264893 H 7.1523437 L 5.78125,19.815186 H 4.0805664 L 5.4516602,14.264893 H 1.5229492 V 12.485107 H 5.9130859 L 7.1259766,7.5280762 H 3.0654297 V 5.748291 H 7.5874023 L 8.9716797,0.18481445 H 10.672363 L 9.2880859,5.748291 h 3.5595701 l 1.384278,-5.56347655 h 1.700683 L 14.54834,5.748291 h 3.928711 z M 12.425781,7.501709 H 8.8134766 l -1.2392579,5.009766 h 3.6123043 z" /></svg>';
 
+function findGetParameter(parameterName) {
+    var result = null,
+        tmp = [];
+    location.search
+    .substr(1)
+        .split("&")
+        .forEach(function (item) {
+        tmp = item.split("=");
+        if (tmp[0] === parameterName) result = true;
+    });
+    return result;
+}
+
 function atBottom(elem) {
+    if( findGetParameter('widget') ) {
+        return true;
+    }
     return elem.scrollHeight - elem.scrollTop === elem.clientHeight;
 }
 
@@ -200,7 +216,9 @@ function buildChatInput(account) {
         chatWrapper.removeChild(chatPickerList);
         chatPickerList = undefined;
     }
-    chatWrapper.appendChild(chatInput);
+    if(chatWrapper !== null) {
+        chatWrapper.appendChild(chatInput);
+    }
     if(curInput !== undefined) {
         curInput.focus();
     }
@@ -362,49 +380,55 @@ function updateAccountList(accounts) {
 }
 
 function updateViewCountResult(data) {
-   while(chatViewers.firstChild) {
-       chatViewers.removeChild(chatViewers.firstChild);
+   if(chatViewers !== null) {
+       while(chatViewers.firstChild) {
+           chatViewers.removeChild(chatViewers.firstChild);
+       }
+       var live_div = document.createElement('div');
+       var live_sp = document.createElement('span');
+
+       if(live) {
+           live_sp.className = 'live';
+           live_sp.innerHTML = 'Live';
+           live_div.appendChild(live_sp);
+           chatViewers.appendChild(live_div);
+
+           accountList.forEach(function(v) {
+               if(v.live === true) {
+                   var count = 'unknown';
+                   var displayName = v.network.displayName;
+
+                   if (data !== undefined && v.id === data.account_id) {
+                     v.viewer_count = data.viewer_count
+                   }
+                   var el = document.createElement('div');
+                   var sp = document.createElement('span');
+                   if(v.viewer_count !== null) {
+                       count = v.viewer_count;
+                   }
+                   if(v.http_url !== undefined) {
+                     displayName = '<a href="' + v.http_url + '" target="_blank">' + displayName + '</a>';
+                   }
+                   sp.innerHTML = displayName + ': ' + count;
+                   el.appendChild(sp);
+                   chatViewers.appendChild(el);
+               }
+           });
+       }
+       else {
+           live_sp.className = 'offline';
+           live_sp.innerHTML = 'Offline';
+           live_div.appendChild(live_sp);
+           chatViewers.appendChild(live_div);
+       }
    }
-   var live_div = document.createElement('div');
-   var live_sp = document.createElement('span');
-
-   if(live) {
-       live_sp.className = 'live';
-       live_sp.innerHTML = 'Live';
-       live_div.appendChild(live_sp);
-       chatViewers.appendChild(live_div);
-
-       accountList.forEach(function(v) {
-           if(v.live === true) {
-               var count = 'unknown';
-               var displayName = v.network.displayName;
-
-               if (data !== undefined && v.id === data.account_id) {
-                 v.viewer_count = data.viewer_count
-               }
-               var el = document.createElement('div');
-               var sp = document.createElement('span');
-               if(v.viewer_count !== null) {
-                   count = v.viewer_count;
-               }
-               if(v.http_url !== undefined) {
-                 displayName = '<a href="' + v.http_url + '" target="_blank">' + displayName + '</a>';
-               }
-               sp.innerHTML = displayName + ': ' + count;
-               el.appendChild(sp);
-               chatViewers.appendChild(el);
-           }
-       });
-   }
-   else {
-       live_sp.className = 'offline';
-       live_sp.innerHTML = 'Offline';
-       live_div.appendChild(live_sp);
-       chatViewers.appendChild(live_div);
-    }
 }
 
 function start_chat(endpoint) {
+  if(findGetParameter('from_bottom')) {
+      chatMessages.style['justify-content'] = 'flex-end';
+  }
+
   ws = new WebSocket(endpoint);
   ws.onopen = function() {
       var msg = {
@@ -434,7 +458,9 @@ function start_chat(endpoint) {
       return;
     }
     if(data.type === 'text' || data.type === 'emote') {
-        appendMessage(data);
+        if(data.network !== 'irc' || !findGetParameter('hide_irc')) {
+            appendMessage(data);
+        }
     }
     if(data.type === 'viewcountresult') {
         updateViewCountResult(data);
