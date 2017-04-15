@@ -11,6 +11,17 @@ local ngx_log = ngx.log
 local ngx_err = ngx.ERR
 local ngx_debug = ngx.DEBUG
 
+local function make_token()
+    local rand = resty_random.bytes(16,true)
+    while rand == nil do
+      rand = resty_random.bytes(16,true)
+    end
+    local md5 = resty_md5:new()
+    md5:update(rand)
+    local digest = md5:final()
+    return str.to_hex(digest):upper():sub(1,20)
+end
+
 local User = Model:extend('users', {
   timestamp = true,
   relations = {
@@ -26,15 +37,7 @@ local User = Model:extend('users', {
     }
   end,
   reset_token = function(self)
-    local rand = resty_random.bytes(16,true)
-    while rand == nil do
-      rand = resty_random.bytes(16,true)
-    end
-    local md5 = resty_md5:new()
-    md5:update(rand)
-    local digest = md5:final()
-    local token = str.to_hex(digest):upper():sub(1,20)
-    self:update({access_token = token})
+    self:update({access_token = make_token()})
   end
 })
 
@@ -58,7 +61,7 @@ function User:login(username,password)
     ngx_log(ngx_debug, 'login succeeded');
     user = self:find({ username = username:lower() })
     if not user then
-      user = self:create({username = username:lower() })
+      user = self:create({username = username:lower(), access_token = make_token() })
     end
   else
     ngx_log(ngx_debug, 'login failed');
