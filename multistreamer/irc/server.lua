@@ -1312,9 +1312,11 @@ function IRCServer:sendFromClient(to,from,...)
   local full_from = from .. '!' .. from .. '@' .. config.irc_hostname
   local msg = irc.format_line(':'..full_from,...)
   ngx_log(ngx_debug,msg)
-  local bytes, err = self.users[to].socket:send(msg .. '\r\n')
-  if not bytes then
-    return false, err
+  if self.users[to] and self.users[to].socket then
+    local bytes, err = self.users[to].socket:send(msg .. '\r\n')
+    if not bytes then
+      return false, err
+    end
   end
   return true, nil
 end

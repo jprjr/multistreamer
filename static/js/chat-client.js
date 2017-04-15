@@ -327,31 +327,15 @@ function appendMessage(msg) {
   nameDiv.className = 'name';
   nameDiv.innerHTML = icons[msg.network];
 
-  msgDiv.className = 'message';
-
-  if(msg.type === "emote") {
-    if(msg.markdown !== undefined && msg.markdown !== null) {
-      t = msg.from.name + ' ' + msg.markdown;
-      p = linkify(parser.parse(t));
-
-      nameDiv.innerHTML = nameDiv.innerHTML + writer.render(p);
-    }
-    else {
-      t = msg.from.name + ' ' + msg.text;
-      nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + t + '</p>';
-    }
+  nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';
+  if(msg.markdown !== undefined && msg.markdown !== null) {
+    p = linkify(parser.parse(msg.markdown));
+    msgDiv.innerHTML = writer.render(p);
   }
   else {
-    nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';
-    if(msg.markdown !== undefined && msg.markdown !== null) {
-      p = linkify(parser.parse(msg.markdown));
-
-      msgDiv.innerHTML = writer.render(p);
-    }
-    else {
-      msgDiv.innerHTML = '<p>' + msg.text + '</p>';
-    }
+    msgDiv.innerHTML = '<p>' + msg.text + '</p>';
   }
+  msgDiv.className = msg.type;
   newMsg.appendChild(nameDiv);
   newMsg.appendChild(msgDiv);
 

@@ -152,6 +152,7 @@ div.chatmessage, div#chatinput {
     background-color: #f2f2f2;
     border-style: solid;
     border-width: 1px;
+    flex-shrink: 0;
 }
 
 div.chatmessage.private {
@@ -183,7 +184,7 @@ div #chatinput {
 
 
 div.chatmessage div.name, div#chatinput div.name, div.chatpicker {
-    margin-right: 1em;
+    margin-right: .5em;
     display: -webkit-flex;
     display: flex;
     -webkit-align-items: center;
@@ -212,7 +213,7 @@ div.chatmessage div.name p, div#chatinput div.name p, div.chatpicker p {
     margin-bottom: 0;
 }
 
-div.chatmessage div.message, div#chatinput div.message {
+div.chatmessage div.text, div#chatinput div.message, div.chatmessage div.emote {
     display: -webkit-flex;
     display: flex;
     -webkit-align-items: center;
@@ -220,7 +221,11 @@ div.chatmessage div.message, div#chatinput div.message {
     align-items: center;
 }
 
-div.chatmessage div.message p, div#chatinput div.message input {
+div.chatmessage div.emote p {
+    font-weight: bold;
+}
+
+div.chatmessage div.text p, div#chatinput div.message input {
     margin-top: .5em;
     margin-bottom: .5em;
     margin-right: 1em;
@@ -235,7 +240,7 @@ div#chatinput div.message input {
     box-sizing: border-box;
 }
 
-div.chatmessage div.message p img {
+div.chatmessage div.text p img {
     height: 2em;
     margin-bottom: -0.5em;
 }
