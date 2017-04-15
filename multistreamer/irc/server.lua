@@ -475,9 +475,9 @@ function IRCServer:processCommentUpdate(update)
     update.text = char(1) .. 'ACTION '..update.text..char(1)
   end
 
-  if update.user_id then
+  if update.to then
     if not self.user then return end
-    if self.user.id == update.user_id and self.uuid ~= update.uuid then
+    if self.user.id == update.to.id and self.uuid ~= update.uuid then
       self:sendPrivMessage(self.user.nick,update.from.name,self.user.nick,update.text)
     end
     return
@@ -1138,8 +1138,10 @@ function IRCServer:relayMessage(nick,isroom,target,message)
   }
 
   if not isroom then
-    m.user_id = self.users[target].user.id
-    m.user_nick = target
+    m.to = {
+      id = self.users[target].user.id,
+      name = target,
+    }
     publish('comment:in',m)
     return
   end

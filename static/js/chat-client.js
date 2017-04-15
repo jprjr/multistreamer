@@ -319,9 +319,9 @@ function appendMessage(msg) {
   var p;
 
   newMsg.className = 'chatmessage';
-  if(msg.user_id) {
+  if(msg.to) {
     newMsg.className += ' private';
-    msg.from.name = msg.from.name + ' -> ' + msg.user_nick
+    msg.from.name = msg.from.name + ' -> ' + msg.to.name
   }
 
   nameDiv.className = 'name';
