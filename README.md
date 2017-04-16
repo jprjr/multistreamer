@@ -11,8 +11,12 @@ description, etc) from a single page, instead of logging into multiple
 services.
 
 Additionally, it provides an IRC interface, where users can read/write
-comments and messages in a single location. Please see the
-[wiki](https://github.com/jprjr/multistreamer/wiki) for
+comments and messages in a single location. There's also a web interface
+for viewing and replying to comments, and a chat widget you can embed
+into obs.
+
+Not all services support writing comments/messages from the web or IRC
+interfaces - please see the [wiki](https://github.com/jprjr/multistreamer/wiki) for
 details on which services support which features.
 
 Fun, unintentional side effect: you can use this to push video to your
@@ -345,9 +349,10 @@ for Facebook.
 Once the user stops pushing video, `multistreamer` will take any needed
 shutdown/stop actions - like ending the Facebook Live Video.
 
-I highly recommend that users browse each network's section within the
+I highly recommend that users browse the
 [Wiki](https://github.com/jprjr/multistreamer/wiki) - I tried to detail
-each of the metadata settings and what they mean/do.
+each section of the web interface, all the different metadata fields
+of the different network modules, etc.
 
 ### IRC Usage
 
