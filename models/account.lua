@@ -47,6 +47,7 @@ local Account  = Model:extend('accounts', {
       end
       self.shared_accounts = nil
     end
+    self.network_user_id = nil
   end,
   check_owner = function(self,user)
     if self.user_id ~= user.id then
