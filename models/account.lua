@@ -3,6 +3,7 @@ local Keystore = require'models.keystore'
 local StreamAccount = require'models.stream_account'
 local SharedAccount = require'models.shared_account'
 
+local insert = table.insert
 
 local Account  = Model:extend('accounts', {
   timestamp = true,
@@ -23,6 +24,29 @@ local Account  = Model:extend('accounts', {
       return true, nil
     end
     return false, 'User not authorized for this account'
+  end,
+  json_prep = function(self,user)
+    self.settings = {}
+    local keys = self:get_all()
+    if networks[self.network].create_form then
+      for _,v in ipairs(networks[self.network].create_form()) do
+        if keys[v.key] then
+          self.settings[v.key] = keys[v.key]
+        end
+      end
+    end
+    self.keystore = nil
+    if self:check_owner(user) then
+      self.shares = {}
+      for _,v in ipairs(self:get_shared_accounts()) do
+        local u = v:get_user()
+        u.access_token = nil
+        u.updated_at = nil
+        u.created_at = nil
+        insert(self.shares,{ user = u })
+      end
+      self.shared_accounts = nil
+    end
   end,
   check_owner = function(self,user)
     if self.user_id ~= user.id then
@@ -90,33 +114,6 @@ function Account:create(parms)
     return nil, 'Account not unique'
   end
 end
-
-function Account:create_post_handler(network)
-  return function(res)
-    if not res.account then
-      res.account, err = self:create({
-        user_id = res.user.id,
-        network = network.name,
-        name = res.params.name,
-        network_user_id = res.params.network_user_id,
-      })
-      if res.account then
-        return true, nil
-      else
-        return false, err
-      end
-    else
-      res.account:update({
-        name = res.params.name,
-        account_token = res.params.account_token,
-      })
-      if res.account then
-        return true, nil
-      end
-    end
-  end
-end
-
 
 return Account;
 

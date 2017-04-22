@@ -473,6 +473,7 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   if not self.streams then self.streams = {} end
 
   local sas = self.user:get_shared_accounts()
+
   for _,sa in pairs(sas) do
     local account = sa:get_account()
     local u = account:get_user()

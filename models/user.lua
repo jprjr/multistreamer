@@ -2,6 +2,7 @@ local Model = require('lapis.db.model').Model
 local config = require'multistreamer.config'
 local http = require'resty.http'
 local encode_base64 = ngx.encode_base64
+local decode_base64 = ngx.decode_base64
 local hmac_sha1 = ngx.hmac_sha1
 local resty_random = require'resty.random'
 local resty_md5 = require "resty.md5"
@@ -85,6 +86,29 @@ end
 
 function User:unwrite_session(res)
   res.session.user = nil
+end
+
+function User:read_auth(self)
+  local auth = self.req.headers['authorization']
+  if not auth then
+    return nil
+  end
+
+  local userpassword = decode_base64(auth:match("Basic%s+(.*)"))
+  if not userpassword then return nil end
+  local username, password = userpassword:match("([^:]*):(.*)")
+  return User:login(username,password)
+end
+
+function User:read_bearer(self)
+  local auth = self.req.headers['authorization']
+  if not auth then
+    return nil
+  end
+
+  local bearertoken = auth:match("Bearer%s(.*)")
+  if not bearertoken then return nil end
+  return User:find({ access_token = bearertoken })
 end
 
 return User;
