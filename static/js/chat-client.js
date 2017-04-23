@@ -443,7 +443,9 @@ function start_chat(endpoint) {
     }
     if(data.type === 'text' || data.type === 'emote') {
         if(data.network !== 'irc' || !findGetParameter('hide_irc')) {
-            appendMessage(data);
+            if(data.to === undefined || !findGetParameter('hide_pm')) {
+              appendMessage(data);
+            }
         }
     }
     if(data.type === 'viewcountresult') {

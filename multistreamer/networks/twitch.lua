@@ -363,11 +363,11 @@ function M.create_comment_funcs(account, stream, send)
     end
     irc:join(channel)
     irc:capreq('twitch.tv/tags')
+    irc:capreq('twitch.tv/commands')
     return true, nil
   end
 
   local function sendMsg(event,data)
-    if data.to ~= channel then return nil end
     local msg = {
       from = {
         name = data.tags['display-name'],
@@ -379,6 +379,13 @@ function M.create_comment_funcs(account, stream, send)
     if len(msg.from.name) == 0 then
       msg.from.name = data.from.nick
     end
+
+    if data.to == nick then
+      msg.to = {
+        name = nick,
+      }
+    end
+
     if event == 'message' then
       msg.type = 'text'
     elseif event == 'emote' then

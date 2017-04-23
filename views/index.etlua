@@ -13,7 +13,7 @@
     <% end %>
 
     <% if (not v.shared) or (v.shared and v.chat_level > 0) then %>
-    <li><a href="<%= url_for('stream-chat', { id = v.id })%>">Chat</a> (<a href="<%= url_for('stream-chat', { id = v.id})%>?widget&hide_irc&from_bottom&font_size=16&token=<%= user.access_token %>">Widget</a>)</li>
+    <li><a href="<%= url_for('stream-chat', { id = v.id })%>">Chat</a> (<a href="<%= url_for('stream-chat', { id = v.id})%>?widget&hide_irc&hide_pm&from_bottom&font_size=16&token=<%= user.access_token %>">Widget</a>)</li>
     <% end %>
     <% if not v.shared then %>
     <li><a href="<%= url_for('stream-edit', { id = v.id })%>">Add/Remove Accounts</a></li>
