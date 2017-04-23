@@ -24,7 +24,7 @@ services.
 Additionally, it provides an IRC interface, where users can read/write
 comments and messages in a single location. There's also a web interface
 for viewing and replying to comments, and a chat widget you can embed
-into obs.
+into OBS (or anything else supporting web-based sources).
 
 Not all services support writing comments/messages from the web or IRC
 interfaces - please see the [wiki](https://github.com/jprjr/multistreamer/wiki) for
