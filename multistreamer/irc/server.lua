@@ -478,9 +478,13 @@ function IRCServer:processCommentUpdate(update)
   if update.to then
     if not self.user then return end
     if self.user.id == update.to.id and self.uuid ~= update.uuid then
+      -- true IRC PM
       self:sendPrivMessage(self.user.nick,update.from.name,self.user.nick,update.text)
+      return
+    elseif not update.to.id then
+      -- twitch IRC whisper
+      update.text = '(whisper to ' .. update.to.name .. ') ' .. update.text
     end
-    return
   end
 
   if update.uuid and update.uuid == self.uuid then
