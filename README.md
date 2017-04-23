@@ -6,8 +6,12 @@ no to being bought a beer!
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NNKN85X52NEP6)
 [![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=jprjr&url=https://github.com/jprjr/multistreamer&title=multistreamer&language=en_GB&tags=github&category=software)
 
+This is a tool for simulcasting RTMP streams to multiple services:
 
-This is a tool for simulcasting RTMP streams to multiple services.
+* [Beam](https://github.com/jprjr/multistreamer/wiki/Beam)
+* [Facebook](https://github.com/jprjr/multistreamer/wiki/Facebook)
+* [Twitch](https://github.com/jprjr/multistreamer/wiki/Twitch)
+* [YouTube](https://github.com/jprjr/multistreamer/wiki/YouTube)
 
 It allows users to add accounts for their favorite streaming services,
 and gives an endpoint for them to push video to. Their video stream will
@@ -482,3 +486,6 @@ see [https://github.com/danleech/simple-icons/blob/gh-pages/LICENSE.md](https://
 I'll be honest, I'm not sure how trademark law applies here (but I'm sure it does),
 so I feel obligated to mention that all trademarked images are property of their
 respective companies.
+
+The network module for Beam uses an embedded SVG icon from [beam-branding-kit](https://github.com/WatchBeam/beam-branding-kit),
+it is property of [Beam](https://beam.pro).

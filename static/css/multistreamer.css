@@ -270,6 +270,15 @@ svg.chaticon.youtube {
 svg.chaticon.irc {
     background-color: #6b6f75;
 }
+svg.chaticon.beam {
+    background-color: #6b6f75;
+}
+
+svg.chaticon.beam g path.st0 {fill:#8150EF;}
+svg.chaticon.beam g path.st1{fill:#4D90F4;}
+svg.chaticon.beam g path.st2{fill:#2F2F5D;}
+svg.chaticon.beam g path.st3{fill:#FFFFFF;}
+
 video {
     width: 100%;
 }

@@ -146,10 +146,6 @@ function M.publish_start(account, stream)
 
 end
 
-function M.publish_started(account, stream)
-  return true, nil
-end
-
 function M.publish_stop(account, stream)
   local access_token = account:get('access_token')
   local param1 = stream:get('field1')
