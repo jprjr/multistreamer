@@ -599,8 +599,8 @@ function M.create_comment_funcs(account, stream, send)
   local access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
 
   if send then
+    local nextPageToken = nil
     read_func = function()
-      local nextPageToken = nil
       while true do
         local sleeptime = 6
         access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
@@ -629,6 +629,7 @@ function M.create_comment_funcs(account, stream, send)
         end
         ngx.sleep(sleeptime)
       end
+      return false, nil
     end
   end
 

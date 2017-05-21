@@ -397,6 +397,7 @@ function M.create_comment_funcs(account, stream, send)
   if not irc_connect() then return nil,nil end
 
   local read_func = function()
+    local irc_err
     local running = true
     if send then
       irc:onEvent('message',sendMsg)
@@ -408,10 +409,11 @@ function M.create_comment_funcs(account, stream, send)
       ok, err = irc_connect()
       if not ok then
         ngx_log(ngx_err,'[Twitch] IRC Connection error: ' .. err)
+        irc_err = err
         running = false
       end
     end
-    return false, nil
+    return false, irc_err
   end
 
   local write_func = function(message)
