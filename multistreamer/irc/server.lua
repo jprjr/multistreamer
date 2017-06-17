@@ -57,6 +57,7 @@ function IRCServer.new(socket,user,parentServer)
     curState = parentServer:getState()
     server.socket = socket
     server.user = user
+    server.user.rooms = {}
     server.rooms = curState.rooms
     server.users = curState.users
     server.users[user.nick] = {}
@@ -233,6 +234,8 @@ function IRCServer:run()
       for _,stream in ipairs(u:get_streams()) do
         local roomName = slugify(u.username) .. '-' .. stream.slug
         if self.rooms[roomName] and self.rooms[roomName].live then
+          self:sendRoomJoin(self.user.nick, self.user.nick, roomName)
+          self.user.rooms[roomName] = true
           local ok, err = publish('irc:events:join', {
             nick = self.user.nick,
             room = roomName,
@@ -379,10 +382,18 @@ function IRCServer:processStreamStart(update)
       topic = topic .. ' ' .. http_url
     end
   end
+
   self.rooms[roomName].topic = topic
   self.rooms[roomName].live = true
   self:sendRoomTopic(roomName)
+
   if config.irc_force_join then
+
+    if self.user and self.user.nick == slugify(user.username) and not self.user.rooms[roomName] then
+      self:sendRoomJoin(self.user.nick, self.user.nick,roomName)
+      self.user.rooms[roomName] = true
+    end
+
     if not self.rooms[roomName].users[slugify(user.username)] and self.users[slugify(user.username)] then
       local ok, err = publish('irc:events:join', {
         nick = slugify(user.username),
@@ -438,10 +449,15 @@ function IRCServer:processStreamUpdate(update)
         if self.users[u].socket then
           self:sendFromClient(u,'root','KICK','#'..oldroomName,u,'Room moving to #'..roomName)
           if room.live and config.irc_force_join then
+
+            self:sendRoomJoin(self.user.nick, self.user.nick,roomName)
+            self.user.rooms[roomName] = true
+
             local ok, err = publish('irc:events:join', {
               nick = u,
               room = roomName,
             })
+
           end
         end
       end
