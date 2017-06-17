@@ -558,6 +558,7 @@ local emotes = {
   ['SAD']  = 'is saddened by this',
   ['ANGRY'] = 'is made angry by this',
   ['THANKFUL'] = 'is thankful for this',
+  ['PRIDE'] = 'is proud of this',
 }
 
 local function textify(emote)
