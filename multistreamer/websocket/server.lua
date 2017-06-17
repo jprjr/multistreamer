@@ -88,7 +88,7 @@ function Server:redis_relay()
 
     if res then
       local msg = from_json(res[3])
-      if res[2] == endpoint('comment:in') and not msg.relay and ( (msg.stream_id == self.stream.id) or (msg.user_id and (msg.user_id == self.user.id or msg.from.id == self.user.id))) then
+      if res[2] == endpoint('comment:in') and not msg.relay and ( (msg.stream_id == self.stream.id) or (msg.to and (msg.to.id == self.user.id or msg.from.id == self.user.id))) then
         msg.uuid = nil
         self.ws:send_text(to_json(msg))
       elseif res[2] == endpoint('stream:start') and msg.id == self.stream.id then
@@ -156,21 +156,31 @@ function Server:websocket_relay()
       elseif msg.type == 'text' or msg.type =='emote' then
         msg.stream_id = self.stream.id
         msg.uuid = self.uuid
+
+        local parts = msg.text:split(' ')
+
+        if parts[1] == '/irc' or parts[1] == '/msg' then
+          msg.account_id = 0
+          msg.text = concat(parts,' ', 2)
+        end
+
         if msg.account_id == 0 then
           msg.from = {
             name = self.user.username,
             id = self.user.id,
           }
           msg.network = 'irc'
-          local parts = msg.text:split(' ')
+
           if parts[1] == '/msg' then
             local un = parts[2]
             msg.text = concat(parts,' ',3)
             msg.stream_id = nil
             local u = User:find({ username = un })
             if u then
-              msg.user_id = u.id
-              msg.user_nick = u.username
+              msg.to = {
+                name = u.username,
+                id = u.id,
+              }
               msg.markdown = msg.text:escape_markdown()
               publish('comment:in', msg)
             end

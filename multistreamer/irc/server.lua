@@ -91,11 +91,11 @@ function IRCServer.new(socket,user,parentServer)
   end
 
   server.clientFunctions = {
-    ['AWAY'] = IRCServer.clientUnknown,
+    ['AWAY'] = IRCServer.clientAway,
     ['INVITE'] = IRCServer.clientInvite,
     ['ISON'] = IRCServer.clientIson,
     ['JOIN'] = IRCServer.clientJoinRoom,
-    ['KICK'] = IRCServer.clientKick,
+    ['KICK'] = IRCServer.clientNotChanOp,
     ['LIST'] = IRCServer.clientList,
     ['MODE'] = IRCServer.clientMode,
     ['NOTICE'] = IRCServer.clientMessage,
@@ -105,11 +105,11 @@ function IRCServer.new(socket,user,parentServer)
     ['PING'] = IRCServer.clientPing,
     ['PRIVMSG'] = IRCServer.clientMessage,
     ['QUIT'] = IRCServer.clientQuit,
-    ['REHASH'] = IRCServer.clientUnknown,
-    ['RESTART'] = IRCServer.clientUnknown,
-    ['SUMMON'] = IRCServer.clientUnknown,
-    ['TOPIC'] = IRCServer.clientTopic,
-    ['USERHOST'] = IRCServer.clientUnknown,
+    ['REHASH'] = IRCServer.clientNotOp,
+    ['RESTART'] = IRCServer.clientNotOp,
+    ['SUMMON'] = IRCServer.clientSummon,
+    ['TOPIC'] = IRCServer.clientNotChanOp,
+    ['USERHOST'] = IRCServer.clientUserhost,
     ['USERS'] = IRCServer.clientUsers,
     ['WHO'] = IRCServer.clientWho,
     ['WHOIS'] = IRCServer.clientWhois,
@@ -491,12 +491,16 @@ function IRCServer:processCommentUpdate(update)
     update.text = char(1) .. 'ACTION '..update.text..char(1)
   end
 
-  if update.user_id then
+  if update.to then
     if not self.user then return end
-    if self.user.id == update.user_id and self.uuid ~= update.uuid then
+    if self.user.id == update.to.id and self.uuid ~= update.uuid then
+      -- true IRC PM
       self:sendPrivMessage(self.user.nick,update.from.name,self.user.nick,update.text)
+      return
+    elseif not update.to.id then
+      -- twitch IRC whisper
+      update.text = '(whisper to ' .. update.to.name .. ') ' .. update.text
     end
-    return
   end
 
   if update.uuid and update.uuid == self.uuid then
@@ -663,6 +667,14 @@ function IRCServer:listRooms(nick,rooms)
   return true, nil
 end
 
+function IRCServer:clientAway(nick,msg)
+  if #msg.args > 0 then
+    return self:sendClientFromServer(nick,'306','You have been marked as being away')
+  else
+    return self:sendClientFromServer(nick,'305','You are no longer marked as being away')
+  end
+end
+
 function IRCServer:clientIson(nick,msg)
   local resp = ''
   local i = 1
@@ -678,6 +690,21 @@ function IRCServer:clientIson(nick,msg)
     resp = ':'
   end
   return self:sendClientFromServer(nick,'303',resp)
+end
+
+function IRCServer:clientUserhost(nick,msg)
+  local resp = ''
+  local i = 1
+  for _,u in pairs(msg.args) do
+    if self.users[u] then
+      if i > 1 then
+        resp = resp .. ' '
+      end
+      resp = resp .. u .. '=' .. u .. '@' .. config.irc_hostname
+      i = i + 1
+    end
+  end
+  return self:sendClientFromServer(nick,'302', resp)
 end
 
 function IRCServer:clientWhois(nick,msg)
@@ -795,12 +822,16 @@ function IRCServer:clientOper(nick,msg)
   return self:sendClientFromServer(nick,'464','Password incorrect')
 end
 
-function IRCServer:clientKick(nick,msg)
+function IRCServer:clientNotOp(nick,msg)
+  return self:sendClientFromServer(nick,'481','Permission Denied- You\'re not an IRC operator')
+end
+
+function IRCServer:clientNotChanOp(nick,msg)
   return self:sendClientFromServer(nick,'482',msg.args[1],'You\'re not channel operator')
 end
 
-function IRCServer:clientTopic(nick,msg)
-  return self:sendClientFromServer(nick,'482',msg.args[1],'You\'re not channel operator')
+function IRCServer:clientSummon(nick,msg)
+  return self:sendClientFromServer(nick,'445','SUMMON has been disabled')
 end
 
 function IRCServer:clientUsers(nick,msg)
@@ -812,27 +843,31 @@ function IRCServer:clientUnknown(nick,msg)
 end
 
 function IRCServer:clientJoinRoom(nick,msg)
-  local room = msg.args[1]
-  if not room then return self:sendClientFromServer(nick,'403','Channel does not exist') end
-  if room:sub(1,1) == '#' then
-    room = room:sub(2)
-  end
-  if not self.rooms[room] then
-    return self:sendClientFromServer(nick,'403','Channel does not exist')
-  end
-  local chat_level = self.rooms[room].stream:check_chat(self.user)
-  if chat_level < 1 then
-    return self:sendClientFromServer(nick,'403','Channel does not exist')
-  end
+  if not msg.args[1] then return self:sendClientFromServer(nick,'403','Channel does not exist') end
 
-  self:sendRoomJoin(nick,nick,room)
-  
-  local ok, err = publish('irc:events:join', {
-    nick = nick,
-    room = room,
-    uuid = self.uuid
-  })
-  if not ok then return false, err end
+  local rooms = msg.args[1]:split(',') 
+
+  for _,room in ipairs(rooms) do
+
+    if room:sub(1,1) == '#' then
+      room = room:sub(2)
+    end
+    if not self.rooms[room] then
+      self:sendClientFromServer(nick,'403','Channel does not exist')
+    end
+    local chat_level = self.rooms[room].stream:check_chat(self.user)
+    if chat_level < 1 then
+      self:sendClientFromServer(nick,'403','Channel does not exist')
+    end
+
+    self:sendRoomJoin(nick,nick,room)
+    
+    local ok, err = publish('irc:events:join', {
+      nick = nick,
+      room = room,
+      uuid = self.uuid
+    })
+  end
 
   return true,nil
 end
@@ -1123,8 +1158,10 @@ function IRCServer:relayMessage(nick,isroom,target,message)
   }
 
   if not isroom then
-    m.user_id = self.users[target].user.id
-    m.user_nick = target
+    m.to = {
+      id = self.users[target].user.id,
+      name = target,
+    }
     publish('comment:in',m)
     return
   end
@@ -1297,9 +1334,11 @@ function IRCServer:sendFromClient(to,from,...)
   local full_from = from .. '!' .. from .. '@' .. config.irc_hostname
   local msg = irc.format_line(':'..full_from,...)
   ngx_log(ngx_debug,msg)
-  local bytes, err = self.users[to].socket:send(msg .. '\r\n')
-  if not bytes then
-    return false, err
+  if self.users[to] and self.users[to].socket then
+    local bytes, err = self.users[to].socket:send(msg .. '\r\n')
+    if not bytes then
+      return false, err
+    end
   end
   return true, nil
 end

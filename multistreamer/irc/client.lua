@@ -43,6 +43,7 @@ function IRCClient.new()
   t.commandFuncs = {
     ['PING'] = IRCClient.serverPing,
     ['PRIVMSG'] = IRCClient.serverMessage,
+    ['WHISPER'] = IRCClient.serverMessage,
   }
   setmetatable(t,IRCClient)
   return t

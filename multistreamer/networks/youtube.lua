@@ -12,6 +12,7 @@ local slugify = require('lapis.util').slugify
 local http = require'resty.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
+local string = require'multistreamer.string'
 local date = require'date'
 
 local insert = table.insert
@@ -270,7 +271,7 @@ function M.metadata_form(account, stream)
   M.check_errors(account)
 
   local form = M.metadata_fields()
-  form[6].options = {}
+  form[7].options = {}
 
   local yt = youtube_client(account:get('access_token'))
   local res, err = yt:get('/videoCategories', {
@@ -282,14 +283,14 @@ function M.metadata_form(account, stream)
     return a.snippet.title < b.snippet.title
   end)
 
-  for i,v in ipairs(res.items) do
-    insert(form[6].options, {
+  for _,v in ipairs(res.items) do
+    insert(form[7].options, {
       label = v.snippet.title,
       value = v.id,
     })
   end
 
-  for i,v in pairs(form) do
+  for _,v in pairs(form) do
     v.value = stream:get(v.key)
   end
 
@@ -312,6 +313,12 @@ function M.metadata_fields()
       required = true,
     },
     [3] = {
+      type = 'textarea',
+      label = 'Tags (one per line)',
+      key = 'tags',
+      required = true,
+    },
+    [4] = {
       type = 'select',
       label = 'Privacy',
       key = 'privacy',
@@ -322,7 +329,7 @@ function M.metadata_fields()
         { label = 'Public', value = 'public' },
       },
     },
-    [4] = {
+    [5] = {
       type = 'select',
       label = 'Resolution',
       key = 'resolution',
@@ -336,7 +343,7 @@ function M.metadata_fields()
         { label = '240p', value = '240p' },
       },
     },
-    [5] = {
+    [6] = {
       type = 'select',
       label = 'Framerate',
       key = 'framerate',
@@ -346,7 +353,7 @@ function M.metadata_fields()
         { label = '60fps', value = '60fps' },
       },
     },
-    [6] = {
+    [7] = {
       type = 'select',
       label = 'Category',
       key = 'category',
@@ -375,6 +382,7 @@ function M.publish_start(account, stream)
   local description = stream.description
   local resolution = stream.resolution
   local framerate = stream.framerate
+  local tags = stream.tags:split('\r?\n')
 
   -- the process:
   -- create Broadcast (POST /liveBroadcasts)
@@ -442,7 +450,9 @@ function M.publish_start(account, stream)
     id = broadcast.id,
     snippet = {
       title = title,
+      description = description,
       categoryId = category,
+      tags = tags,
     }
   })
 
@@ -589,8 +599,8 @@ function M.create_comment_funcs(account, stream, send)
   local access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
 
   if send then
+    local nextPageToken = nil
     read_func = function()
-      local nextPageToken = nil
       while true do
         local sleeptime = 6
         access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
@@ -619,6 +629,7 @@ function M.create_comment_funcs(account, stream, send)
         end
         ngx.sleep(sleeptime)
       end
+      return false, nil
     end
   end
 

@@ -1,48 +1,44 @@
-#!/usr/bin/env bash
+#!/bin/sh
 set -e
 
 # handy functions {{{
-function abspath_portable() {
+abspath_portable() {
     # BSD readlink is different from GNU readlink, ugh.
-    [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"
+    [ "${1#/}" != "$1" ] && echo "$1" || echo "$PWD/${1#./}"
 }
 
-function is_integer?() {
-    [[ $@ =~ ^-?[0-9]+$ ]]
-}
-
-function abs_path() {
+abs_path() {
     local abs_path=$(abspath_portable "$0")
     printf "%s\n" "${abs_path}"
 }
 
-function script_abs_path() {
+script_abs_path() {
     local abs_path=$(abs_path)
     local script_abs_path=$(readlink "${abs_path}" || printf "%s\n" "${abs_path}")
     printf "%s\n" "${script_abs_path}"
 }
 
-function script_dir() {
+script_dir() {
     local abs_path=$(abs_path)
     local script_dir=$(dirname "${abs_path}")
     printf "%s\n" "${script_dir}"
 }
 
-function script_abs_dir() {
+script_abs_dir() {
     local abs_path=$(abs_path)
     local script_abs_path=$(script_abs_path)
     local script_abs_dir=$(cd "$(dirname "${script_abs_path}")" && pwd -P)
     printf "%s\n" "${script_abs_dir}"
 }
 
-function script_name() {
+script_name() {
     local abs_path=$(abs_path)
     local script_abs_dir=$(script_abs_dir)
     local script_name="${abs_path#$script_abs_dir/}"
     printf "%s\n" "${script_name}"
 }
 
-function script_abs_name() {
+script_abs_name() {
     local script_abs_path=$(script_abs_path)
     local script_abs_dir=$(script_abs_dir)
     local script_abs_name="${script_abs_path#$script_abs_dir/}"
@@ -50,7 +46,7 @@ function script_abs_name() {
 }
 # }}}
 
-function usage() { # {{{
+usage() { # {{{
     printf "Usage:\n %s [-h] -e environment [-l /path/to/lua]\n" "$(script_name)"
     printf "  -h                - show this help\n"
     printf "  -e <environment>  - use environment from config.lua\n"

@@ -7,6 +7,7 @@ local format = string.format
 local slugify = require('lapis.util').slugify
 local pairs = pairs
 local db = require'lapis.db'
+local insert = table.insert
 
 local Stream = Model:extend('streams', {
   timestamp = true,
@@ -15,9 +16,68 @@ local Stream = Model:extend('streams', {
     {'streams_accounts', has_many = 'StreamAccount' },
     {'stream_shares', has_many = 'SharedStream' },
   },
+  -- returns chat_level and metadata_level while
+  -- removing sensitive info, if needed
+  user_prep = function(self, user)
+    local keys = self:get_all()
+    self.keystore = nil
+
+    for k,v in pairs(keys) do
+      self[k] = v
+    end
+    self.accounts = {}
+
+    local streams_accounts = self:get_streams_accounts()
+
+    for _,v in pairs(streams_accounts) do
+      local acc = v:get_account()
+      local keys = v:get_all()
+      local metadata_fields = networks[acc.network].metadata_form(acc,v)
+      acc.settings = {}
+      if metadata_fields then
+        for _,f in ipairs(metadata_fields) do
+          acc.settings[f.key] = keys[f.key]
+        end
+      end
+      acc.network_user_id = nil
+      acc.metadata_fields = metadata_fields
+      acc.ffmpeg_args = v.ffmpeg_args
+      acc.keystore = nil
+      insert(self.accounts,acc)
+    end
+
+    self.streams_accounts = nil
+
+    if self:check_owner(user) then
+      self.shares = {}
+      for _,v in ipairs(self:get_stream_shares()) do
+        v.user = v:get_user()
+        v.user_id = nil
+        v.stream_id = nil
+        v.user.access_token = nil
+        v.user.updated_at = nil
+        v.user.created_at = nil
+        insert(self.shares,v)
+      end
+      self.stream_shares = nil
+    end
+
+    local ok, chat_level, meta_level = self:check_user(user)
+    if meta_level < 2 then
+      self.uuid = nil
+    end
+    if meta_level < 1 then
+      self.preview_required = nil
+      self.ffmpeg_pull_args = nil
+      self.title = nil
+      self.description = nil
+      self.accounts = nil
+    end
+    return chat_level, meta_level
+  end,
   check_user = function(self,user)
     if self.user_id == user.id then
-      return true, true, true, nil
+      return true, 2, 2, nil
     end
     local ss = SharedStream:find({
       stream_id = self.id,
@@ -141,19 +201,21 @@ function Stream:save_stream(user,stream,params)
     })
   end
 
-  for id, value in pairs(params.accounts) do
-    local sa = StreamAccount:find({
-      stream_id = stream.id,
-      account_id = id,
-    })
-
-    if sa and value == false then
-      sa:delete()
-    elseif( (not sa) and value == true) then
-      StreamAccount:create({
+  if params.accounts then
+    for id, value in pairs(params.accounts) do
+      local sa = StreamAccount:find({
         stream_id = stream.id,
         account_id = id,
       })
+
+      if sa and value == false then
+        sa:delete()
+      elseif( (not sa) and value == true) then
+        StreamAccount:create({
+          stream_id = stream.id,
+          account_id = id,
+        })
+      end
     end
   end
 

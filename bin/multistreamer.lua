@@ -34,6 +34,7 @@ local sql_files = {
   [4] = streamer_dir .. '/sql/1485036089.sql',
   [5] = streamer_dir .. '/sql/1485788609.sql',
   [6] = streamer_dir .. '/sql/1489949143.sql',
+  [7] = streamer_dir .. '/sql/1492032677.sql',
 }
 
 if(not arg[1] or not commands[arg[1]]) then

@@ -139,7 +139,7 @@ local function refresh_targets(access_token)
         }
       end
     end
-  until group_info.paging.next == nil
+  until group_info.paging == nil group_info.paging.next == nil
 
   local event_info, event_info_err
   local right_now = date(true)
@@ -604,10 +604,10 @@ function M.create_comment_funcs(account, stream, send)
   local read_func
 
   if send then
+    local afterComment = nil
+    local afterReaction = nil
+    local reactions = {}
     read_func = function()
-      local afterComment = nil
-      local afterReaction = nil
-      local reactions = {}
       while true do
         local res, err = fb_client:batch({
           {
@@ -656,6 +656,7 @@ function M.create_comment_funcs(account, stream, send)
         end
         ngx.sleep(6)
       end
+      return false, nil
     end
   end
 

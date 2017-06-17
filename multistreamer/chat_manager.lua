@@ -107,7 +107,14 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
   end)
 
   if read_func then
-    self.streams[stream.id][tarAccount.id].aux[account.id].read_thread = spawn(read_func)
+    self.streams[stream.id][tarAccount.id].aux[account.id].read_thread = spawn(function()
+      while true do
+        local ok, err = read_func()
+        if err then
+          ngx_log(ngx_err,err)
+        end
+      end
+    end)
     t.read_started = true
   end
 

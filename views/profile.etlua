@@ -1,0 +1,21 @@
+<h3>Profile</h3>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('profile-edit', { id = user.id }) %>">
+
+<div class="pure-control-group">
+  <label for="username">Username</label>
+  <input name="username" type="text" readonly value="<%= user.username %>" />
+</div>
+
+<div class="pure-control-group">
+  <label for="access_token">Access Token</label>
+  <input name="access_token" type="text" readonly value="<%= user.access_token %>" />
+  <input class="pure-button" type="submit" value="Reset Token" name="resetTokenBtn" id="resetTokenBtn" />
+</div>
+
+<div class="pure-control-group"><label>Save</label>
+<input class="pure-button pure-button-primary" type="submit" value="Submit" id="submitBtn" />
+</div>
+</form>
+
+

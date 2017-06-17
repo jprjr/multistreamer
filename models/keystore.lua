@@ -92,14 +92,22 @@ local function keystore_new(_, account_id, stream_id)
     else
       exp = db.NULL
     end
+    local s_id = db.NULL
+    local a_id = db.NULL
+    if self.stream_id then
+      s_id = self.stream_id
+    end
+    if self.account_id then
+      a_id = self.account_id
+    end
 
     local res = db.update('keystore',{
         value = value,
         updated_at = dt,
         expires_at = exp,
     }, {
-        stream_id = self.stream_id,
-        account_id = self.account_id,
+        stream_id = s_id,
+        account_id = a_id,
         key = key,
     })
     if res.affected_rows == 0 then

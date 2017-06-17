@@ -1,6 +1,17 @@
 # multistreamer
 
-This is a tool for simulcasting RTMP streams to multiple services.
+Like this? I do this for fun in my spare time, but I'll never say
+no to being bought a beer!
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NNKN85X52NEP6)
+[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=jprjr&url=https://github.com/jprjr/multistreamer&title=multistreamer&language=en_GB&tags=github&category=software)
+
+This is a tool for simulcasting RTMP streams to multiple services:
+
+* [Beam](https://github.com/jprjr/multistreamer/wiki/Beam)
+* [Facebook](https://github.com/jprjr/multistreamer/wiki/Facebook)
+* [Twitch](https://github.com/jprjr/multistreamer/wiki/Twitch)
+* [YouTube](https://github.com/jprjr/multistreamer/wiki/YouTube)
 
 It allows users to add accounts for their favorite streaming services,
 and gives an endpoint for them to push video to. Their video stream will
@@ -11,8 +22,12 @@ description, etc) from a single page, instead of logging into multiple
 services.
 
 Additionally, it provides an IRC interface, where users can read/write
-comments and messages in a single location. Please see the
-[wiki](https://github.com/jprjr/multistreamer/wiki) for
+comments and messages in a single location. There's also a web interface
+for viewing and replying to comments, and a chat widget you can embed
+into OBS (or anything else supporting web-based sources).
+
+Not all services support writing comments/messages from the web or IRC
+interfaces - please see the [wiki](https://github.com/jprjr/multistreamer/wiki) for
 details on which services support which features.
 
 Fun, unintentional side effect: you can use this to push video to your
@@ -345,9 +360,10 @@ for Facebook.
 Once the user stops pushing video, `multistreamer` will take any needed
 shutdown/stop actions - like ending the Facebook Live Video.
 
-I highly recommend that users browse each network's section within the
+I highly recommend that users browse the
 [Wiki](https://github.com/jprjr/multistreamer/wiki) - I tried to detail
-each of the metadata settings and what they mean/do.
+each section of the web interface, all the different metadata fields
+of the different network modules, etc.
 
 ### IRC Usage
 
@@ -470,3 +486,6 @@ see [https://github.com/danleech/simple-icons/blob/gh-pages/LICENSE.md](https://
 I'll be honest, I'm not sure how trademark law applies here (but I'm sure it does),
 so I feel obligated to mention that all trademarked images are property of their
 respective companies.
+
+The network module for Beam uses an embedded SVG icon from [beam-branding-kit](https://github.com/WatchBeam/beam-branding-kit),
+it is property of [Beam](https://beam.pro).
