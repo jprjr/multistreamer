@@ -139,7 +139,7 @@ local function refresh_targets(access_token)
         }
       end
     end
-  until group_info.paging == nil group_info.paging.next == nil
+  until group_info.paging == nil or group_info.paging.next == nil
 
   local event_info, event_info_err
   local right_now = date(true)
