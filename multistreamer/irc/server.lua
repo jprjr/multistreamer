@@ -879,6 +879,7 @@ function IRCServer:clientPartRoom(nick,msg)
       room = room:sub(2)
     end
 
+    self.user.rooms[room] = false
     self:sendRoomPart(nick,nick,room,msg.args[2] or '')
 
     publish('irc:events:part', {
