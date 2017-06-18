@@ -21,6 +21,10 @@ It also allows for updating their stream's metadata (stream title,
 description, etc) from a single page, instead of logging into multiple
 services.
 
+It supports integration with Discord via webhooks - it can push your
+stream's incoming comments/chat messages to a Discord channel, as well
+as updates when you've started/stopped streaming.
+
 Additionally, it provides an IRC interface, where users can read/write
 comments and messages in a single location. There's also a web interface
 for viewing and replying to comments, and a chat widget you can embed
