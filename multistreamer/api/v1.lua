@@ -21,6 +21,7 @@ local Stream = require'models.stream'
 local StreamAccount = require'models.stream_account'
 local SharedStream = require'models.shared_stream'
 local SharedAccount = require'models.shared_account'
+local Webhook = require'models.webhook'
 
 local streams_dict = ngx.shared.streams
 local pid = ngx.worker.pid()
@@ -54,6 +55,11 @@ local function get_stream(self, id)
     else
       stream.live = false
     end
+    stream.webhooks = stream:get_webhooks()
+    for _,w in pairs(stream.webhooks) do
+      w.events = from_json(w.params).events
+      w.params = nil
+    end
     if chat_level > 0 or meta_level > 0 then
 
       return { json = { stream = stream } }
@@ -76,6 +82,11 @@ local function get_stream(self, id)
     else
       v.live = false
     end
+    v.webhooks = v:get_webhooks()
+    for _,w in pairs(v.webhooks) do
+      w.events = from_json(w.params).events
+      w.params = nil
+    end
   end
   local sas = self.user:get_shared_streams()
   for i,v in ipairs(sas) do
@@ -92,6 +103,11 @@ local function get_stream(self, id)
       s.live = true
     else
       s.live = false
+    end
+    s.webhooks = s:get_webhooks()
+    for _,w in pairs(s.webhooks) do
+      w.events = from_json(w.params).events
+      w.params = nil
     end
 
     insert(streams,s)
@@ -364,6 +380,9 @@ app:match('api-v1-stream',api_prefix .. '/stream(/:id)', respond_to({
       ss:delete()
     end
     stream:get_keystore():unset_all()
+    for _,w in pairs(stream:get_webhooks()) do
+      w:delete()
+    end
     publish('stream:delete',stream)
     stream:delete()
 
@@ -421,6 +440,8 @@ app:match('api-v1-stream',api_prefix .. '/stream(/:id)', respond_to({
     self.params.stream_name = self.params.name
     local og_accounts = self.params.accounts
     local og_shares = self.params.shares
+    local og_webhooks = self.params.webhooks
+    self.params.webhooks = nil
 
     if og_accounts then
       self.params.accounts = {}
@@ -505,6 +526,22 @@ app:match('api-v1-stream',api_prefix .. '/stream(/:id)', respond_to({
               metadata_level = v.metadata_level,
             })
           end
+        end
+      end
+    end
+
+    if og_webhooks then
+      for _,w in pairs(stream:get_webhooks()) do
+        w:delete()
+      end
+      if og_webhooks ~= cjson.null then
+        for _,w in ipairs(og_webhooks) do
+          local t = {}
+          t.stream_id = stream.id
+          t.url = w.url
+          t.events = w.events
+          t.notes = w.notes
+          Webhook:create(t)
         end
       end
     end

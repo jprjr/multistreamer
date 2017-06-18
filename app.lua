@@ -14,6 +14,7 @@ local Stream = require'models.stream'
 local StreamAccount = require'models.stream_account'
 local SharedAccount = require'models.shared_account'
 local SharedStream  = require'models.shared_stream'
+local Webhook = require'models.webhook'
 
 local respond_to = lapis.application.respond_to
 local encode_with_secret = lapis.application.encode_with_secret
@@ -122,6 +123,10 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       if err then return err_out(self, err) end
     end
 
+    self.webhooks = self.stream:get_webhooks()
+    self.webhook_types = Webhook.types
+    self.webhook_events = Webhook.events
+
     self.accounts = {}
     local acc = self.user:get_accounts()
     if not acc then acc = {} end
@@ -160,6 +165,41 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     self.stream, err = Stream:save_stream(self.user,self.stream,self.params)
     if err then return err_out(self, err) end
     publish('stream:update', self.stream)
+
+    if self.params['webhook.0.url'] and len(self.params['webhook.0.url']) > 0 then
+      local p = {}
+      p.stream_id = self.stream.id
+      p.url = self.params['webhook.0.url']
+      p.type = self.params['webhook.0.type']
+      p.notes = self.params['webhook.0.notes']
+      p.events = {}
+      for _,v in ipairs(self.webhook_events) do
+        if self.params['webhook.0.event.' .. v.value] and
+           self.params['webhook.0.event.' .. v.value] == 'on' then
+          p.events[v.value] = true
+        else
+          p.events[v.value] = false
+        end
+      end
+      local webhook = Webhook:create(p)
+    end
+
+    for i,v in ipairs(self.webhooks) do
+      if len(self.params['webhook.' .. v.id .. '.url']) <= 0 then
+        v:delete()
+      else
+        v.notes = self.params['webhook.'..v.id..'.notes']
+        for _,e in ipairs(self.webhook_events) do
+          if self.params['webhook.' .. v.id .. '.event.' .. e.value] and
+             self.params['webhook.' .. v.id .. '.event.' .. e.value] == 'on' then
+            v:enable_event(e.value)
+          else
+            v:disable_event(e.value)
+          end
+        end
+        v:save()
+      end
+    end
 
     self.session.status_msg = { type = 'success', msg = 'Stream updated' }
     return { redirect_to = self:url_for('metadata-edit')..self.stream.id }
@@ -286,6 +326,7 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
     if self.stream_status.data_incoming == true and self.stream_status.data_pushing == false and self.params['goLiveBtn'] ~= nil then
       success_msg = 'Stream started'
       self.stream_status.data_pushing = true
+      local sas = {}
 
       for _,account in pairs(self.accounts) do
         local sa = StreamAccount:find({stream_id = self.stream.id, account_id = account.id})
@@ -294,6 +335,7 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
           return err_out(self,err)
         end
         sa:update({rtmp_url = rtmp_url})
+        insert(sas, sa)
       end
 
       publish('process:start:push', {
@@ -306,6 +348,10 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
         id = self.stream.id,
         status = self.stream_status,
       })
+
+      for _,v in pairs(self.stream:get_webhooks()) do
+        v:fire_event('stream:start', sas)
+      end
     end
 
     if self.stream_status.data_pushing == true and self.params['stopLiveBtn'] ~= nil then
@@ -318,6 +364,10 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
       publish('process:end:push', {
         id = self.stream.id,
       })
+
+      for _,v in pairs(self.stream:get_webhooks()) do
+        v:fire_event('stream:end')
+      end
     end
 
     streams_dict:set(self.stream.id, to_json(self.stream_status))
@@ -351,6 +401,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     streams_dict:set(stream.id, to_json(stream_status))
 
     if stream.preview_required == 0 and #sas > 0 then
+      local hook_sas = {}
       for _,v in pairs(sas) do
         local account = v[1]
         local sa = v[2]
@@ -359,6 +410,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
           return plain_err_out(self,err)
         end
         sa:update({rtmp_url = rtmp_url})
+        insert(hook_sas, sa)
       end
 
       stream_status.data_pushing = true
@@ -368,6 +420,10 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
         worker = pid,
         id = stream.id,
       })
+
+      for _,v in pairs(stream:get_webhooks()) do
+        v:fire_event('stream:start', hook_sas)
+      end
 
     end
 
@@ -446,6 +502,10 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
   publish('stream:end', {
     id = stream.id,
   })
+
+  for _,v in pairs(stream:get_webhooks()) do
+    v:fire_event('stream:end')
+  end
 
   streams_dict:set(stream.id,nil)
 
