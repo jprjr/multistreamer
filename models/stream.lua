@@ -15,6 +15,7 @@ local Stream = Model:extend('streams', {
     {'user', belongs_to = 'User' },
     {'streams_accounts', has_many = 'StreamAccount' },
     {'stream_shares', has_many = 'SharedStream' },
+    {'webhooks', has_many = 'Webhook' },
   },
   -- returns chat_level and metadata_level while
   -- removing sensitive info, if needed

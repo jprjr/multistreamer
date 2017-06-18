@@ -66,8 +66,6 @@ function ChatMgr:run()
   end
 end
 
-
-
 function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
   local t = {
     read_started = false,
@@ -202,6 +200,9 @@ function ChatMgr:handleStreamStart(msg)
       msg.stream_id = stream.id
       msg.network = account.network.name
       publish('comment:in',msg)
+      for _,v in pairs(stream:get_webhooks()) do
+        v:fire_event('comment:in',msg)
+      end
     end
 
     local t = self:createChatFuncs(stream,account,account,relay)
