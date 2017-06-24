@@ -279,6 +279,7 @@ setup nginx/Lua to only use that folder. So, assuming you're still in
 the `multistreamer` folder:
 
 ```bash
+luarocks --tree lua_modules install lua-resty-exec
 luarocks --tree lua_modules install lua-resty-jit-uuid
 luarocks --tree lua_modules install lua-resty-string
 luarocks --tree lua_modules install lua-resty-http
