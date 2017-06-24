@@ -41,16 +41,18 @@ available via the regular Facebook web interface, as far as I know. :)
 Please note: you're responsible for ensuring you're not violating each
 service's Terms of Service via simulcasting.
 
-I have a YouTube video going over how to to use this here: https://youtu.be/BukSywMuf5E
+Here's some videos on installing/using:
 
-Version 6 has some cool new features - I made a video on those here: https://youtu.be/d5mOV3YzHxU
-
-I also have a YouTube video about installing this available here: https://youtu.be/Wr4CD6RU_CU
+* [A video oriented towards users using your multistreamer setup](https://youtu.be/BukSywMuf5E)
+* [A follow-up video with new features for version 6.0.0](https://youtu.be/d5mOV3YzHxU)
+* [Installing multistreamer](https://youtu.be/Wr4CD6RU_CU)
+* [Installing multistreamer with Docker](https://youtu.be/HdDDtBOLme4)
 
 ## Table of Contents
 
 * [Requirements](#requirements)
 * [Installation](#installation)
+  + [Install with Docker](#install-with-docker)
   + [Install OpenResty with RTMP](#install-openresty-with-rtmp)
   + [Alternative: Install nginx with Lua and rtmp](#alternative-install-nginx-with-lua-and-rtmp)
   + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
@@ -87,6 +89,12 @@ I also have a YouTube video about installing this available here: https://youtu.
 * (optional) bash
 
 ## Installation
+
+### Install with Docker
+
+I have a Docker image available, along with a docker-compose file for
+quickly getting up and running. Instructions are available here:
+https://github.com/jprjr/docker-multistreamer
 
 ### Install OpenResty with RTMP
 
