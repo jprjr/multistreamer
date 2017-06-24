@@ -123,7 +123,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       if err then return err_out(self, err) end
     end
 
-    self.webhooks = self.stream:get_webhooks()
+    self.webhooks = self.stream and self.stream:get_webhooks() or {}
     self.webhook_types = Webhook.types
     self.webhook_events = Webhook.events
 
