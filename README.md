@@ -85,7 +85,9 @@ Here's some videos on installing/using:
     TCP lua module - these can be be added with `--add-module`, see
     [http://openresty.org/en/installation.html](http://openresty.org/en/installation.html)
 * ffmpeg
-* lua or luajit and luarocks
+* lua 5.1
+* luajit (included with OpenResty)
+* luarocks
 * (optional) bash
 
 ## Installation
@@ -273,28 +275,59 @@ You'll need some Lua modules installed:
 * luafilesystem
 * whereami
 
+Note: `lapis` depends on `lua-cjson`, and as of this writing, `lua-cjson`
+fails to compile if you build the module against LuaJIT-2.1 (the default
+with OpenResty).
+
+I recommend using a LuaRocks that defaults to using Lua 5.1, since modules
+for Lua 5.1 work in LuaJIT.
 
 If you install modules to a folder named `lua_modules`, the  bash script will
 setup nginx/Lua to only use that folder. So, assuming you're still in
 the `multistreamer` folder:
 
 ```bash
-luarocks --tree lua_modules install lua-resty-exec
-luarocks --tree lua_modules install lua-resty-jit-uuid
-luarocks --tree lua_modules install lua-resty-string
-luarocks --tree lua_modules install lua-resty-http
-luarocks --tree lua_modules install lua-resty-upload
-luarocks --tree lua_modules install lapis
-luarocks --tree lua_modules install etlua
-luarocks --tree lua_modules install luaposix
-luarocks --tree lua_modules install luafilesystem
-luarocks --tree lua_modules install whereami
+luarocks --tree=lua_modules install lua-resty-exec
+luarocks --tree=lua_modules install lua-resty-jit-uuid
+luarocks --tree=lua_modules install lua-resty-string
+luarocks --tree=lua_modules install lua-resty-http
+luarocks --tree=lua_modules install lua-resty-upload
+luarocks --tree=lua_modules install lapis
+luarocks --tree=lua_modules install etlua
+luarocks --tree=lua_modules install luaposix
+luarocks --tree=lua_modules install luafilesystem
+luarocks --tree=lua_modules install whereami
 ```
 
-Note: `whereami` may give you a hard time if you don't have
-`luarocks-fetch-gitrec` installed globally.
+**Note**: older verions of LuaRocks might not automatically install dependencies.
+Here's the full list of modules, including dependencies:
 
-Make sure your luarocks is setup for Lua 5.1 and/or LuaJIT.
+```
+luarocks --tree=lua_modules install bit32
+luarocks --tree=lua_modules install lua-cjson
+luarocks --tree=lua_modules install date
+luarocks --tree=lua_modules install luacrypto
+luarocks --tree=lua_modules install ansicolors
+luarocks --tree=lua_modules install lpeg
+luarocks --tree=lua_modules install etlua
+luarocks --tree=lua_modules install loadkit
+luarocks --tree=lua_modules install luafilesystem
+luarocks --tree=lua_modules install mimetypes
+luarocks --tree=lua_modules install luasocket
+luarocks --tree=lua_modules install luabitop
+luarocks --tree=lua_modules install pgmoon
+luarocks --tree=lua_modules install netstring
+luarocks --tree=lua_modules install lua-resty-exec
+luarocks --tree=lua_modules install lua-resty-jit-uuid
+luarocks --tree=lua_modules install lua-resty-string
+luarocks --tree=lua_modules install lua-resty-http
+luarocks --tree=lua_modules install lua-resty-upload
+luarocks --tree=lua_modules install lapis
+luarocks --tree=lua_modules install etlua
+luarocks --tree=lua_modules install luaposix
+luarocks --tree=lua_modules install luafilesystem
+luarocks --tree=lua_modules install whereami
+```
 
 Using Mac OS? `lapis` will probably fail to install because `luacrypto`
 will fail to build. If you're using Homebrew, you can install
@@ -302,7 +335,7 @@ will fail to build. If you're using Homebrew, you can install
 
 `luarocks --tree lua_modules install luacrypto OPENSSL_DIR=/usr/local/opt/openssl`
 
-Then proceed to install lapis.
+Then proceed to install `lapis`.
 
 ### Initialize the database
 
