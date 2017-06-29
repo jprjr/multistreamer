@@ -104,6 +104,12 @@ function ProcessMgr:startPush(msg)
   self.pushers[stream.id] = spawn(function()
     local prog = exec.new(config.sockexec_path)
     prog.timeout_fatal = false
+    prog.stderr = function(data)
+      ngx_log(ngx_debug,'[Process Manager] stderr: ' .. data)
+    end
+    prog.stdout = function(data)
+      ngx_log(ngx_debug,'[Process Manager] stdout: ' .. data)
+    end
 
     local running = true
     while running do
