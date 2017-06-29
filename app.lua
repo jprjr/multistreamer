@@ -27,6 +27,7 @@ local WebsocketServer = require'multistreamer.websocket.server'
 local tonumber = tonumber
 local pairs = pairs
 local len = string.len
+local lower = string.lower
 local insert = table.insert
 local sort = table.sort
 local streams_dict = ngx.shared.streams
@@ -589,7 +590,7 @@ app:get('site-root', config.http_prefix .. '/', function(self)
     if a.live ~= b.live then
       return a.live
     end
-    return a.name < b.name
+    return lower(a.name) < lower(b.name)
   end)
 
   return { render = 'index' }
