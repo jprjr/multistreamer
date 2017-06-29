@@ -27,6 +27,7 @@ local tonumber = tonumber
 
 local ngx_log = ngx.log
 local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
 
 local M = {}
 
@@ -284,10 +285,12 @@ function M.metadata_form(account, stream)
   end)
 
   for _,v in ipairs(res.items) do
-    insert(form[7].options, {
-      label = v.snippet.title,
-      value = v.id,
-    })
+    if v.snippet.assignable then
+      insert(form[7].options, {
+        label = v.snippet.title,
+        value = v.id,
+      }) 
+    end
   end
 
   for _,v in pairs(form) do

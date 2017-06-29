@@ -27,7 +27,7 @@
 <% end %>
 <button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled>Go Live!</button>
 <button class="pure-button pure-button-primary" type="submit" id="stopLiveBtn" name="stopLiveBtn" <%= stream_status.data_pushing and '' or 'disabled'%>>Stop Pushing</button>
-</div
+</div>
 <% end %>
 </div>
 </fieldset>
@@ -154,7 +154,7 @@ showBtn.onclick = showStreamKey;
       hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
         console.log("manifest loaded, found " + data.levels.length + " quality level");
         video.play();
-        goLiveBtn.removeAttribute('disabled');
+        <% if stream.preview_required == 1 and not stream_status.data_pushing then %>goLiveBtn.removeAttribute('disabled');<% end %>
       });
     }
     loadVideo();
