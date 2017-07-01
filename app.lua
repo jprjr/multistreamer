@@ -31,6 +31,7 @@ local lower = string.lower
 local insert = table.insert
 local sort = table.sort
 local streams_dict = ngx.shared.streams
+local status_dict = ngx.shared.status
 local capture = ngx.location.capture
 
 local pid = ngx.worker.pid()
@@ -44,6 +45,12 @@ app:before_filter(function(self)
   if self.session.status_msg then
     self.status_msg = self.session.status_msg
     self.session.status_msg = nil
+  end
+  if status_dict:get('processmgr_error') or status_dict:get('chatmgr_error') then
+    self.status_msg = {
+      type = 'error',
+      msg = 'Unrecoverable error! Please check logs and restart Multistreamer',
+    }
   end
   self.public_http_url = config.public_http_url
   self.http_prefix = config.http_prefix
