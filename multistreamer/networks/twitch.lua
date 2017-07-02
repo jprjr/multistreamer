@@ -77,7 +77,7 @@ local function twitch_api_client(access_token)
       res.status = tonumber(res.status:find('^%d+'))
     end
 
-    if res.status == 400 then
+    if res.status > 400 then
       ngx_log(ngx_err,res.body)
       return false, from_json(res.body)
     end
@@ -175,7 +175,7 @@ function M.register_oauth(params)
   end
 
   if err or res.status >= 400 then
-    return false, nil, err
+    return false, nil, err or res.body
   end
 
   local creds = from_json(res.body)
