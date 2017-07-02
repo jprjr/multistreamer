@@ -66,6 +66,11 @@ local function refresh_access_token(refresh_token, access_token, expires_in, exp
     if err then
       return nil, err
     end
+
+    if res and type(res.status) ~= 'number' then
+      res.status = tonumber(res.status:find('^%d+'))
+    end
+
     if res.status >= 400 then
       return nil, res.body
     end
@@ -110,11 +115,11 @@ function M.register_oauth(params)
   local user, err = decode_with_secret(decode_base64(params.state))
 
   if not user then
-    return false, 'error'
+    return false, nil, 'Beam error: no user info sent'
   end
 
   if not params.code then
-    return false, 'error'
+    return false, nil, 'Beam error: no temporary access code'
   end
 
   local httpc = http.new()
@@ -133,8 +138,12 @@ function M.register_oauth(params)
     })
   })
 
+  if res and type(res.status) ~= 'number' then
+    res.status = tonumber(res.status:find('^%d+'))
+  end
+
   if err or res.status >= 400 then
-    return false, err
+    return false, nil, err or res.body
   end
 
   local creds = from_json(res.body)
@@ -145,8 +154,12 @@ function M.register_oauth(params)
     }
   })
 
+  if res and type(res.status) ~= 'number' then
+    res.status = tonumber(res.status:find('^%d+'))
+  end
+
   if err or res.status >= 400 then
-    return false, err
+    return false, nil, err or res.body
   end
 
   local user_info = from_json(res.body)
@@ -159,8 +172,12 @@ function M.register_oauth(params)
     },
   })
 
+  if res and type(res.status) ~= 'number' then
+    res.status = tonumber(res.status:find('^%d+'))
+  end
+
   if err or res.status >= 400 then
-    return false, err
+    return false, nil, err or res.body
   end
 
   local channel_info = from_json(res.body)

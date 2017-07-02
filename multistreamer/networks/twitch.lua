@@ -73,6 +73,10 @@ local function twitch_api_client(access_token)
       return false, { error = err }
     end
 
+    if res and type(res.status) ~= 'number' then
+      res.status = tonumber(res.status:find('^%d+'))
+    end
+
     if res.status == 400 then
       ngx_log(ngx_err,res.body)
       return false, from_json(res.body)
@@ -135,20 +139,20 @@ end
 
 function M.register_oauth(params)
   if params.error_description then
-    return false, 'Twitch Error: ' .. params.error_description
+    return false, nil, 'Twitch Error: ' .. params.error_description
   end
   if params.error then
-    return false, 'Twitch Error: ' .. params.error
+    return false, nil, 'Twitch Error: ' .. params.error
   end
 
   local user, err = decode_with_secret(decode_base64(params.state))
 
   if not user then
-    return false, 'Error: User not found'
+    return false, nil, 'Error: User not found'
   end
 
   if not params.code then
-    return false, 'Twitch Error: failed to get temporary client token'
+    return false, nil, 'Twitch Error: failed to get temporary client token'
   end
 
   local httpc = http.new()
@@ -166,8 +170,12 @@ function M.register_oauth(params)
     body = body,
   });
 
+  if res and type(res.status) ~= 'number' then
+    res.status = tonumber(res.status:find('^%d+'))
+  end
+
   if err or res.status >= 400 then
-    return false, err
+    return false, nil, err
   end
 
   local creds = from_json(res.body)
@@ -176,12 +184,12 @@ function M.register_oauth(params)
   local user_info, err = tclient:get('/user')
 
   if err then
-    return false, err
+    return false, nil, err
   end
 
   local channel_info, err = tclient:get('/channel')
   if err then
-    return false, err
+    return false, nil, err
   end
 
   local sha1 = resty_sha1:new()

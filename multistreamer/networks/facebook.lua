@@ -64,6 +64,10 @@ local function facebook_client(access_token)
       return false, err
     end
 
+    if res and type(res.status) ~= 'number' then
+      res.status = tonumber(res.status:find('^%d+'))
+    end
+
     if res.status >= 400 then
       ngx_log(ngx_err,res.body)
       return false, res.body
@@ -214,8 +218,12 @@ function M.register_oauth(params)
       code = params.code,
     }))
 
+  if res and type(res.status) ~= 'number' then
+    res.status = tonumber(res.status:find('^%d+'))
+  end
+
   if err or res.status >= 400 then
-    return false, err
+    return false, nil, err or res.body
   end
   ngx_log(ngx_debug,res.body)
 
@@ -229,9 +237,14 @@ function M.register_oauth(params)
       client_secret = facebook_config.app_secret,
       fb_exchange_token = creds.access_token}))
 
-  if err or res.status >= 400 then
-      return false, err
+  if res and type(res.status) ~= 'number' then
+    res.status = tonumber(res.status:find('^%d+'))
   end
+
+  if err or res.status >= 400 then
+      return false, nil, err or res.body
+  end
+
   ngx_log(ngx_debug,res.body)
   creds = from_json(res.body)
 
@@ -266,7 +279,7 @@ function M.register_oauth(params)
   local fb_client = facebook_client(creds.access_token)
 
   local user_info, err = fb_client:get('/me')
-  if err then return false, err end
+  if err then return false, nil, err end
   ngx_log(ngx_debug,res.body)
 
   local sha1 = resty_sha1:new()

@@ -69,6 +69,11 @@ local function google_client(base_url,access_token)
       headers = req_headers,
       body = body,
     })
+
+    if res and type(res.status) ~= 'number' then
+      res.status = tonumber(res.status:find('^%d+'))
+    end
+
     if err then
       ngx_log(ngx_err,err)
       return false, err
@@ -193,11 +198,11 @@ function M.register_oauth(params)
   local user, err = decode_with_secret(decode_base64(params.state))
 
   if not user then
-    return false, 'error'
+    return false, nil, 'YouTube error: no user info sent'
   end
 
   if not params.code then
-    return false, 'error'
+    return false, nil, 'YouTube error: no temporary token'
   end
 
   local httpc = http.new()
@@ -216,11 +221,12 @@ function M.register_oauth(params)
     },
   })
 
-  if err then -- or res.status >= 400 then
-    return false, err
+  if res and type(res.status) ~= 'number' then
+    res.status = tonumber(res.status:find('^%d+'))
   end
-  if res.status >= 400 then
-    return false, res.body
+
+  if err  or res.status >= 400 then
+    return false, nil, err or res.body
   end
 
   local creds = from_json(res.body)
