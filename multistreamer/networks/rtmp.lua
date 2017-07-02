@@ -1,4 +1,5 @@
 local Account = require'models.account'
+local StreamAccount = require'models.stream_account'
 
 local config = require'multistreamer.config'
 local resty_sha1 = require'resty.sha1'
@@ -66,7 +67,7 @@ function M.save_account(user, account, params)
       slug = slugify(params.name),
     })
     if not account then
-        return false,err
+        return false, nil, err
     end
   else
     account:update({
@@ -79,7 +80,15 @@ function M.save_account(user, account, params)
   account:set('url',params.url)
   account:set('name',params.name)
 
-  return account, nil
+  local sa = nil
+  if params.stream_id then
+    sa = StreamAccount:find({ account_id = account.id, stream_id = params.stream_id })
+    if not sa then
+      sa = StreamAccount:create({ account_id = account.id, stream_id = params.stream_id })
+    end
+  end
+
+  return account, sa, nil
 end
 
 function M.publish_start(account, stream)

@@ -1,4 +1,5 @@
 local Account = require'models.account'
+local StreamAccount = require'models.stream_account'
 local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
@@ -94,11 +95,11 @@ local function refresh_access_token_wrapper(account)
   return access_token, expires_in, refresh_token, expires_at
 end
 
-function M.get_oauth_url(user)
+function M.get_oauth_url(user,stream_id)
   return 'https://beam.pro/oauth/authorize?' ..
     encode_query_string({
       response_type = 'code',
-      state = encode_base64(encode_with_secret({ id = user.id })),
+      state = encode_base64(encode_with_secret({ id = user.id , stream_id = stream_id })),
       redirect_uri = M.redirect_uri,
       client_id = config.networks[M.name].client_id,
       scope = 'channel:details:self channel:streamKey:self channel:update:self chat:bypass_links chat:chat chat:connect recording:manage:self user:details:self'
@@ -190,10 +191,19 @@ function M.register_oauth(params)
   account:set('stream_key',channel_info.streamKey)
 
   if account.user_id ~= user.id then
-    return false, "Account already registered"
+    return false, nil, "Account already registered"
   end
 
-  return account, nil
+  local sa = nil
+
+  if user.stream_id then
+    sa = StreamAccount:find({ account_id = account.id, stream_id = user.stream_id })
+    if not sa then
+      sa = StreamAccount:create({ account_id = account.id, stream_id = user.stream_id })
+    end
+  end
+
+  return account, sa, nil
 
 end
 

@@ -140,7 +140,8 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
             data_pulling = false,
         }
       end
-      if self.metadata_level == 0 then
+
+      if self.metadata_level < 1 and self.chat_level < 1 then
         return err_out(self,'Stream not found')
       end
     end
@@ -166,6 +167,10 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if not valid_subsets[self.params.subset] then
       self.params.subset = 'general'
+    end
+
+    if not valid_subsets[self.params.tab] then
+      self.params.tab = 'general'
     end
 
     self.users = User:select('where id != ?',self.user.id)
@@ -934,10 +939,13 @@ for t,m in networks() do
   if m.register_oauth then
     app:match('auth-'..m.name, config.http_prefix .. '/auth/' .. m.name, respond_to({
       GET = function(self)
-        local account, err = m.register_oauth(self.params)
+        local account, sa, err = m.register_oauth(self.params)
         if err then return err_out(self,err) end
 
         self.session.status_msg = { type = 'success', msg = 'Account saved' }
+        if sa then
+          return { redirect_to = self:url_for('stream-edit', { id = sa.stream_id }) .. '?subset=accounts' }
+        end
         return { redirect_to = self:url_for('site-root') }
       end,
     }))
@@ -957,7 +965,7 @@ for t,m in networks() do
         return { render = 'account' }
       end,
       POST = function(self)
-        local account, err = m.save_account(self.user, self.account, self.params)
+        local account, sa, err = m.save_account(self.user, self.account, self.params)
         if err then return err_out(self, err) end
         if self.params.ffmpeg_args and len(self.params.ffmpeg_args) > 0 then
           account:update({ ffmpeg_args = self.params.ffmpeg_args })
@@ -965,6 +973,9 @@ for t,m in networks() do
           account:update({ ffmpeg_args = db.NULL })
         end
         self.session.status_msg = { type = 'success', msg = 'Account saved' }
+        if sa then
+          return { redirect_to = self:url_for('stream-edit', { id = sa.stream_id }) .. '?subset=accounts' }
+        end
         return { redirect_to = self:url_for('site-root') }
       end,
     }))

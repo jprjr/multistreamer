@@ -17,6 +17,10 @@
 </div>
 <% end %>
 
+<% if params.stream then %>
+<input type="hidden" name="stream_id" value="<%= params.stream %>" />
+<% end %>
+
 <div class="pure-control-group">
   <label for="ffmpeg_args">FFMPEG Args (blank for default)</label>
   <input id="ffmpeg_args" name="ffmpeg_args" type="text" <% if account and account.ffmpeg_args then %>value="<%= account.ffmpeg_args %>" <% end %> />

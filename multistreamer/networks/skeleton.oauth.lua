@@ -1,4 +1,5 @@
 local Account = require'models.account'
+local StreamAccount = require'models.stream_account'
 local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
@@ -17,10 +18,10 @@ local M = {}
 M.displayname = 'Skeleton OAuth Module'
 M.allow_sharing = false
 
-function M.get_oauth_url(user)
+function M.get_oauth_url(user, stream_id)
   return 'http://example.com?' ..
     encode_query_string({
-      state = encode_base64(encode_with_secret({ id = user.id })),
+      state = encode_base64(encode_with_secret({ id = user.id, stream_id = stream.id })),
       redirect_uri = M.redirect_uri,
       client_id = config.networks[M.name].client_id,
       scope = 'some,scopes,that,you,need',
@@ -88,10 +89,18 @@ function M.register_oauth(params)
   account:set('access_token',creds.access_token)
 
   if account.user_id ~= user.id then
-    return false, "Account already registered"
+    return false, nil, "Account already registered"
   end
 
-  return account, nil
+  local sa = nil
+  if users.stream_id then
+    sa = StreamAccount:find({ account_id = account.id, stream_id = user.stream_id })
+    if not sa then
+      sa = StreamAccount:create({ account_id = account.id, stream_id = user.stream_id })
+    end
+  end
+
+  return account, sa, nil
 
 end
 

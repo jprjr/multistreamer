@@ -12,6 +12,17 @@
 </div>
 <% end %>
 
+<fieldset>
+<legend>Add new account</legend>
+<% for k,v in networks() do %>
+<% if v.get_oauth_url then %>
+<p><a href="<%= v.get_oauth_url(user,stream.id) %>"><%= v.displayname %></a></p>
+<% else %>
+<p><a href="<%= url_for('account-'..v.name) %>?stream=<%= stream.id %>"><%= v.displayname %></a></p>
+<% end %>
+<% end %>
+</fieldset>
+
 <div class="pure-controls">
 <input class="pure-button pure-button-primary" type="submit" value="Save" id="submitBtn" />
 </div>

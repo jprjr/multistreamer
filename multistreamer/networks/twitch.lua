@@ -23,6 +23,7 @@ local ngx_debug = ngx.DEBUG
 local IRCClient = require'multistreamer.irc.client'
 
 local Account = require'models.account'
+local StreamAccount = require'models.stream_account'
 
 local M = {}
 
@@ -120,14 +121,14 @@ function M.metadata_form(account, stream)
 end
 
 
-function M.get_oauth_url(user)
+function M.get_oauth_url(user, stream_id)
   return format('%s/oauth2/authorize?',api_uri)..
          encode_query_string({
            response_type = 'code',
            force_verify = 'true',
            redirect_uri = M.redirect_uri,
            client_id = twitch_config.client_id,
-           state = encode_base64(encode_with_secret({ id = user.id })),
+           state = encode_base64(encode_with_secret({ id = user.id, stream_id = stream_id })),
            scope = 'user_read channel_read channel_editor channel_stream chat_login',
          })
 end
@@ -217,10 +218,18 @@ function M.register_oauth(params)
   account:set('stream_key',channel_info.stream_key)
 
   if(account.user_id ~= user.id) then
-    return false, 'Error: Account already registered'
+    return false, nil, 'Error: Account already registered'
   end
 
-  return account, nil
+  local sa = nil
+  if user.stream_id then
+    sa = StreamAccount:find({ account_id = account.id, stream_id = user.stream_id })
+    if not sa then
+      sa = StreamAccount:create({ account_id = account.id, stream_id = user.stream_id })
+    end
+  end
+
+  return account, sa, nil
 end
 
 function M.publish_start(account, stream)

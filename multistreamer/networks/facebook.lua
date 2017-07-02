@@ -22,6 +22,7 @@ local ngx_debug = ngx.DEBUG
 local facebook_config = config.networks.facebook
 
 local Account = require'models.account'
+local StreamAccount = require'models.stream_account'
 
 local M = {}
 
@@ -96,10 +97,10 @@ local function facebook_client(access_token)
   return f
 end
 
-function M.get_oauth_url(user)
+function M.get_oauth_url(user, stream_id)
   return 'https://www.facebook.com/v2.8/dialog/oauth?' ..
     encode_query_string({
-      state = encode_base64(encode_with_secret({ id = user.id })),
+      state = encode_base64(encode_with_secret({ id = user.id, stream_id = stream_id })),
       redirect_uri = M.redirect_uri,
       client_id = facebook_config.app_id,
       scope = 'user_events,user_managed_groups,publish_actions,manage_pages,publish_pages',
@@ -297,10 +298,19 @@ function M.register_oauth(params)
   account:set('targets',to_json(available_targets))
 
   if account.user_id ~= user.id then
-    return false, "Account already registered"
+    return false, nil, "Account already registered"
   end
 
-  return account, nil
+  local sa = nil
+
+  if user.stream_id then
+    sa = StreamAccount:find({ account_id = account.id, stream_id = user.stream_id })
+    if not sa then
+      sa = StreamAccount:create({ account_id = account.id, stream_id = user.stream_id })
+    end
+  end
+
+  return account, sa, nil
 
 end
 
