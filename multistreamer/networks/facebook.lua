@@ -613,7 +613,7 @@ function M.create_comment_funcs(account, stream, send)
         local res, err = fb_client:batch({
           {
             method = 'GET',
-            relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment}),
+            relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment, live_filter = 'no_filter'}),
           },
           {
             method = 'GET',
