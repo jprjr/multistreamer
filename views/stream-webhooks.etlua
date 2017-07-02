@@ -51,7 +51,7 @@
 <select name="webhook.<%= webhook.id %>.type">
 <option value="-1" disabled selected>Select Type</option>
 <% for _,v in ipairs(webhook_types) do %>
-<option value="<%= v.value %>"<% if webhook.type == v.value then %>selected <% end %>><%= v.name %></option>
+<option value="<%= v.value %>"<% if webhook.type == v.value then %> selected<% end %>><%= v.name %></option>
 <% end %>
 </select>
 </div>

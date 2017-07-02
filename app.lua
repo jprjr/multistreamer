@@ -284,7 +284,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     end
 
     if self.params.subset == 'webhooks' then
-      if self.params['webhook.0.url'] and len(self.params['webhook.0.url']) > 0 and self.params['webhook.0.type'] and tonumber(self.params['webhook.0.type']) > 0 then
+      if self.params['webhook.0.url'] and len(self.params['webhook.0.url']) > 0 and self.params['webhook.0.type'] and self.params['webhook.0.type'] ~= '-1' then
         local p = {}
         p.stream_id = self.stream.id
         p.url = self.params['webhook.0.url']
