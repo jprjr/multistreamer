@@ -347,9 +347,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           if not metadata_fields then metadata_fields = {} end
           for i,field in pairs(metadata_fields) do
             local v = self.params[field.key .. '.' .. account.id]
-            if field.required and not v then
-              return err_out(self,'Field "' .. field.label ..'" required for account type '.. account.network.displayname)
-            elseif v then
+            if v and len(v) > 0 then
               sa:set(field.key,v)
             else
               sa:unset(field.key)
