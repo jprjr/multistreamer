@@ -175,7 +175,10 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     self.users = User:select('where id != ?',self.user.id)
     for i,other_user in pairs(self.users) do
-      local ss = SharedStream:find({ stream_id = self.stream.id, user_id = other_user.id})
+      local ss = nil
+      if self.stream then
+        ss = SharedStream:find({ stream_id = self.stream.id, user_id = other_user.id})
+      end
       if not ss then
         self.users[i].chat_level = 0
         self.users[i].metadata_level = 0
