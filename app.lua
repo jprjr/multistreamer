@@ -276,7 +276,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     end
 
     if self.params.subset == 'webhooks' then
-      if self.params['webhook.0.url'] and len(self.params['webhook.0.url']) > 0 then
+      if self.params['webhook.0.url'] and len(self.params['webhook.0.url']) > 0 and self.params['webhook.0.type'] and tonumber(self.params['webhook.0.type']) > 0 then
         local p = {}
         p.stream_id = self.stream.id
         p.url = self.params['webhook.0.url']
@@ -600,8 +600,10 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
     id = stream.id,
   })
 
-  for _,v in pairs(stream:get_webhooks()) do
-    v:fire_event('stream:end')
+  if stream_status.data_pushing == true then
+    for _,v in pairs(stream:get_webhooks()) do
+      v:fire_event('stream:end')
+    end
   end
 
   streams_dict:set(stream.id,nil)
