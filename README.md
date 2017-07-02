@@ -23,7 +23,10 @@ services.
 
 It supports integration with Discord via webhooks - it can push your
 stream's incoming comments/chat messages to a Discord channel, as well
-as updates when you've started/stopped streaming.
+as updates when you've started/stopped streaming. There's also a "raw"
+webhook, if you want to develop your own application that responds
+to events. See [the wiki](https://github.com/jprjr/multistreamer/wiki/Webhook)
+for details.
 
 Additionally, it provides an IRC interface, where users can read/write
 comments and messages in a single location. There's also a web interface

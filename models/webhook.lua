@@ -258,11 +258,15 @@ local Webhook = Model:extend('webhooks', {
     end
     self.events[event] = false
   end,
+  change_type = function(self, typ)
+    self.type = typ
+  end,
   save = function(self)
     return self:update({
       notes = self.notes,
+      type = self.type,
       params = to_json({
-        events = self.events
+        events = self.events,
       })
     })
   end

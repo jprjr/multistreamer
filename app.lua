@@ -299,6 +299,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           v:delete()
         else
           v.notes = self.params['webhook.'..v.id..'.notes']
+          v.type = self.params['webhook.' .. v.id .. '.type']
           for _,e in ipairs(self.webhook_events) do
             if self.params['webhook.' .. v.id .. '.event.' .. e.value] and
                self.params['webhook.' .. v.id .. '.event.' .. e.value] == 'on' then
