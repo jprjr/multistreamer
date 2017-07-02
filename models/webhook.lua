@@ -155,6 +155,9 @@ local Webhook_types = {
               account.updated_at = nil
               account.network_user_id = nil
               account.user_id = nil
+              if type(account.network) ~= 'table' then
+                account.network = networks[account.network]
+              end
               account.network.write_comments = nil
               account.network.read_comments = nil
               account.network.allow_sharing = nil

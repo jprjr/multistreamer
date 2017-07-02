@@ -1,10 +1,12 @@
 <% if stream then %>
-<h3>Add/Remove Accounts</h3>
+<h3><%= stream.name %></h3>
 <% else %>
 <h3>Create Stream</h3>
 <% end %>
 
-<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit') %><% if stream then %>/<%= stream.id %><% end %>" enctype="multipart/form-data">
+<% render('views.stream-menu', { active_submenu = 'general' }); %>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit') %><% if stream then %>/<%= stream.id %><% end %>?subset=general" enctype="multipart/form-data">
 
 <div class="pure-control-group"><label for="stream_name">Stream Name (Internal)</label>
 <input type="text" name="stream_name" <% if stream then %>value="<%= stream.name %>"<% end %> /></div>
@@ -16,86 +18,10 @@
 </select>
 </div>
 
-<% for i, account in pairs(accounts) do %>
-<div class="pure-control-group">
-<label for="account.<%= account.id %>"><%= account.shared and '(Shared) ' or '' %><%= account.network.displayname %> - <%= account.name %></label>
-<input type="checkbox" id="account.<%= account.id %>" name="account.<%= account.id %>" <% if stream and stream:get_account(account) then %>checked<% end %> />
+
+<div class="pure-controls">
+<input class="pure-button pure-button-primary" type="submit" value="Save" id="submitBtn" />
 </div>
-<% end %>
-
-<fieldset><legend>New Webhook</legend>
-<div class="pure-control-group">
-<label for="webhook.0.url">Webhook URL</label>
-<input type="text" name="webhook.0.url"></input>
-</div>
-
-<div class="pure-control-group">
-<label for="webhook.0.notes">Webhook Notes</label>
-<input type="text" name="webhook.0.notes"></input>
-</div>
-
-<div class="pure-control-group">
-<label for="webhook.0.type">Webhook Type</label>
-<select name="webhook.0.type">
-<option value="-1" disabled selected>Select Type</option>
-<% for _,v in ipairs(webhook_types) do %>
-<option value="<%= v.value %>"><%= v.name %></option>
-<% end %>
-</select>
-</div>
-
-<% for i,v in ipairs(webhook_events) do %>
-<div class="pure-control-group">
-<label for="webhook.0.event.<%= v.value %>"><%= v.name %></label>
-<input type="checkbox" name="webhook.0.event.<%= v.value %>" checked />
-</div>
-<% end %>
-
-</fieldset>
-
-<% for i, webhook in ipairs(webhooks) do %>
-<fieldset><legend>Webhook <%= i %></legend>
-<div class="pure-control-group">
-<label for="webhook.<%= webhook.id %>.url">Webhook URL</label>
-<input type="text" name="webhook.<%= webhook.id %>.url" value="<%= webhook.url %>"></input>
-</div>
-
-<div class="pure-control-group">
-<label for="webhook.<%= webhook.id %>.notes">Webhook Notes</label>
-<input type="text" name="webhook.<%= webhook.notes %>.notes" value="<%= webhook.notes %>"></input>
-</div>
-
-<div class="pure-control-group">
-<label for="webhook.<%= webhook.id %>.type">Webhook Type</label>
-<select disabled name="webhook.<%= webhook.id %>.type">
-<option value="-1" disabled selected>Select Type</option>
-<% for _,v in ipairs(webhook_types) do %>
-<option value="<%= v.value %>"<% if webhook.type == v.value then %>selected <% end %>><%= v.name %></option>
-<% end %>
-</select>
-</div>
-
-<% for i,v in ipairs(webhook_events) do %>
-<div class="pure-control-group">
-<label for="webhook.<%= webhook.id %>.event.<%= v.value %>"><%= v.name %></label>
-<input type="checkbox" name="webhook.<%= webhook.id %>.event.<%= v.value %>" <% if webhook:check_event(v.value) then %>checked <% end %> />
-</div>
-<% end %>
-
-<% end %>
-</fieldset>
-
-<div class="pure-control-group">
-<fieldset><legend>Advanced</legend>
-<label for="ffmpeg_pull_args">FFMPEG Pull Args</label>
-<input type="text" name="ffmpeg_pull_args" <% if stream and stream.ffmpeg_pull_args then %>value="<%= stream.ffmpeg_pull_args %>"<% end %>/>
-</fieldset>
-</div>
-
-
-<div class="pure-control-group"><label>Save</label>
-<input class="pure-button" type="submit" value="Submit" id="submitBtn" />
-</div>
-
-
 </form>
+
+<% render('views.stream-functions', { active_submenu = 'general' }); %>

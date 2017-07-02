@@ -1,8 +1,8 @@
-<h3>Stream Permissions</h3>
+<h3><%= stream.name %></h3>
 
-<p>Updating permissions for <%= stream.name %><p>
+<% render('views.stream-menu', { active_submenu = 'permissions' }) %>
 
-<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-share', { id = stream.id }) %>" enctype="multipart/form-data">
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit', { id = stream.id }) %>?subset=permissions" enctype="multipart/form-data">
 
 <% for _,other_user in pairs(users) do %>
 <fieldset>
@@ -26,7 +26,8 @@
 <% end %>
 
 <div class="pure-controls">
-<button class="pure-button pure-button-primary" type="submit" id="submitBtn">Update</button>
+<input class="pure-button pure-button-primary" type="submit" id="submitBtn" value="Save" />
 </div>
 </form>
 
+<% render('views.stream-functions', { active_submenu = 'permissions' }) %>

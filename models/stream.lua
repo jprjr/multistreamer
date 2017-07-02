@@ -176,9 +176,11 @@ function Stream:save_stream(user,stream,params)
   local slug = slugify(params.stream_name)
   local slug_stream = Stream:find({ user_id = user.id, slug = slug })
   params.preview_required = tonumber(params.preview_required)
-  if not params.ffmpeg_pull_args or params.ffmpeg_pull_args:len() == 0 then
-    params.ffmpeg_pull_args = db.NULL
-  end
+
+  -- if not params.ffmpeg_pull_args or params.ffmpeg_pull_args:len() == 0 then
+  --   params.ffmpeg_pull_args = db.NULL
+  -- end
+
   if not stream then
     if slug_stream then
       return false, 'Stream name conflicts with ' .. slug_stream.name
@@ -202,26 +204,27 @@ function Stream:save_stream(user,stream,params)
     })
   end
 
-  if params.accounts then
-    for id, value in pairs(params.accounts) do
-      local sa = StreamAccount:find({
+  if not stream then
+    return false, 'Failed to save stream'
+  end
+  return stream
+end
+
+function Stream:save_accounts(user, stream, accounts)
+  for id, value in pairs(accounts) do
+    local sa = StreamAccount:find({
+      stream_id = stream.id,
+      account_id = id,
+    })
+
+    if sa and value == false then
+      sa:delete()
+    elseif( (not sa) and value == true) then
+      StreamAccount:create({
         stream_id = stream.id,
         account_id = id,
       })
-
-      if sa and value == false then
-        sa:delete()
-      elseif( (not sa) and value == true) then
-        StreamAccount:create({
-          stream_id = stream.id,
-          account_id = id,
-        })
-      end
     end
-  end
-
-  if not stream then
-    return false, 'Failed to save stream'
   end
 
   return stream, nil

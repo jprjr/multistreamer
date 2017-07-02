@@ -1,0 +1,18 @@
+<script type="text/javascript">
+var submit_types = [<% for _,submit_type in ipairs({ 'dashboard', 'accounts', 'permissions', 'general', 'advanced', 'webhooks' }) do -%>
+<% if submit_type ~= active_submenu and (submit_type == 'dashboard' and metadata_level > 0) or metadata_level == 2 then %>'<%= submit_type %>',<% end -%>
+<% end -%>
+];
+
+submit_types.forEach(function(el_type) {
+    var link_element = document.getElementById('submit-' + el_type);
+    if(link_element) {
+        link_element.onclick = function() {
+            var the_form = document.getElementById('the_form');
+            the_form.action = the_form.action + '&tab=' + el_type;
+            document.getElementById('the_form').submit();
+        };
+    }
+});
+
+</script>

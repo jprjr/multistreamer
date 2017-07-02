@@ -1,5 +1,7 @@
 <script src="<%= url_for('site-root') %>static/js/hls.min.js"></script>
-<h3>Edit Metadata</h3>
+<h3><%= stream.name %></h3>
+
+<% render('views.stream-menu', { active_submenu = 'dashboard' }) %>
 
 <% if metadata_level == 2 then %>
 <p><strong>RTMP URL</strong> <code><%= public_rtmp_url %>/<%= rtmp_prefix %></code></p>
@@ -9,7 +11,7 @@
 <p><strong>IRC Room</strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass">Join</a></p>
 <% end %>
 
-<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('metadata-edit')..stream.id %>" enctype="multipart/form-data">
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit', { id = stream.id}) %>?subset=dashboard" enctype="multipart/form-data">
 
 <fieldset><legend>Stream Preview</legend>
 <div class="pure-g">
@@ -45,6 +47,7 @@
 <% end %>
 
 <% for _,account in pairs(accounts) do %>
+<% if stream:get_account(account) then %>
 <fieldset><legend><%= account.name %> (<%= account.network.displayname %>) Settings</legend>
 <% local metadata_form, err = account.network.metadata_form(account:get_keystore(),stream:get_stream_account(account):get_keystore()) %>
 
@@ -81,6 +84,7 @@
 </div>
 
 </fieldset>
+<% end %>
 <% end %>
 
 <% if metadata_level == 2 then %>
@@ -164,3 +168,5 @@ showBtn.onclick = showStreamKey;
   }
 
 </script>
+
+<% render('views.stream-functions', { active_submenu = 'dashboard' }) %>
