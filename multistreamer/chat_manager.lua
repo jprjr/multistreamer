@@ -23,6 +23,7 @@ local writers = ngx.shared.writers
 local pid = ngx.worker.pid()
 local kill = ngx.thread.kill
 local spawn = ngx.thread.spawn
+local status_dict = ngx.shared.status;
 
 local ChatMgr = {}
 ChatMgr.__index = ChatMgr
@@ -45,6 +46,7 @@ function ChatMgr:run()
   local ok, red = subscribe('stream:start')
   if not ok then
     ngx_log(ngx_err,'[Chat Manager] Unable to connect to redis: ' .. red)
+    status_dict:set('chatmgr_error',true)
     ngx_exit(ngx_error)
   end
   subscribe('stream:end',red)

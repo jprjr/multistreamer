@@ -149,45 +149,44 @@ elseif(arg[1] == 'initdb') then
   end
 
 elseif(arg[1] == 'push') then
-  if not arg[2] then
-    print('push requires uuid argument')
+  if not arg[2] or not arg[3] then
+    print('push requires stream id, account id arguments')
     exit(1)
   end
 
   local shell = require'multistreamer.shell'
-  local StreamModel = require'models.stream'
-  local stream = StreamModel:find({uuid = arg[2]})
-  local sas = stream:get_streams_accounts()
+  local Stream = require'models.stream'
+  local StreamAccount = require'models.stream_account'
+  local stream = Stream:find({ id = arg[2] })
+  local sa = StreamAccount:find({stream_id = arg[2], account_id = arg[3]})
+  local account = sa:get_account()
 
   local ffmpeg_args = {
     '-v',
     'error',
     '-i',
-    config.private_rtmp_url ..'/'.. config.rtmp_prefix ..'/'..arg[2],
+    config.private_rtmp_url ..'/'.. config.rtmp_prefix ..'/'.. stream.uuid,
   }
-  for _,sa in pairs(sas) do
-    local account = sa:get_account()
-    local args = {}
+  local args = {}
 
-    if account.ffmpeg_args and len(account.ffmpeg_args) > 0 then
-      args = shell.parse(account.ffmpeg_args)
-    end
-
-    if sa.ffmpeg_args and len(sa.ffmpeg_args) > 0 then
-      args = shell.parse(sa.ffmpeg_args)
-    end
-    if #args == 0 then
-      args = { '-c:v','copy','-c:a','copy' }
-    end
-
-    for i,v in pairs(args) do
-      insert(ffmpeg_args,v)
-    end
-
-    insert(ffmpeg_args,'-f')
-    insert(ffmpeg_args,'flv')
-    insert(ffmpeg_args,sa.rtmp_url)
+  if account.ffmpeg_args and len(account.ffmpeg_args) > 0 then
+    args = shell.parse(account.ffmpeg_args)
   end
+
+  if sa.ffmpeg_args and len(sa.ffmpeg_args) > 0 then
+    args = shell.parse(sa.ffmpeg_args)
+  end
+  if #args == 0 then
+    args = { '-c:v','copy','-c:a','copy' }
+  end
+
+  for i,v in pairs(args) do
+    insert(ffmpeg_args,v)
+  end
+
+  insert(ffmpeg_args,'-f')
+  insert(ffmpeg_args,'flv')
+  insert(ffmpeg_args,sa.rtmp_url)
 
   local _, err = posix.exec(config.ffmpeg,ffmpeg_args)
   print(err)
@@ -195,13 +194,13 @@ elseif(arg[1] == 'push') then
 
 elseif(arg[1] == 'pull') then
   if not arg[2] then
-    print('pull requires uuid argument')
+    print('pull requires id argument')
     exit(1)
   end
 
   local shell = require'multistreamer.shell'
   local StreamModel = require'models.stream'
-  local stream = StreamModel:find({uuid = arg[2]})
+  local stream = StreamModel:find({id = arg[2]})
 
   local ffmpeg_args = {
     '-v',
@@ -214,7 +213,7 @@ elseif(arg[1] == 'pull') then
   end
   insert(ffmpeg_args,'-f')
   insert(ffmpeg_args,'flv')
-  insert(ffmpeg_args,config.private_rtmp_url ..'/'..config.rtmp_prefix..'/'..arg[2])
+  insert(ffmpeg_args,config.private_rtmp_url ..'/'..config.rtmp_prefix..'/'..stream.uuid)
   local _, err = posix.exec(config.ffmpeg,ffmpeg_args)
   print(err)
   exit(1)

@@ -15,7 +15,7 @@ local insert = table.insert
 local tonumber = tonumber
 local pairs = pairs
 
-local exec = require'resty.exec'
+local exec_socket = require'resty.exec.socket'
 
 local ngx_err = ngx.ERR
 local ngx_error = ngx.ERROR
@@ -28,6 +28,46 @@ local pid = ngx.worker.pid()
 local kill = ngx.thread.kill
 local spawn = ngx.thread.spawn
 local streams_dict = ngx.shared.streams
+local status_dict = ngx.shared.status
+
+local function start_process(callback,client,...)
+  local args = {...}
+  return function()
+    client:send_args(args)
+    local data, typ, err, ok, errr
+    ok = true
+    while(not err) do
+      data, typ, err= client:receive()
+      if err and err == 'timeout' then
+        ngx_log(ngx_debug,'[Process Manager] timeout, looping')
+        err = nil
+      end
+      if typ == nil then
+        -- 'err' was timeout or closed
+      elseif typ == 'termsig' then
+        ngx_log(ngx_error,'[Process Manager] Process ended with signal ' .. data)
+        ok = false
+        errr = 'signal: ' .. data
+      elseif typ == 'exitcode' then
+        if tonumber(data) > 0 then
+          ngx_log(ngx_err,'[Process Manager] Process ended with exit code: ' .. data)
+          ok = false
+          errr = 'exitcode: ' .. data
+        else
+          ngx_log(ngx_debug,'[Process Manager] Process ended normally')
+        end
+      elseif typ == 'stdout' then
+        ngx_log(ngx_err,'[Process Manager] stdout: ' .. data)
+      elseif typ == 'stderr' then
+        ngx_log(ngx_err,'[Process Manager] stdout: ' .. data)
+      end
+    end
+    if callback then
+      callback()
+    end
+    return ok, errr
+  end
+end
 
 local ProcessMgr = {}
 ProcessMgr.__index = ProcessMgr
@@ -51,6 +91,7 @@ function ProcessMgr:run()
   local ok, red = subscribe('process:start:push')
   if not ok then
     ngx_log(ngx_err,'[Process Manager] Unable to connect to redis: ' .. red)
+    status_dict:set('processmgr_error',true)
     ngx_exit(ngx_error)
   end
   subscribe('process:end:push',red)
@@ -72,22 +113,6 @@ function ProcessMgr:run()
   end
 end
 
-local function log_result(res, typ)
-  if not res or res.termsig ~= nil then
-    ngx_log(ngx_err,'[Process Manager] ' .. typ .. ' ended unexpectedly unexpectedly - check sockexec timeout value')
-    return
-  end
-  if res.exitcode ~= nil and res.exitcode > 0 then
-    ngx_log(ngx_err,'[Process Manager] '..typ..' ended with non-zero exit code')
-    if res.stderr then
-      ngx_log(ngx_err,'[Process Manager] stderr: ' .. res.stderr)
-    end
-    if res.stdout then
-      ngx_log(ngx_err,'[Process Manager] stdout: ' .. res.stdout)
-    end
-  end
-end
-
 function ProcessMgr:startPush(msg)
   if msg.worker ~= pid then
     return nil
@@ -99,42 +124,29 @@ function ProcessMgr:startPush(msg)
     return nil
   end
 
+  local sas = stream:get_streams_accounts()
+
   ngx_log(ngx_debug,'[Process Manager] Starting pusher')
 
-  self.pushers[stream.id] = spawn(function()
-    local prog = exec.new(config.sockexec_path)
-    prog.timeout_fatal = false
-    prog.stderr = function(data)
-      ngx_log(ngx_debug,'[Process Manager] stderr: ' .. data)
-    end
-    prog.stdout = function(data)
-      ngx_log(ngx_debug,'[Process Manager] stdout: ' .. data)
+  if not self.pushers[stream.id] then
+    self.pushers[stream.id] = {}
+  end
+
+  for _,sa in pairs(sas) do
+    local client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
+    local ok, err = client:connect(config.sockexec_path)
+    if not ok then
+      ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
+      status_dict:set('processmgr_error', true)
+      return
     end
 
-    local running = true
-    while running do
-      local res = prog(bash_path,'-l',lua_bin,'-e',os.getenv('LAPIS_ENVIRONMENT'),'push',stream.uuid)
+    self.pushers[stream.id][sa.account_id] = client
 
-      ngx_log(ngx.NOTICE,'[Process Manager] Pusher ended')
-      log_result(res,'Pusher')
-
-      ngx_sleep(10)
-      local stream_status = streams_dict:get(stream.id)
-      if stream_status then
-        stream_status = from_json(stream_status)
-      else
-        stream_status = {
-          data_incoming = false,
-          data_pushing = false,
-          data_pulling = false,
-        }
-      end
-      if stream_status.data_incoming == false then
-        running = false
-      end
-    end
-    
-  end)
+    spawn(start_process(function()
+      self.pushers[stream.id][sa.account_id] = nil
+    end,client,bash_path,'-l',lua_bin,'-e',os.getenv('LAPIS_ENVIRONMENT'),'push',stream.id,sa.account_id))
+  end
 
   return true
 end
@@ -149,6 +161,15 @@ function ProcessMgr:startPull(msg)
   if not stream then
     return nil
   end
+
+  local client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
+  local ok, err = client:connect(config.sockexec_path)
+  if not ok then
+    ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
+    status_dict:set('processmgr_error', true)
+    return
+  end
+
   local stream_status = streams_dict:get(stream.id)
   if stream_status then
     stream_status = from_json(stream_status)
@@ -162,12 +183,7 @@ function ProcessMgr:startPull(msg)
   stream_status.data_pulling = true
   streams_dict:set(stream.id,to_json(stream_status))
 
-  self.pullers[stream.id] = spawn(function()
-    local prog = exec.new(config.sockexec_path)
-    prog.timeout_fatal = false
-    local res = prog(bash_path,'-l',lua_bin,'-e',os.getenv('LAPIS_ENVIRONMENT'),'pull',stream.uuid)
-    log_result(res,'Puller')
-
+  spawn(start_process(function()
     local stream_status = streams_dict:get(stream.id)
     if stream_status then
       stream_status = from_json(stream_status)
@@ -180,7 +196,9 @@ function ProcessMgr:startPull(msg)
     end
     stream_status.data_pulling = false
     streams_dict:set(stream.id,to_json(stream_status))
-  end)
+    self.pullers[stream.id] = nil
+  end,client,bash_path,'-l',lua_bin,'-e',os.getenv('LAPIS_ENVIRONMENT'),'pull',stream.id))
+  self.pullers[stream.id] = client
 
   return true
 end
@@ -188,9 +206,17 @@ end
 function ProcessMgr:endPush(msg)
   if not msg.id then return end
 
+
   if not self.pushers[msg.id] then return end
 
-  kill(self.pushers[msg.id])
+  for _,account_id in ipairs(msg.accounts) do
+    if self.pushers[msg.id][account_id] then
+      local bytes, err = self.pushers[msg.id][account_id]:send('q')
+      if not bytes then
+        ngx_log(ngx_err,'[Process Manager] failed to send quit message: ' .. err)
+      end
+    end
+  end
 
   return true
 end
@@ -200,7 +226,7 @@ function ProcessMgr:endPull(msg)
 
   if not self.pullers[msg.id] then return end
 
-  kill(self.pullers[msg.id])
+  self.pullers[msg.id]:send('q')
   return true
 end
 

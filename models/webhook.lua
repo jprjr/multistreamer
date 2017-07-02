@@ -9,6 +9,7 @@ local unpack = unpack
 if not unpack then
   unpack = table.unpack
 end
+local Account = require('models.account')
 
 local Webhook_types = {
     [1] = {
@@ -81,10 +82,129 @@ local Webhook_types = {
           end
         }
     },
+    [2] = {
+        name = 'Raw',
+        value = 'raw',
+        events = {
+          ['comment:in'] = function(hook,msg)
+            msg.network = networks[msg.network]
+            msg.stream = hook:get_stream()
+            msg.stream_id = nil
+            msg.account = Account:find({ id = msg.account_id })
+            msg.account_id = nil
+            msg.account.network = nil
+            msg.user = msg.stream:get_user()
+            msg.hook_type = 'comment:in'
+
+            msg.user.updated_at = nil
+            msg.user.created_at = nil
+            msg.user.access_token = nil
+
+            msg.stream.updated_at = nil
+            msg.stream.created_at = nil
+            msg.stream.user = nil
+            msg.stream.user_id = nil
+            msg.stream.uuid = nil
+            msg.stream.preview_required = nil
+
+            msg.network.write_comments = nil
+            msg.network.read_comments = nil
+            msg.network.allow_sharing = nil
+            msg.network.icon = nil
+            msg.network.redirect_uri = nil
+
+            msg.account.keystore = nil
+            msg.account.created_at = nil
+            msg.account.updated_at = nil
+            msg.account.network_user_id = nil
+            msg.account.user_id = nil
+
+            local httpc = http.new()
+            httpc:request_uri(hook.url, {
+              method = 'POST',
+              headers = {
+                ['Content-Type'] = 'application/json',
+              },
+              body = to_json(msg),
+            })
+          end,
+          ['stream:start'] = function(hook,sas)
+            local msg = {}
+            msg.hook_type = 'stream:start'
+            msg.stream = hook:get_stream()
+            msg.user = msg.stream:get_user()
+            msg.accounts = {}
+
+            msg.user.updated_at = nil
+            msg.user.created_at = nil
+            msg.user.access_token = nil
+
+            msg.stream.updated_at = nil
+            msg.stream.created_at = nil
+            msg.stream.user = nil
+            msg.stream.user_id = nil
+            msg.stream.uuid = nil
+            msg.stream.preview_required = nil
+
+            local urls = {}
+            for _,v in pairs(sas) do
+              local account = v:get_account()
+              account.http_url = v:get('http_url')
+              account.keystore = nil
+              account.created_at = nil
+              account.updated_at = nil
+              account.network_user_id = nil
+              account.user_id = nil
+              account.network.write_comments = nil
+              account.network.read_comments = nil
+              account.network.allow_sharing = nil
+              account.network.icon = nil
+              account.network.redirect_uri = nil
+              insert(msg.accounts,account)
+            end
+
+            local httpc = http.new()
+            httpc:request_uri(hook.url, {
+              method = 'POST',
+              headers = {
+                ['Content-Type'] = 'application/json',
+              },
+              body = to_json(msg),
+            })
+          end,
+          ['stream:end'] = function(hook)
+            local msg = {}
+            msg.hook_type = 'stream:end'
+            msg.stream = hook:get_stream()
+            msg.user = msg.stream:get_user()
+
+            msg.user.updated_at = nil
+            msg.user.created_at = nil
+            msg.user.access_token = nil
+
+            msg.stream.updated_at = nil
+            msg.stream.created_at = nil
+            msg.stream.user = nil
+            msg.stream.user_id = nil
+            msg.stream.uuid = nil
+            msg.stream.preview_required = nil
+
+            local httpc = http.new()
+            httpc:request_uri(hook.url, {
+              method = 'POST',
+              headers = {
+                ['Content-Type'] = 'application/json',
+              },
+              body = to_json(msg),
+            })
+          end
+        }
+    },
 }
 
 local Webhook_types_rev = {
     ['discord'] = 1,
+    ['raw'] = 2,
 }
 
 local Webhook_events = {

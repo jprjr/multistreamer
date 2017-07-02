@@ -364,6 +364,10 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
 
     if self.stream_status.data_pushing == true and self.params['stopLiveBtn'] ~= nil then
       self.stream_status.data_pushing = false
+      local account_ids = {}
+      for _,account in pairs(self.accounts) do
+        insert(account_ids,account.id)
+      end
 
       publish('stream:end', {
         id = self.stream.id,
@@ -371,6 +375,7 @@ app:match('metadata-edit', config.http_prefix .. '/metadata/:id', respond_to({
 
       publish('process:end:push', {
         id = self.stream.id,
+        accounts = account_ids,
       })
 
       for _,v in pairs(self.stream:get_webhooks()) do
@@ -503,9 +508,10 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
     }
   end
 
-  publish('process:end:push', {
-    id = stream.id,
-  })
+  local accounts = {}
+  for _,sa in pairs(sas) do
+    insert(accounts,sa.account_id)
+  end
 
   publish('stream:end', {
     id = stream.id,
@@ -634,6 +640,9 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
       ss:delete()
     end
     self.stream:get_keystore():unset_all()
+    for _,wh in pairs(self.stream:get_webhooks()) do
+      wh:delete()
+    end
     publish('stream:delete',self.stream)
     self.stream:delete()
     self.session.status_msg = { type = 'success', msg = 'Stream removed' }
