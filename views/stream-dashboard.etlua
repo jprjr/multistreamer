@@ -30,8 +30,12 @@
 <button class="pure-button pure-button-primary" type="submit" id="customPullBtn" name="customPullBtn">Start Puller</button>
 <% end %>
 <% end %>
+<% if stream.preview_required and stream_status.data_incoming and not stream_status.data_pushing then %>
+<button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn">Go Live!</button>
+<% else %>
 <button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled>Go Live!</button>
-<button class="pure-button pure-button-primary" type="submit" id="stopLiveBtn" name="stopLiveBtn" <%= stream_status.data_pushing and '' or 'disabled'%>>Stop Pushing</button>
+<% end %>
+<button class="pure-button pure-button-primary" type="submit" id="stopLiveBtn" name="stopLiveBtn" <%= stream_status.data_pushing == true and '' or 'disabled'%>>Stop Pushing</button>
 </div>
 <% end %>
 </div>
@@ -154,7 +158,6 @@ showBtn.onclick = showStreamKey;
       hls.attachMedia(video);
       hls.loadSource(url);
       hls.on(Hls.Events.ERROR, function(event, data) {
-        goLiveBtn.setAttribute('disabled','');
         setTimeout(loadVideo, 10000);
         hls.destroy();
       });
