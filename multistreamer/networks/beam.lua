@@ -276,7 +276,7 @@ function M.publish_start(account, stream)
   local fields = M.metadata_fields()
   for i,f in ipairs(fields) do
     if f.required == true then
-      if not stream[f] or len(stream[f]) == 0 then
+      if not stream[f.key] or len(stream[f.key]) == 0 then
         return false, 'Beam: missing field "' .. f.label ..'"'
       end
     end
