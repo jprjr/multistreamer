@@ -254,6 +254,14 @@ function M.publish_start(account, stream)
     return false, 'unable to create rtmp url'
   end
 
+  -- check required settings
+  if not stream.title or
+     len(stream.title) == 0 or
+     not stream.game or
+     len(stream.game) == 0 then
+    return false, 'Twitch: missing required settings'
+  end
+
   local tclient = twitch_api_client(account.token)
   local res, err = tclient:put('/channels/'..account.channel_id, {
     channel = {
