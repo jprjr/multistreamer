@@ -235,6 +235,12 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     local update_published = false
 
     if self.params.subset == 'general' then -- {{{
+      local preview_required = nil
+      local stream_name = nil
+      if self.stream then
+        preview_required = self.stream.preview_required
+        stream_name = self.stream.name
+      end
       local stream, err = Stream:save_stream(self.user,self.stream,self.params)
       if not self.stream then
         if err then
@@ -248,8 +254,8 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         if err then
           self.session.status_msg = { type = 'error', msg = 'Failed to update stream: ' .. err}
         else
-          if self.stream.slug ~= stream.slug or
-             self.stream.name ~= stream.name then
+          if stream_name ~= stream.name or
+             preview_required ~= stream.preview_required then
             self.session.status_msg = { type = 'success', msg = 'Stream updated' }
             stream_updated = true
           end
