@@ -273,6 +273,15 @@ function M.publish_start(account, stream)
   local account = account:get_all()
   local stream = stream:get_all()
 
+  local fields = M.metadata_fields()
+  for i,f in ipairs(fields) do
+    if f.required == true then
+      if not stream[f] or len(stream[f]) == 0 then
+        return false, 'Beam: missing field "' .. f.label ..'"'
+      end
+    end
+  end
+
   local access_token = account['access_token']
   local channel_id = account['channel_id']
   local stream_key = account['stream_key']
