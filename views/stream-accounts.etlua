@@ -4,6 +4,8 @@
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit') %><% if stream then %>/<%= stream.id %><% end %>?subset=accounts" enctype="multipart/form-data">
 
+<fieldset>
+<legend>Enable/Disable accounts</legend>
 
 <% for i, account in pairs(accounts) do %>
 <div class="pure-control-group">
@@ -11,6 +13,7 @@
 <input type="checkbox" id="account.<%= account.id %>" name="account.<%= account.id %>" <% if stream and stream:get_account(account) then %>checked<% end %> />
 </div>
 <% end %>
+</fieldset>
 
 <fieldset>
 <legend>Add new account</legend>
