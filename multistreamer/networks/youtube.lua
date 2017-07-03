@@ -333,7 +333,7 @@ function M.metadata_fields()
       type = 'textarea',
       label = 'Tags (one per line)',
       key = 'tags',
-      required = true,
+      required = false,
     },
     [4] = {
       type = 'select',
@@ -393,13 +393,25 @@ function M.publish_start(account, stream)
 
   local access_token = account.access_token
 
+  local fields = M.metadata_fields()
+  for i,f in ipairs(fields) do
+    if f.required == true then
+      if not stream[f] or len(stream[f]) == 0 then
+        return false, 'YouTube: missing field "' .. f.label ..'"'
+      end
+    end
+  end
+
   local title = stream.title
   local category = stream.category
   local privacy = stream.privacy
   local description = stream.description
   local resolution = stream.resolution
   local framerate = stream.framerate
-  local tags = stream.tags:split('\r?\n')
+  local tags
+  if stream.tags and len(stream.tags) > 0 then
+    tags = stream.tags:split('\r?\n')
+  end
 
   -- the process:
   -- create Broadcast (POST /liveBroadcasts)
