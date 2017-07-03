@@ -43,7 +43,7 @@
 
 <div class="pure-control-group">
 <label for="webhook.<%= webhook.id %>.notes">Webhook Notes</label>
-<input type="text" name="webhook.<%= webhook.notes %>.notes" value="<%= webhook.notes %>"></input>
+<input type="text" name="webhook.<%= webhook.id %>.notes" value="<%= webhook.notes %>"></input>
 </div>
 
 <div class="pure-control-group">

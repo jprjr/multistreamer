@@ -231,15 +231,34 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     end
   end,
   POST = function(self)
-
+    local stream_updated = false
     local update_published = false
 
-    if self.params.subset == 'general' then
-      self.stream, err = Stream:save_stream(self.user,self.stream,self.params)
-      if err then return err_out(self, err) end
-    end
+    if self.params.subset == 'general' then -- {{{
+      local stream, err = Stream:save_stream(self.user,self.stream,self.params)
+      if not self.stream then
+        if err then
+          self.session.status_msg = { type = 'error', msg = 'Failed to make stream: ' .. err}
+        else
+          self.session.status_msg = { type = 'success', msg = 'Stream created' }
+          self.stream = stream
+          stream_updated = true
+        end
+      else
+        if err then
+          self.session.status_msg = { type = 'error', msg = 'Failed to update stream: ' .. err}
+        else
+          if self.stream.slug ~= stream.slug or
+             self.stream.name ~= stream.name then
+            self.session.status_msg = { type = 'success', msg = 'Stream updated' }
+            stream_updated = true
+          end
+          self.stream = stream
+        end
+      end
+    end -- }}}
 
-    if self.params.subset == 'accounts' then
+    if self.params.subset == 'accounts' then -- {{{
       local accounts = {}
       for _,account in pairs(self.accounts) do
         if self.params['account.'..account.id] and self.params['account.'..account.id] == 'on' then
@@ -248,18 +267,29 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           accounts[account.id] = false
         end
       end
-      Stream:save_accounts(self.user, self.stream, accounts)
-    end
-
-    if self.params.subset == 'advanced' then
-      if not self.params.ffmpeg_pull_args or len(self.params.ffmpeg_pull_args) == 0 then
-        self.stream:update({ffmpeg_pull_args = db.NULL})
-      else
-        self.stream:update({ffmpeg_pull_args = self.params.ffmpeg_pull_args})
+      if Stream:save_accounts(self.user, self.stream, accounts) == true then
+        stream_updated = true
+        self.session.status_msg = { type = 'success', msg = 'Accounts updated' }
       end
-    end
+    end -- }}}
 
-    if self.params.subset == 'permissions' then
+    if self.params.subset == 'advanced' then -- {{{
+      if not self.params.ffmpeg_pull_args or len(self.params.ffmpeg_pull_args) == 0 then
+        if self.stream.ffmpeg_pull_args ~= nil then
+          self.stream:update({ffmpeg_pull_args = db.NULL})
+          self.session.status_msg = { type = 'success', msg = 'FFMPEG puller removed' }
+          stream_updated = true
+        end
+      else
+        if self.stream.ffmpeg_pull_args == nil then
+          self.stream:update({ffmpeg_pull_args = self.params.ffmpeg_pull_args})
+          self.session.status_msg = { type = 'success', msg = 'FFMPEG puller updated' }
+          stream_updated = true
+        end
+      end
+    end -- }}}
+
+    if self.params.subset == 'permissions' then -- {{{
       for _,other_user in pairs(self.users) do
         local chat_level = 0
         local metadata_level = 0
@@ -271,6 +301,10 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         end
         local ss = SharedStream:find({ stream_id = self.stream.id, user_id = other_user.id })
         if ss then
+          if ss.chat_level ~= chat_level or ss.metadata_level ~= metadata_level then
+            stream_updated = true
+            self.session.status_msg = { type = 'success', msg = 'Sharing permissions updated' }
+          end
           ss:update({chat_level = chat_level, metadata_level = metadata_level})
         else
           SharedStream:create({
@@ -279,68 +313,130 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
             chat_level = chat_level,
             metadata_level = metadata_level,
           })
-        end
-      end
-    end
-
-    if self.params.subset == 'webhooks' then
-      if self.params['webhook.0.url'] and len(self.params['webhook.0.url']) > 0 and self.params['webhook.0.type'] and self.params['webhook.0.type'] ~= '-1' then
-        local p = {}
-        p.stream_id = self.stream.id
-        p.url = self.params['webhook.0.url']
-        p.type = self.params['webhook.0.type']
-        p.notes = self.params['webhook.0.notes']
-        p.events = {}
-        for _,v in ipairs(self.webhook_events) do
-          if self.params['webhook.0.event.' .. v.value] and
-             self.params['webhook.0.event.' .. v.value] == 'on' then
-            p.events[v.value] = true
-          else
-            p.events[v.value] = false
+          if chat_level > 0 or metadata_level > 0 then
+            stream_updated = true
+            self.session.status_msg = { type = 'success', msg = 'Sharing permissions updated' }
           end
         end
-        local webhook = Webhook:create(p)
+      end
+    end -- }}}
+
+    if self.params.subset == 'webhooks' then -- {{{
+      local webhook_created = false
+      local webhook_updated = false
+      local webhook_status = 'success'
+      local webhook_message = ''
+      if self.params['webhook.0.url'] and len(self.params['webhook.0.url']) > 0 then
+        if not self.params['webhook.0.type'] or self.params['webhook.0.type'] == '-1' then
+          webhook_status = 'error'
+          webhook_message = 'Failed to add webhook: "type" not set. '
+        else
+          local p = {}
+          p.stream_id = self.stream.id
+          p.url = self.params['webhook.0.url']
+          p.type = self.params['webhook.0.type']
+          p.notes = self.params['webhook.0.notes']
+          p.events = {}
+          for _,v in ipairs(self.webhook_events) do
+            if self.params['webhook.0.event.' .. v.value] and
+               self.params['webhook.0.event.' .. v.value] == 'on' then
+              p.events[v.value] = true
+            else
+              p.events[v.value] = false
+            end
+          end
+          webhook_created = true
+          local webhook = Webhook:create(p)
+          webhook_message = 'Webhook added. '
+        end
       end
 
       for i,v in ipairs(self.webhooks) do
         if len(self.params['webhook.' .. v.id .. '.url']) <= 0 then
+          webhook_message = webhook_message .. 'Deleted webhook ' .. v.url .. '. '
           v:delete()
         else
+          local updated = false
+          if not self.params['webhook.' .. v.id .. '.notes'] then
+            self.params['webhook.' .. v.id .. '.notes'] = ''
+          end
+          if not self.params['webhook.' .. v.id .. '.type'] then
+            self.params['webhook.' .. v.id .. '.type'] = ''
+          end
+
+          if not v.notes then
+            v.notes = ''
+          end
+
+          if v.notes ~= self.params['webhook.' .. v.id .. '.notes'] or
+             v.type ~= self.params['webhook.' .. v.id .. '.type'] then
+            updated = true
+          end
           v.notes = self.params['webhook.'..v.id..'.notes']
           v.type = self.params['webhook.' .. v.id .. '.type']
           for _,e in ipairs(self.webhook_events) do
             if self.params['webhook.' .. v.id .. '.event.' .. e.value] and
                self.params['webhook.' .. v.id .. '.event.' .. e.value] == 'on' then
+              if v:check_event(e.value) == false then
+                updated = true
+              end
               v:enable_event(e.value)
             else
+              if v:check_event(e.value) == true then
+                updated = true
+              end
               v:disable_event(e.value)
             end
           end
           v:save()
+          if updated == true then
+            webhook_message = webhook_message .. 'Updated webhook ' .. v.url .. '. '
+            webhook_updated = true
+          end
         end
       end
-    end
+      if len(webhook_message) > 0 then
+        self.session.status_msg = { type = webhook_status, msg = webhook_message }
+      end
 
-    if self.params.subset == 'dashboard' then
+      if webhook_updated == true or webhook_created == true then
+        stream_updated = true
+      end
+    end -- }}}
+
+    if self.params.subset == 'dashboard' then -- {{{
       if self.metadata_level < 2 then
         return err_out(self,'Nice try buddy')
       end
 
       if self.params.title then
+        if self.params.title ~= self.stream:get('title') then
+          stream_updated = true
+        end
         self.stream:set('title',self.params.title)
       end
       if self.params.description then
+        if self.params.description ~= self.stream:get('description') then
+          stream_updated = true
+        end
         self.stream:set('description',self.params.description)
       end
 
       for _,account in pairs(self.accounts) do
         local sa = self.stream:get_stream_account(account)
         if sa then
+          sa_keys = sa:get_all()
           local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
           if ffmpeg_args and len(ffmpeg_args) > 0 then
+            if sa_keys.ffmpeg_args == nil then
               sa:update({ffmpeg_args = ffmpeg_args })
+              stream_updated = true
+            end
           else
+            if sa_keys.ffmpeg_args ~= nil then
               sa:update({ffmpeg_args = db.NULL })
+              stream_updated = true
+            end
           end
 
           local metadata_fields = account.network.metadata_fields()
@@ -348,16 +444,19 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           for i,field in pairs(metadata_fields) do
             local v = self.params[field.key .. '.' .. account.id]
             if v and len(v) > 0 then
-              sa:set(field.key,v)
+              if sa_keys[field.key] ~= v then
+                sa:set(field.key,v)
+                stream_updated = true
+              end
             else
-              sa:unset(field.key)
+              if sa_keys[field.key] ~= nil then
+                sa:unset(field.key)
+                stream_updated = true
+              end
             end
           end
         end
       end
-
-      publish('stream:update',self.stream)
-      update_published = true
 
       if self.params['customPullBtn'] ~= nil then
         self.stream_status.data_pulling = true
@@ -367,7 +466,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           id = self.stream.id,
         })
         self.session.status_msg = { type = 'success', msg = 'Custom Puller Started' }
-        return { redirect_to = self:url_for('stream-edit') .. self.stream.id .. '?subset=dashboard' }
+        return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=dashboard' }
       end
 
       if self.params['customPullBtnStop'] ~= nil then
@@ -377,13 +476,15 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           id = self.stream.id,
         })
         self.session.status_msg = { type = 'success', msg = 'Custom Puller Stopped' }
-        return { redirect_to = self:url_for('stream-edit') .. self.stream.id .. '?subset=dashboard' }
+        return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=dashboard' }
       end
-      local success_msg = 'Settings saved'
+
+      if stream_updated then
+        self.session.status_msg = { type = 'success', msg = 'Stream settings saved' }
+      end
 
       -- is there incoming data, and the user clicked the golivebutton? start the stream
       if self.stream_status.data_incoming == true and self.stream_status.data_pushing == false and self.params['goLiveBtn'] ~= nil then
-        success_msg = 'Stream started'
         self.stream_status.data_pushing = true
         local sas = {}
 
@@ -392,7 +493,8 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           if sa then
             local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
             if (not rtmp_url) or err then
-              return err_out(self,err)
+              self.session.status_msg = { type = 'error', msg = 'Failed to start pusher: ' .. err}
+              return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=dashboard' }
             end
             sa:update({rtmp_url = rtmp_url})
             insert(sas, sa)
@@ -413,6 +515,8 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         for _,v in pairs(self.stream:get_webhooks()) do
           v:fire_event('stream:start', sas)
         end
+
+        self.session.status_msg = { type = 'success', msg = 'Stream started' }
       end
 
       if self.stream_status.data_pushing == true and self.params['stopLiveBtn'] ~= nil then
@@ -437,16 +541,20 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         for _,v in pairs(self.stream:get_webhooks()) do
           v:fire_event('stream:end')
         end
+        self.session.status_msg = { type = 'success', msg = 'Stream stopped' }
       end
 
       streams_dict:set(self.stream.id, to_json(self.stream_status))
-    end
+    end -- }}}
 
-    if update_published == false then
+    if stream_updated == true and update_published == false then
       publish('stream:update',self.stream)
     end
 
-    self.session.status_msg = { type = 'success', msg = 'Stream updated' }
+    if not self.stream then
+      return { redirect_to = self:url_for('stream-edit') }
+    end
+
     return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=' .. self.params.tab }
   end,
 }))

@@ -177,13 +177,9 @@ function Stream:save_stream(user,stream,params)
   local slug_stream = Stream:find({ user_id = user.id, slug = slug })
   params.preview_required = tonumber(params.preview_required)
 
-  -- if not params.ffmpeg_pull_args or params.ffmpeg_pull_args:len() == 0 then
-  --   params.ffmpeg_pull_args = db.NULL
-  -- end
-
   if not stream then
     if slug_stream then
-      return false, 'Stream name conflicts with ' .. slug_stream.name
+      return false, 'Stream name conflicts with "' .. slug_stream.name .. '"'
     end
     stream = self:create({
       user_id = user.id,
@@ -194,7 +190,7 @@ function Stream:save_stream(user,stream,params)
     })
   else
     if slug_stream and slug_stream.id ~= stream.id then
-      return false, 'Stream name conflicts with ' .. slug_stream.name
+      return false, 'Stream name conflicts with "' .. slug_stream.name .. '"'
     end
     stream:update({
       name = params.stream_name,
@@ -211,6 +207,8 @@ function Stream:save_stream(user,stream,params)
 end
 
 function Stream:save_accounts(user, stream, accounts)
+  local updated = false
+
   for id, value in pairs(accounts) do
     local sa = StreamAccount:find({
       stream_id = stream.id,
@@ -218,16 +216,18 @@ function Stream:save_accounts(user, stream, accounts)
     })
 
     if sa and value == false then
+      updated = true
       sa:delete()
     elseif( (not sa) and value == true) then
       StreamAccount:create({
         stream_id = stream.id,
         account_id = id,
       })
+      updated = true
     end
   end
 
-  return stream, nil
+  return updated
 end
 
 return Stream;
