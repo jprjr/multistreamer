@@ -8,4 +8,5 @@
         <li class="pure-menu-item<%= active_submenu == 'advanced' and ' pure-menu-selected' or '' %><%= metadata_level == 2 and '' or ' pure-menu-disabled'%>"><a id="submit-advanced" href="#" class="pure-menu-link">Advanced</a></li>
     </ul>
 </div>
+<hr>
 
