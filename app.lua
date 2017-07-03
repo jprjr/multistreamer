@@ -193,11 +193,18 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     self.webhook_events = Webhook.events
 
     self.accounts = {}
+    self.stream_accounts = {}
     local acc = self.user:get_accounts()
     if not acc then acc = {} end
     for _,account in pairs(acc) do
       account.network = networks[account.network]
       insert(self.accounts,account)
+      if self.stream then
+        local sa = self.stream:get_stream_account(account)
+        if sa then
+          insert(self.stream_accounts,account)
+        end
+      end
     end
 
     local sas = self.user:get_shared_accounts()
@@ -208,8 +215,17 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       account.shared_from = u.username
       account.network = networks[account.network]
       insert(self.accounts,account)
+      if self.stream then
+        local sa = self.stream:get_stream_account(account)
+        if sa then
+          insert(self.stream_accounts,account)
+        end
+      end
     end
     sort(self.accounts, function(a,b)
+      return a.network.displayname < b.network.displayname
+    end)
+    sort(self.stream_accounts, function(a,b)
       return a.network.displayname < b.network.displayname
     end)
     self.public_rtmp_url = config.public_rtmp_url

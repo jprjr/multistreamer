@@ -53,8 +53,7 @@
 </div>
 <% end %>
 
-<% for _,account in pairs(accounts) do %>
-<% if stream:get_account(account) then %>
+<% for _,account in pairs(stream_accounts) do %>
 <fieldset><legend><%= account.name %> (<%= account.network.displayname %>) Settings</legend>
 <% local metadata_form, err = account.network.metadata_form(account:get_keystore(),stream:get_stream_account(account):get_keystore()) %>
 
@@ -92,7 +91,6 @@
 
 </fieldset>
 <% end %>
-<% end %>
 
 <% if metadata_level == 2 then %>
 <div class="pure-controls">
@@ -110,7 +108,7 @@ var descriptionKeys = [];
 var titleInput = document.getElementById('title');
 var descriptionInput = document.getElementById('description');
 var streamKey = document.getElementById('stream-key');
-<% for _,account in pairs(accounts) do -%>
+<% for _,account in pairs(stream_accounts) do -%>
 <% local metadata_fields, err = account.network.metadata_fields() -%>
 <% if metadata_fields then -%>
 <% for _,field in pairs(metadata_fields) do -%>
