@@ -708,7 +708,7 @@ function IRCState:processStreamStart(update, res)
   local roomName = getRoomName(stream)
   local topic = 'Status: live'
 
-  IRCState.createRoom(self, stream,res)
+  IRCState.createRoom(self, stream, res)
 
   for _,sa in pairs(sas) do
     local http_url = sa:get('http_url')
@@ -776,6 +776,7 @@ function IRCState:processStreamUpdate(update, res)
     -- copy items from the oldRoomName to newRoomName
     self.rooms[roomName].live = self.rooms[oldRoomName].live
     self.rooms[roomName].topic = self.rooms[oldRoomName].topic
+
     for username,_ in pairs(self.rooms[oldRoomName].bots) do
       self.rooms[roomName].bots[username] = {}
       self.rooms[roomName].bots[username].account_id = self.rooms[oldRoomName].bots[username].account_id
@@ -785,6 +786,16 @@ function IRCState:processStreamUpdate(update, res)
     for username,_ in pairs(self.rooms[oldRoomName].users) do
       self.rooms[roomName].users[username] = {}
       self.rooms[roomName].users[username].id = self.rooms[oldRoomName].users[username].id
+    end
+
+    -- update connection references to use the new room
+    for _,user in pairs(self.users) do
+      for _,connection in pairs(user.connections) do
+        if connection.rooms[oldRoomName] then
+          connection.rooms[oldRoomName] = nil
+          connection.rooms[roomName] = true
+        end
+      end
     end
 
     self.rooms[oldRoomName] = nil

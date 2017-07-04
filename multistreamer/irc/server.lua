@@ -202,6 +202,7 @@ function IRCServer:stateRoomMove(data)
     if not ok then
       return false, err
     end
+    self.user.rooms[data.roomName] = true
     return self:sendRoomJoin(self.user.username,data.roomName)
   end
   return true
