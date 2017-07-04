@@ -33,7 +33,7 @@
 <% if v.network then %>
 
 <li><% if v.shared then %>(Shared by <%= v.shared_from %>) <% end %><%= v.network.displayname -%>
-<% if v.name then %>: <%= v.name -%> <% end %><% if v.errors then %><span class="error">(<%= v.errors %>)</span><% end %>
+<% if v.name then %>: <%= v.name -%> <% end %><% if v.errors then %><span class="error">Error encountered: <%= v.errors %></span><% end %>
 
 <ul>
 

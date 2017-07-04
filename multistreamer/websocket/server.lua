@@ -291,9 +291,8 @@ function Server:run()
 
   publish('irc:events:login', {
     nick = self.user.username,
-    username = self.user.username,
-    realname = self.user.username,
     id = self.user.id,
+    uuid = self.uuid,
   })
 
   publish('irc:events:join', {
@@ -326,6 +325,7 @@ function Server:run()
 
   publish('irc:events:logout', {
     nick = self.user.username,
+    uuid = self.uuid,
   })
 
   ngx_eof()

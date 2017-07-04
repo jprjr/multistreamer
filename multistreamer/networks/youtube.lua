@@ -145,11 +145,15 @@ local function refresh_access_token(refresh_token, access_token, expires_in, exp
       },
     })
 
+    if res and type(res.status) ~= 'number' then
+      res.status = tonumber(res.status:find('^%d+'))
+    end
+
     if err then
       return nil, err
     end
     if res.status >= 400 then
-      return nil, res.body
+      return nil, from_json(res.body).error_description
     end
 
     local creds = from_json(res.body)
@@ -288,7 +292,8 @@ function M.metadata_form(account, stream)
   local form = M.metadata_fields()
   form[7].options = {}
 
-  local yt = youtube_client(account:get('access_token'))
+  local yt, err = youtube_client(account:get('access_token'))
+  if not yt then return false, err end
   local res, err = yt:get('/videoCategories', {
     part = 'snippet',
     regionCode = config.networks[M.name].country,
@@ -580,7 +585,7 @@ function M.check_errors(account)
   access_token, exp = refresh_access_token(refresh_token)
 
   if not access_token then
-    return false, exp
+    return exp
   end
 
   account:set('access_token',access_token,exp)

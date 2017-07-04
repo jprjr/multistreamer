@@ -537,7 +537,7 @@ end
 function M.check_errors(account)
   local token, exp = account:get('access_token')
   if not token then
-    return 'Needs refresh'
+    return 'Account needs refresh, re-add account'
   end
 
   if exp and exp < 864000 then -- if token expires in <10 days

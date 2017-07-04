@@ -180,5 +180,23 @@ function IRC.format_line(...)
   return msg
 end
 
+-- a variant of format_line that always places
+-- a colon on the last argument
+function IRC.format_line_col(...)
+  local msg = ''
+  for i,v in ipairs({...}) do
+    if i == #{...} and (type(v) == 'string') then
+      v = ':' .. v
+    end
+    if i > 1 then
+      v = ' ' .. v
+    end
+    if v ~= nil then
+      msg = msg .. v
+    end
+  end
+  return msg
+end
+
 return IRC
 

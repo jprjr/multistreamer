@@ -1,5 +1,7 @@
 local config = require('lapis.config').get()
 
+config.VERSION = '9.0.0'
+
 if not config.log_level or config.log_level:len() == 0 then
   config.log_level = 'debug'
 end
@@ -56,6 +58,9 @@ if not config.public_irc_hostname then
 end
 if not config.public_irc_ssl then
   config.public_irc_ssl = false
+end
+if not config.irc_motd then
+  config.irc_motd = [[Welcome to Multistreamer!]]
 end
 
 if not config.lua_shared_dict_streams_size then
