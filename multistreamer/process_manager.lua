@@ -33,6 +33,15 @@ local status_dict = ngx.shared.status
 local function start_process(callback,client,...)
   local args = {...}
   return function()
+    if not client then
+      client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
+    end
+    local ok, c_err = client:connect(config.sockexec_path)
+    if not ok then
+      ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
+      status_dict:set('processmgr_error', true)
+      return
+    end
     client:send_args(args)
     local data, typ, err, ok, errr
     ok = true
@@ -130,6 +139,10 @@ function ProcessMgr:startPush(msg)
 
   if not self.pushers[stream.id] then
     self.pushers[stream.id] = {}
+  end
+
+  if msg.delay then
+    ngx.sleep(msg.delay)
   end
 
   for _,sa in pairs(sas) do

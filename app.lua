@@ -652,6 +652,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
       publish('process:start:push', {
         worker = pid,
         id = stream.id,
+        delay = 5,
       })
 
       for _,v in pairs(stream:get_webhooks()) do
