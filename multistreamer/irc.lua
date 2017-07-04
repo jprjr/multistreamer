@@ -60,9 +60,7 @@ function IRC.parse_line(data)
         if(i > max) then return end
         repeat
             local t = byte(data,i)
-            if(t == 32) then
-
-            else
+            if(t ~= 32) then
                 msg.prefix = msg.prefix .. char(t)
             end
             i = i + 1
@@ -71,13 +69,12 @@ function IRC.parse_line(data)
 
     repeat
         local t = byte(data,i)
-        if(not t) then
-        elseif(t == 32) then
-
-        elseif(not msg.command) then
-            msg.command = char(t)
-        else
-            msg.command = msg.command .. char(t)
+        if t and t ~= 32 then
+          if(not msg.command) then
+              msg.command = char(t)
+          else
+              msg.command = msg.command .. char(t)
+          end
         end
         i = i + 1
     until(t == nil or t == 32 or i > max)
@@ -85,30 +82,31 @@ function IRC.parse_line(data)
     local cur_arg = nil
     repeat
         local t = byte(data,i)
-        if(not t) then
-        elseif(t == 58 and not cur_arg) then
-            cur_arg = sub(data,i+1,max)
-            i = max
-        elseif(t == 32) then
-            if(cur_arg) then
-                insert(msg.args,cur_arg)
-                cur_arg = nil
-            else
-                cur_arg = char(t)
-            end
-        elseif(t) then
-            if(cur_arg) then
-                cur_arg = cur_arg .. char(t)
-            else
-                cur_arg = char(t)
-            end
+        if t then
+          if(t == 58 and not cur_arg) then
+              cur_arg = sub(data,i+1,max)
+              i = max
+          elseif(t == 32) then
+              if(cur_arg) then
+                  insert(msg.args,cur_arg)
+                  cur_arg = nil
+              else
+                  cur_arg = char(t)
+              end
+          elseif(t) then
+              if(cur_arg) then
+                  cur_arg = cur_arg .. char(t)
+              else
+                  cur_arg = char(t)
+              end
+          end
         end
         i = i + 1
     until(t == nil or i > max)
     insert(msg.args,cur_arg)
 
     if(msg.prefix) then
-        local i = 1
+        i = 1
         local f = 0 -- 0: unknown
                     -- 1: server
                     -- 2: nick
@@ -121,25 +119,26 @@ function IRC.parse_line(data)
         local cur    = ''
         repeat
             local t = byte(msg.prefix,i)
-            if(t == nil) then
-            elseif(t == 46 and f == 0) then -- '.' and still unknown means this is a server
-                f = 1
-                cur = cur .. char(t)
-            elseif(t == 33 and f == 0) then -- '!' and still unknown, just saw nickname, now working on user
-                f = 3
-                nick = cur
-                cur = ''
-            elseif(t == 64) then -- '@' means we're now working on a host
-                                 -- maybe saw a user, maybe saw a nick
-                if(f == 0) then
-                    nick = cur
-                elseif(f == 3) then
-                    user = cur
-                end
-                cur = ''
-                f = 4
-            else
-                cur = cur .. char(t)
+            if t then
+              if(t == 46 and f == 0) then -- '.' and still unknown means this is a server
+                  f = 1
+                  cur = cur .. char(t)
+              elseif(t == 33 and f == 0) then -- '!' and still unknown, just saw nickname, now working on user
+                  f = 3
+                  nick = cur
+                  cur = ''
+              elseif(t == 64) then -- '@' means we're now working on a host
+                                   -- maybe saw a user, maybe saw a nick
+                  if(f == 0) then
+                      nick = cur
+                  elseif(f == 3) then
+                      user = cur
+                  end
+                  cur = ''
+                  f = 4
+              else
+                  cur = cur .. char(t)
+              end
             end
             i = i + 1
         until(t == nil)
@@ -167,7 +166,7 @@ function IRC.format_line(...)
   local msg = ''
 
   for i,v in ipairs({...}) do
-    if i == #{...} and (type(v) == 'string' and v:find(' ')) then
+    if i == #{...} and (type(v) == 'string' and find(v,' ')) then
       v = ':' .. v
     end
     if i > 1 then

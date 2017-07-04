@@ -314,7 +314,7 @@ function IRCState:run()
       return false
     end
     if res then
-      local ok, tmp = self:updateState(res[2],from_json(res[3]))
+      self:updateState(res[2],from_json(res[3]))
     end
   end
 end
@@ -380,7 +380,7 @@ function IRCState:deleteUser(user, connid, message, res)
 
   -- check there's no more connections, period
   local c = 0
-  for cid,_ in pairs(self.users[user.username].connections) do
+  for _,_ in pairs(self.users[user.username].connections) do
     c = c + 1
   end
 
@@ -389,7 +389,7 @@ function IRCState:deleteUser(user, connid, message, res)
   end
 
   self.users[user.username] = nil
-  for roomName,room in pairs(self.rooms) do
+  for _,room in pairs(self.rooms) do
     room.users[user.username] = nil
   end
 
@@ -474,7 +474,7 @@ function IRCState:partRoom(user,roomName,connid,message,res)
   })
 
   -- check there's no connections using that room
-  for conn_id,conn in pairs(self.users[user.username].connections) do
+  for _,conn in pairs(self.users[user.username].connections) do
     for k,_ in pairs(conn.rooms) do
       if k == roomName then
         return true, res
@@ -637,7 +637,7 @@ function IRCState:processCommentUpdate(update, res)
     end
   end
 
-  if not msg_to and not update.stream_id then
+  if not msg_to and not update.stream_id then -- luacheck: ignore
     return false, res
   end
 
@@ -651,7 +651,7 @@ function IRCState:processCommentUpdate(update, res)
 
   msg_to = '#' .. roomName
 
-  if not msg_from then
+  if not msg_from then -- luacheck: ignore
     if update.account_id == 0 then
       msg_from = update.from.name
     else

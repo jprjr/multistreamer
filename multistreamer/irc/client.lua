@@ -1,3 +1,4 @@
+-- luacheck: globals ngx
 local irc = require'multistreamer.irc'
 local string = require'multistreamer.string'
 local ngx = ngx
@@ -5,13 +6,8 @@ local char = string.char
 local byte = string.byte
 local setmetatable = setmetatable
 local insert = table.insert
-local pairs = pairs
 local ipairs = ipairs
-local unpack = unpack
-if not unpack then
-  unpack = table.unpack
-end
-local remove = table.remove
+local unpack = unpack or table.unpack -- luacheck: compat
 local concat = table.concat
 
 local ngx_log = ngx.log
@@ -60,7 +56,7 @@ end
 function IRCClient:delEvent(event,func)
   if not self.events[event] then return true, nil end
   local events = {}
-  for i,ffunc in ipairs(self.events[event]) do
+  for _,ffunc in ipairs(self.events[event]) do
     if ffunc ~= func then
       insert(events,ffunc)
     end
@@ -71,7 +67,7 @@ end
 
 function IRCClient:emitEvent(event,data)
   if not self.events[event] then return false, nil end
-  for i,f in ipairs(self.events[event]) do
+  for _,f in ipairs(self.events[event]) do
     f(event,data)
   end
   return true,nil
@@ -122,11 +118,11 @@ function IRCClient:login(nickname,username,realname,password)
   -- keep reading in lines until we see a '001' message
   local logging_in = true
   while(logging_in) do
-    local data, err, partial = self.socket:receive('*l')
+    local data, sock_err, _ = self.socket:receive('*l')
     if err then
-      ngx_log(ngx_err,err)
-      self:emitEvent('error',err)
-      return false, err
+      ngx_log(ngx_err,sock_err)
+      self:emitEvent('error',sock_err)
+      return false, sock_err
     end
 
     if data then
@@ -158,7 +154,7 @@ function IRCClient:part(room,reason)
 end
 
 function IRCClient:emote(room,msg)
-  local msg = char(1)..'ACTION '..msg..char(1)
+  msg = char(1)..'ACTION '..msg..char(1)
   return self:message(room,msg)
 end
 
@@ -201,7 +197,7 @@ function IRCClient:serverPing(msg)
 end
 
 function IRCClient:serverMessage(msg)
-  if msg.args[2]:byte(1) == 1 then
+  if byte(msg.args[2],1) == 1 then
     local message = msg.args[2]:sub(2,msg.args[2]:len()-1)
     local parts = message:split(' ')
     if parts[1] == 'ACTION' then
