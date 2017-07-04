@@ -291,8 +291,8 @@ function Server:run()
 
   publish('irc:events:login', {
     nick = self.user.username,
-    id = self.user.id,
     uuid = self.uuid,
+    irc = false,
   })
 
   publish('irc:events:join', {

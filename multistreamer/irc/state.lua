@@ -179,6 +179,7 @@ local ngx_err = ngx.ERR
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
 local subscribe = redis.subscribe
+local publish = redis.publish
 
 local function getRoomName(stream)
   return slugify(stream:get_user().username) .. '-' .. stream.slug
@@ -279,6 +280,7 @@ function IRCState.createSubscriptions(red)
   subscribe('irc:events:part',red)
   subscribe('irc:events:message',red)
   subscribe('irc:events:invite',red)
+  subscribe('irc:events:summon',red)
   subscribe('stream:start',red)
   subscribe('stream:end',red)
   subscribe('stream:update',red)
@@ -327,13 +329,14 @@ function IRCState:getRooms()
   return from_json(to_json(self.rooms))
 end
 
-function IRCState:createUser(user, connid, res)
+function IRCState:createUser(user, connid, irc, res)
   res = res or {}
 
   if not self.users[user.username] then
     self.users[user.username] = {
       id = user.id,
       connections = {},
+      irc = irc,
     }
 
     insert(res, {
@@ -345,7 +348,8 @@ function IRCState:createUser(user, connid, res)
 
   if connid and not self.users[user.username].connections[connid] then
     self.users[user.username].connections[connid] = {
-      rooms = {}
+      rooms = {},
+      irc = irc,
     }
 
     insert(res, {
@@ -354,6 +358,15 @@ function IRCState:createUser(user, connid, res)
       connid = connid,
     })
   end
+
+  -- set the global 'irc' flag
+  for _,conn in pairs(self.users[user.username].connections) do
+    if conn.irc then
+      self.users[user.username].irc = true
+      break
+    end
+  end
+    
   return true, res
 end
 
@@ -376,6 +389,15 @@ function IRCState:deleteUser(user, connid, message, res)
       username = user.username,
       connid = connid,
     })
+  end
+
+  self.users[user.username].irc = false
+
+  for _,conn in pairs(self.users[user.username].connections) do
+    if conn.irc then
+      self.users[user.username].irc = true
+      break
+    end
   end
 
   -- check there's no more connections, period
@@ -432,7 +454,7 @@ end
 function IRCState:joinRoom(user,roomName,connid,res)
   res = res or {}
 
-  IRCState.createUser(self, user, connid, res)
+  IRCState.createUser(self, user, connid, nil, res)
 
   if not self.rooms[roomName].users[user.username] then
     self.rooms[roomName].users[user.username] = {
@@ -462,7 +484,7 @@ function IRCState:partRoom(user,roomName,connid,message,res)
   res = res or {}
   message = message or 'Leaving'
 
-  IRCState.createUser(self, user,connid,res)
+  IRCState.createUser(self, user, connid, nil, res)
 
   self.users[user.username].connections[connid].rooms[roomName] = nil
   insert(res, {
@@ -823,7 +845,7 @@ function IRCState:processIrcJoin(msg, res)
   local user = User:find({ username = msg.nick })
   if not user then return false, res end
 
-  return IRCState.joinRoom(self, user,msg.room,msg.uuid,res)
+  return IRCState.joinRoom(self,user,msg.room,msg.uuid,res)
 end
 
 -- endpoint('irc:events:part')
@@ -852,12 +874,13 @@ function IRCState:processIrcLogin(msg, res)
   -- {
   --   nick = nick,
   --   uuid = uuid,
+  --   irc = true/false,
   -- }
 
   local user = User:find({ username = msg.nick })
   if not user then return false, res end
 
-  return IRCState.createUser(self, user, msg.uuid, res)
+  return IRCState.createUser(self, user, msg.uuid, msg.irc, res)
 end
 
 -- endpoint('irc:events:logout')
@@ -916,6 +939,20 @@ function IRCState:processIrcInvite(msg, res)
   return false, res
 end
 
+function IRCState:processIrcSummon(msg, res)
+  res = res or {}
+
+  if not self.user then return true, nil end
+
+  publish('irc:events:join',{
+    nick = self.user.username,
+    room = msg.room,
+    uuid = self.uuid,
+  })
+
+  return true, res
+end
+
 function IRCState:isReady()
   return self.ready
 end
@@ -934,6 +971,7 @@ IRCState.redisFunctions = {
   [endpoint('comment:in')] = IRCState.processCommentUpdate,
   [endpoint('irc:events:message')] = IRCState.processIrcMessage,
   [endpoint('irc:events:invite')] = IRCState.processIrcInvite,
+  [endpoint('irc:events:summon')] = IRCState.processIrcSummon,
 }
 
 return IRCState

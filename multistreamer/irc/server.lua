@@ -105,6 +105,7 @@ function IRCServer:run()
   publish('irc:events:login', {
     nick = self.user.username,
     uuid = self.uuid,
+    irc = true,
   })
 
   -- find and force-join user to rooms
@@ -209,6 +210,10 @@ end
 function IRCServer:stateRoomJoin(data)
   -- only display joins for other users
   if self.user.rooms[data.roomName] and data.username ~= self.user.username then
+    return self:sendRoomJoin(data.username,data.roomName)
+  end
+  -- perform a join for ourselves
+  if not self.user.rooms[data.roomName] and data.username == self.user.username then
     return self:sendRoomJoin(data.username,data.roomName)
   end
   return true
@@ -686,17 +691,22 @@ function IRCServer:botCommandSummon(room,stream_nick)
     return
   end
 
-  if self.users[stream_nick] then
-    if not self.rooms[room].users[stream_nick] then
-      publish('irc:events:join', {
-        nick = stream_nick,
-        room = room,
-      })
-    else
-      self:botPublish(room,'That user is already here')
-    end
+  if self.rooms[room].users[stream_nick] then
+    self:botPublish(room,'That user is already here')
     return
   end
+
+  if not self.users[stream_nick].irc then
+    self:botPublish(room,'User not connected with IRC')
+    return
+  end
+
+  publish('irc:events:summon', {
+    nick = stream_nick,
+    room = room,
+  })
+
+  return
 end
 
 function IRCServer:botCommandHelp(room,cmd)
