@@ -46,10 +46,10 @@ service's Terms of Service via simulcasting.
 
 Here's some videos on installing/using:
 
-* [A video oriented towards users using your multistreamer setup](https://youtu.be/BukSywMuf5E)
-* [A follow-up video with new features for version 6.0.0](https://youtu.be/d5mOV3YzHxU)
-* [Installing multistreamer](https://youtu.be/Wr4CD6RU_CU)
+* [A short intro video](https://youtu.be/NBNLqaUn9mA)
+* [A in-depth video for users](https://youtu.be/j89dP0XetCk)
 * [Installing multistreamer with Docker](https://youtu.be/HdDDtBOLme4)
+* [Installing multistreamer without Docker](https://youtu.be/Wr4CD6RU_CU)
 
 ## Table of Contents
 
