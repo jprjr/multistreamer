@@ -13,6 +13,7 @@ local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
 local format = string.format
 local insert = table.insert
+local len = string.len
 local sort = table.sort
 local floor = math.floor
 local date = require'date'
