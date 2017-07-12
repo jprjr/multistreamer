@@ -170,7 +170,7 @@ local function refresh_targets(access_token)
         }
       end
     end
-  until event_info.paging.next == nil
+  until event_info.paging == nil or event_info.paging.next == nil
 
   local page_info, page_info_err
   repeat
@@ -192,7 +192,7 @@ local function refresh_targets(access_token)
         token = access_token,
       }
     end
-  until page_info.paging.next == nil
+  until page_info.paging == nil or page_info.paging.next == nil
 
   return targets
 end
