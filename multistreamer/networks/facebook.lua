@@ -134,16 +134,14 @@ local function refresh_targets(access_token)
     end
     group_info, group_info_err = fb_client:get('/me/groups', {
       after = after,
-      fields = 'id,name,administrator',
+      fields = 'id,name',
     })
     for i,group in pairs(group_info.data) do
-      if group.administrator == true then
-        targets[group.id] = {
-          type = 'group',
-          name = group.name,
-          token = access_token,
-        }
-      end
+      targets[group.id] = {
+        type = 'group',
+        name = group.name,
+        token = access_token,
+      }
     end
   until group_info.paging == nil or group_info.paging.next == nil
 
