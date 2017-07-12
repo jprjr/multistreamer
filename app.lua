@@ -127,6 +127,11 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.id then
       self.stream = Stream:find({ id = self.params.id })
+
+      if not self.stream then
+        return err_out(self,'Stream not found')
+      end
+
       self.metadata_level = self.stream:check_meta(self.user)
       self.chat_level = self.stream:check_chat(self.user)
 
