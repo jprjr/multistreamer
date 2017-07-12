@@ -75,6 +75,10 @@ if(arg[1] == 'run') then
     print('Error: path to ffmpeg not set')
     exit(1)
   end
+  if not lfs.attributes(config.ffmpeg) then
+    print('Error: ffmpeg binary does not exist')
+    exit(1)
+  end
   if not config.sockexec_path then
     print('Error: path to sockexec socket not set')
     exit(1)
