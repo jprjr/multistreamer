@@ -849,12 +849,15 @@ function IRCState:processIrcJoin(msg, res)
   -- message structure:
   -- {
   --   nick = nick,
+  --     user_id = user_id,
   --   uuid = uuid,
   --   room = room,
   -- }
   --
-  local user = User:find({ username = msg.nick })
-  if not user then return false, res end
+  local user = {
+    id = msg.user_id,
+    username = msg.nick,
+  }
 
   return IRCState.joinRoom(self,user,msg.room,msg.uuid,res)
 end
@@ -884,12 +887,15 @@ function IRCState:processIrcLogin(msg, res)
   -- message structure:
   -- {
   --   nick = nick,
+  --   user_id = user_id,
   --   uuid = uuid,
   --   irc = true/false,
   -- }
 
-  local user = User:find({ username = msg.nick })
-  if not user then return false, res end
+  local user = {
+    id = msg.user_id,
+    username = msg.nick,
+  }
 
   return IRCState.createUser(self, user, msg.uuid, msg.irc, res)
 end

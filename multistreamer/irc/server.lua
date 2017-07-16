@@ -104,6 +104,7 @@ function IRCServer:run()
 
   publish('irc:events:login', {
     nick = self.user.username,
+    user_id = self.user.id,
     uuid = self.uuid,
     irc = true,
   })
@@ -116,6 +117,7 @@ function IRCServer:run()
         if stream_user.id == self.user.id then
           publish('irc:events:join', {
             nick = self.user.username,
+            user_id = self.user.id,
             room = roomName,
             uuid = self.uuid,
           })
@@ -187,6 +189,7 @@ function IRCServer:stateRoomUpdate(data)
     if stream.user_id == self.user.id then
       publish('irc:events:join', {
         nick = self.user.username,
+        user_id = self.user.id,
         room = data.roomName,
         uuid = self.uuid
       })
@@ -482,6 +485,7 @@ function IRCServer:clientJoinRoom(msg)
 
     publish('irc:events:join', {
       nick = self.user.username,
+      user_id = self.user.id,
       room = room,
       uuid = self.uuid
     })
