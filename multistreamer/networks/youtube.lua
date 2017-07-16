@@ -70,6 +70,8 @@ local function google_client(base_url,access_token)
       body = body,
     })
 
+    ngx_log(ngx_debug,body)
+
     if res and type(res.status) ~= 'number' then
       res.status = tonumber(res.status:find('^%d+'))
     end
@@ -81,8 +83,10 @@ local function google_client(base_url,access_token)
 
     if res.status >= 400 then
       ngx_log(ngx_err,res.body)
-      return false, from_json(res.body)
+      return false, from_json(res.body).error.message
     end
+
+    ngx_log(ngx_debug,res.body)
 
     return from_json(res.body), nil
   end
@@ -179,6 +183,42 @@ local function refresh_access_token_wrapper(account)
   end
 
   return access_token, expires_in, expires_at
+end
+
+local function refresh_events(access_token)
+  local nextPageToken = nil
+  local getting_events = true
+  local events = {}
+  local yt = youtube_client(access_token)
+
+  while getting_events do
+    local live_broadcasts, err = yt:get('/liveBroadcasts', {
+      part = 'id,snippet',
+      broadcastStatus = 'upcoming',
+      broadcastType = 'event',
+      pageToken = nextPageToken,
+    })
+    if err then
+      getting_events = false
+    end
+    if live_broadcasts and live_broadcasts.nextPageToken then
+      nextPageToken = live_broadcasts.nextPageToken
+    else
+      getting_events = false
+    end
+    if live_broadcasts and live_broadcasts.items then
+      for _,v in ipairs(live_broadcasts.items) do
+        insert(events, {
+          id = v.id,
+          title = v.snippet.title,
+          start = v.snippet.scheduledStartTime
+        })
+      end
+    end
+  end
+
+  return events
+
 end
 
 function M.get_oauth_url(user,stream_id)
@@ -291,13 +331,17 @@ function M.metadata_form(account, stream)
 
   local form = M.metadata_fields()
   form[7].options = {}
+  form[8].options = {}
 
-  local yt, err = youtube_client(account:get('access_token'))
+  local access_token = account:get('access_token')
+
+  local yt, err = youtube_client(access_token)
   if not yt then return false, err end
   local res, err = yt:get('/videoCategories', {
     part = 'snippet',
     regionCode = config.networks[M.name].country,
   })
+
 
   sort(res.items, function(a,b)
     return a.snippet.title < b.snippet.title
@@ -310,6 +354,15 @@ function M.metadata_form(account, stream)
         value = v.id,
       }) 
     end
+  end
+
+  local events = refresh_events(access_token)
+
+  for _,v in ipairs(events) do
+    insert(form[8].options, {
+      label = v.title .. ' (' .. v.start .. ')',
+      value = v.id,
+    })
   end
 
   for _,v in pairs(form) do
@@ -381,6 +434,12 @@ function M.metadata_fields()
       key = 'category',
       required = true,
     },
+    [8] = {
+      type = 'select',
+      label = 'Use pre-existing event (ignores most metadata)',
+      key = 'event',
+      required = false,
+    }
   }
 
   return fields
@@ -413,6 +472,7 @@ function M.publish_start(account, stream)
   local description = stream.description
   local resolution = stream.resolution
   local framerate = stream.framerate
+  local event = stream.event
   local tags
   if stream.tags and len(stream.tags) > 0 then
     tags = stream.tags:split('\r?\n')
@@ -428,30 +488,48 @@ function M.publish_start(account, stream)
 
   local yt = youtube_client(access_token)
 
-  local broadcast, err = yt:postJSON('/liveBroadcasts', {
-    part = 'id,snippet,contentDetails,status',
-  }, {
-    snippet = {
-      title = title,
-      description = description,
-      scheduledStartTime = date(true):fmt('${iso}') .. 'Z',
-    },
-    status = {
-      privacyStatus = privacy,
-    },
-    contentDetails = {
-      monitorStream = {
-        enableMonitorStream = false,
-        enableEmbed = true,
+  local broadcast, broadcast_err
+  if event then
+    -- update broadcast to disable monitor stream
+    local temp_bcast, temp_bcast_err = yt:get('/liveBroadcasts', {
+      part = 'id,snippet,contentDetails,status',
+      id = event,
+    })
+    if not temp_bcast_err then
+      temp_bcast = temp_bcast.items[1]
+      temp_bcast.contentDetails.monitorStream.enableMonitorStream = false
+      broadcast, broadcast_err = yt:putJSON('/liveBroadcasts', {
+        part = 'id,snippet,contentDetails,status',
+      }, temp_bcast)
+    else
+      return temp_bcast_err
+    end
+  else
+    broadcast, broadcast_err = yt:postJSON('/liveBroadcasts', {
+      part = 'id,snippet,contentDetails,status',
+    }, {
+      snippet = {
+        title = title,
+        description = description,
+        scheduledStartTime = date(true):fmt('${iso}') .. 'Z',
       },
-    },
-  })
-
-  if err then
-    return false, to_json(err)
+      status = {
+        privacyStatus = privacy,
+      },
+      contentDetails = {
+        monitorStream = {
+          enableMonitorStream = false,
+          enableEmbed = true,
+        },
+      },
+    })
   end
 
-  local video_stream, err = yt:postJSON('/liveStreams', {
+  if broadcast_err then
+    return false, broadcast_err
+  end
+
+  local video_stream, video_err = yt:postJSON('/liveStreams', {
     part = 'id,snippet,cdn,status',
   }, {
     snippet = {
@@ -465,33 +543,35 @@ function M.publish_start(account, stream)
     },
   })
 
-  if err then
-    return false, to_json(err)
+  if video_err then
+    return false, to_json(video_err)
   end
 
-  local bind_res, err = yt:postJSON('/liveBroadcasts/bind', {
+  local bind_res, bind_err = yt:postJSON('/liveBroadcasts/bind', {
     part = 'id,snippet,contentDetails,status',
     id = broadcast.id,
     streamId = video_stream.id,
   })
 
-  if err then
-    return false, to_json(err)
+  if bind_err then
+    return false, to_json(bind_err)
   end
 
-  local update_res, err = yt:putJSON('/videos', {
-    part = 'id,snippet',}, {
-    id = broadcast.id,
-    snippet = {
-      title = title,
-      description = description,
-      categoryId = category,
-      tags = tags,
-    }
-  })
+  if not event then
+    local update_res, update_err = yt:putJSON('/videos', {
+      part = 'id,snippet',}, {
+      id = broadcast.id,
+      snippet = {
+        title = title,
+        description = description,
+        categoryId = category,
+        tags = tags,
+      }
+    })
 
-  if err then
-    return false, err
+    if update_err then
+      return false, update_err
+    end
   end
 
   local http_url = 'https://youtu.be/' .. broadcast.id
@@ -525,13 +605,13 @@ function M.notify_update(account, stream)
 
   local yt = youtube_client(access_token)
 
-  local stream_info, err = yt:get('/liveStreams', {
+  local stream_info, stream_info_err = yt:get('/liveStreams', {
     id = stream_id,
     part = 'id,status',
   })
 
-  if err then
-    return false, to_json(err)
+  if stream_info_err then
+    return false, stream_info_err
   end
 
   if stream_info.items[1].status.streamStatus == 'active' then
@@ -574,6 +654,7 @@ function M.publish_stop(account, stream)
 
   return true
 end
+
 
 function M.check_errors(account)
   local access_token, exp = account:get('access_token')
