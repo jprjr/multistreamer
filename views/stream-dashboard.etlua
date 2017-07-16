@@ -61,7 +61,7 @@
 <p>Error loading form for this account. Error: <%= err %></p>
 <% elseif metadata_form then %>
 <% for i,v in ipairs(metadata_form) do %>
-<div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= v.label %></label>
+<div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= v.label %><%= v.required and ' *' or '' %></label>
 
 <% if v.type == 'text' then %>
 <input type="text" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> <%= metadata_level < 2 and 'readonly' or ''%> />
