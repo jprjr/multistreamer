@@ -291,12 +291,14 @@ function Server:run()
 
   publish('irc:events:login', {
     nick = self.user.username,
+    user_id = self.user.id,
     uuid = self.uuid,
     irc = false,
   })
 
   publish('irc:events:join', {
     nick = self.user.username,
+    user_id = self.user.id,
     room = slugify(stream_user) .. '-' .. self.stream.slug,
     uuid = self.uuid,
   })
