@@ -1,7 +1,7 @@
 local config = require('lapis.config').get()
 local gsub = string.gsub
 
-config.VERSION = '9.1.0'
+config.VERSION = '10.0.0'
 
 if not config.log_level or config.log_level:len() == 0 then
   config.log_level = 'debug'
