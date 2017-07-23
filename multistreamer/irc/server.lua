@@ -14,6 +14,13 @@ local insert = table.insert
 local remove = table.remove
 local concat = table.concat
 local char = string.char
+local len = string.len
+local sub = string.sub
+local find = string.find
+local lower = string.lower
+local gsub = string.gsub
+local split = string.split
+local escape_markdown = string.escape_markdown
 local pairs = pairs
 local ipairs = ipairs
 local ngx_log = ngx.log
@@ -337,7 +344,7 @@ function IRCServer:clientUserhost(msg)
 end
 
 function IRCServer:clientWhois(msg)
-  local nicks = msg.args[1]:split(',')
+  local nicks = split(msg.args[1],',')
   for _,n in ipairs(nicks) do
     if self.users[n] then
       local ok, err = self:sendClientFromServer(
@@ -375,8 +382,8 @@ function IRCServer:clientWho(msg)
   end
   local users
 
-  if target:sub(1,1) == '#' then
-    target = target:sub(2)
+  if sub(target,1,1) == '#' then
+    target = sub(target,2)
     if self.rooms[target] then
       users = self.rooms[target].users
     else
@@ -421,7 +428,7 @@ function IRCServer:clientInvite(msg)
     return self:sendClientFromServer('461','INVITE','Not enough parameters')
   end
   local user = msg.args[1]
-  local room = msg.args[2]:sub(2)
+  local room = sub(msg.args[2],2)
 
   if not self.users[user] or not self.rooms[room] then
     return self:sendClientFromServer('401',user,'No such nick/channel')
@@ -467,12 +474,12 @@ end
 function IRCServer:clientJoinRoom(msg)
   if not msg.args[1] then return self:sendClientFromServer('403','Channel does not exist') end
 
-  local rooms = msg.args[1]:split(',')
+  local rooms = split(msg.args[1],',')
 
   for _,room in ipairs(rooms) do
 
-    if room:sub(1,1) == '#' then
-      room = room:sub(2)
+    if sub(room,1,1) == '#' then
+      room = sub(room,2)
     end
     if not self.rooms[room] then
       return self:sendClientFromServer('403','Channel does not exist')
@@ -495,10 +502,10 @@ function IRCServer:clientJoinRoom(msg)
 end
 
 function IRCServer:clientPartRoom(msg)
-  local rooms = msg.args[1]:split(',')
+  local rooms = split(msg.args[1],',')
   for _,room in ipairs(rooms) do
-    if room:sub(1,1) == '#' then
-      room = room:sub(2)
+    if sub(room,1,1) == '#' then
+      room = sub(room,2)
     end
 
     publish('irc:events:part', {
@@ -514,8 +521,8 @@ end
 function IRCServer:clientMessage(msg)
   local target = msg.args[1]
   local room = false
-  if target:sub(1,1) == '#' then
-    target = target:sub(2)
+  if sub(target,1,1) == '#' then
+    target = sub(target,2)
     room = true
     if not self.rooms[target] then
       return self:sendClientFromServer('403','Channel does not exist')
@@ -534,8 +541,8 @@ function IRCServer:clientMessage(msg)
 end
 
 function IRCServer:checkBotCommand(room,message)
-  if(message:sub(1,1) == '!') then
-    local parts = message:sub(2):split(' ')
+  if(sub(message,1,1) == '!') then
+    local parts = split(sub(message,2),' ')
     local botCmd = IRCServer.botCommands[parts[1]]
     if not botCmd then
       self:botPublish(room,'Unknown command !'..parts[1])
@@ -611,7 +618,7 @@ function IRCServer:botCommandChatWriter(room,target,account_slug)
   end
 
   -- user checking what accounts are available
-  if not account_slug or account_slug:len() == 0 then
+  if not account_slug or len(account_slug) == 0 then
     local accounts = Account:select(
         'where network = ? and user_id = ?',
         network,
@@ -715,7 +722,7 @@ function IRCServer:botCommandSummon(room,stream_nick)
 end
 
 function IRCServer:botCommandHelp(room,cmd)
-  if not cmd or cmd:len() == 0 then
+  if not cmd or len(cmd) == 0 then
     local message = 'Available commands:'
     for command,_ in pairs(IRCServer.botCommands) do
       message = message .. ' !' .. command
@@ -724,8 +731,8 @@ function IRCServer:botCommandHelp(room,cmd)
     self:botPublish(room,'Type !help <command> for more info')
     return
   end
-  if cmd:sub(1,1) == '!' then
-    cmd = cmd:sub(2)
+  if sub(cmd,1,1) == '!' then
+    cmd = sub(cmd,2)
   end
   local botCmd = IRCServer.botCommands[cmd]
   if not botCmd then
@@ -743,8 +750,8 @@ function IRCServer:relayMessage(isroom,target,message)
 
   -- check if this is a CTCP ACTION (aka emote)
   if message:byte(1) == 1 then
-    local m = message:sub(2,message:len()-1)
-    local p = m:split(' ')
+    local m = sub(message,2,len(message)-1)
+    local p = split(m,' ')
     if p[1] == 'ACTION' then
       t = 'emote'
       message = concat(p,' ',2)
@@ -757,7 +764,7 @@ function IRCServer:relayMessage(isroom,target,message)
     text = message,
     uuid = self.uuid,
     network = 'irc',
-    markdown = message:escape_markdown(),
+    markdown = escape_markdown(message),
     from = {
         name = self.user.username,
         id = self.user.id,
@@ -776,24 +783,24 @@ function IRCServer:relayMessage(isroom,target,message)
 
   m.stream_id = self.rooms[target].stream_id
 
-  if message:sub(1,1) == '!' then
+  if sub(message,1,1) == '!' then
     m.relay = true
   end
 
-  if(message:sub(1,1) == '@') then
-    message = message:sub(2)
+  if(sub(message,1,1) == '@') then
+    message = sub(message,2)
   end
 
-  local i = message:find(' ')
+  local i = find(message,' ')
   if not i then
     publish('comment:in',m)
     return
   end
 
-  local username = message:sub(1,i-1):lower()
-  username = username:gsub('[^a-z]$','')
-  local msg = message:sub(i+1)
-  if msg:len() == 0 then
+  local username = lower(sub(message,1,i-1))
+  username = gsub(username,'[^a-z]$','')
+  local msg = sub(message,i+1)
+  if len(msg) == 0 then
     publish('comment:in',m)
     return
   end
@@ -846,8 +853,8 @@ end
 function IRCServer:clientList(msg)
   if msg.args[1] then
     local room = msg.args[1]
-    if room:sub(1,1) == '#' then
-      room = room:sub(2)
+    if sub(room,1,1) == '#' then
+      room = sub(room,2)
     end
     return self:listRooms({ [room] = self.rooms[room] })
   end
@@ -969,15 +976,15 @@ function IRCServer.startClient(sock) -- {{{
     while(#send_buffer > 0) do
       local v = remove(send_buffer, 1)
       if nickname then
-        v = v:gsub('{nick}',nickname)
+        v = gsub(v,'{nick}',nickname)
       end
       if username then
-        v = v:gsub('{user}',username)
+        v = gsub(v,'{user}',username)
       end
       if user then
-        v = v:gsub('{account}',user.username)
+        v = gsub(v,'{account}',user.username)
       end
-      v = v:gsub('{hostname}',config.irc_hostname)
+      v = gsub(v,'{hostname}',config.irc_hostname)
       sock:send(v .. '\r\n')
     end
   end
@@ -1029,7 +1036,7 @@ function IRCServer.startClient(sock) -- {{{
     if msg.command == 'AUTHENTICATE' then
       if pass_incoming then
         pass_incoming = false
-        local creds = ngx.decode_base64(msg.args[1]):split(char(0))
+        local creds = split(ngx.decode_base64(msg.args[1]),char(0))
         user = User:login(creds[2],creds[3])
         if user then
           if user.username ~= nickname then
@@ -1078,7 +1085,7 @@ function IRCServer.startClient(sock) -- {{{
     insert(send_buffer,':{hostname} 003 {nick} :This server was created ' .. date_fmt)
     insert(send_buffer,':{hostname} 004 {nick} :{hostname} multistreamer ' .. config.VERSION .. ' o o')
     insert(send_buffer,':{hostname} 375 {nick} :- {hostname} Message of the day -')
-    for _,line in pairs(config.irc_motd:split('\r?\n')) do
+    for _,line in pairs(split(config.irc_motd,'\r?\n')) do
       insert(send_buffer,':{hostname} 372 {nick} :- ' .. line)
     end
     insert(send_buffer,':{hostname} 376 {nick} :End of MOTD')

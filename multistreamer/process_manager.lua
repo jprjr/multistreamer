@@ -1,17 +1,13 @@
+-- luacheck: globals ngx bash_path lua_bin
 local ngx = ngx
 local config = require'multistreamer.config'
-local string = require'multistreamer.string'
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
-local publish = redis.publish
 local subscribe = redis.subscribe
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local Stream = require'models.stream'
-local Account = require'models.account'
-local StreamAccount = require'models.stream_account'
 local setmetatable = setmetatable
-local insert = table.insert
 local tonumber = tonumber
 local pairs = pairs
 
@@ -25,7 +21,6 @@ local ngx_exit = ngx.exit
 local ngx_sleep = ngx.sleep
 
 local pid = ngx.worker.pid()
-local kill = ngx.thread.kill
 local spawn = ngx.thread.spawn
 local streams_dict = ngx.shared.streams
 local status_dict = ngx.shared.status
@@ -36,14 +31,14 @@ local function start_process(callback,client,...)
     if not client then
       client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
     end
-    local ok, c_err = client:connect(config.sockexec_path)
+    local ok = client:connect(config.sockexec_path)
     if not ok then
       ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
       status_dict:set('processmgr_error', true)
       return
     end
     client:send_args(args)
-    local data, typ, err, ok, errr
+    local data, typ, err, errr
     ok = true
     while(not err) do
       data, typ, err= client:receive()
@@ -51,9 +46,7 @@ local function start_process(callback,client,...)
         ngx_log(ngx_debug,'[Process Manager] timeout, looping')
         err = nil
       end
-      if typ == nil then
-        -- 'err' was timeout or closed
-      elseif typ == 'termsig' then
+      if typ == 'termsig' then
         ngx_log(ngx_error,'[Process Manager] Process ended with signal ' .. data)
         ok = false
         errr = 'signal: ' .. data
@@ -142,12 +135,12 @@ function ProcessMgr:startPush(msg)
   end
 
   if msg.delay then
-    ngx.sleep(msg.delay)
+    ngx_sleep(msg.delay)
   end
 
   for _,sa in pairs(sas) do
     local client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
-    local ok, err = client:connect(config.sockexec_path)
+    local ok = client:connect(config.sockexec_path)
     if not ok then
       ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
       status_dict:set('processmgr_error', true)
@@ -176,7 +169,7 @@ function ProcessMgr:startPull(msg)
   end
 
   local client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
-  local ok, err = client:connect(config.sockexec_path)
+  local ok = client:connect(config.sockexec_path)
   if not ok then
     ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
     status_dict:set('processmgr_error', true)
@@ -197,18 +190,18 @@ function ProcessMgr:startPull(msg)
   streams_dict:set(stream.id,to_json(stream_status))
 
   spawn(start_process(function()
-    local stream_status = streams_dict:get(stream.id)
-    if stream_status then
-      stream_status = from_json(stream_status)
+    local _stream_status = streams_dict:get(stream.id)
+    if _stream_status then
+      _stream_status = from_json(_stream_status)
     else
-      stream_status = {
+      _stream_status = {
         data_pushing = false,
         data_incoming = false,
         data_pulling = false,
       }
     end
-    stream_status.data_pulling = false
-    streams_dict:set(stream.id,to_json(stream_status))
+    _stream_status.data_pulling = false
+    streams_dict:set(stream.id,to_json(_stream_status))
     self.pullers[stream.id] = nil
   end,client,bash_path,'-l',lua_bin,'-e',os.getenv('LAPIS_ENVIRONMENT'),'pull',stream.id))
   self.pullers[stream.id] = client

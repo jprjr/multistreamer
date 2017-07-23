@@ -271,7 +271,7 @@ svg.chaticon.youtube {
 svg.chaticon.irc {
     background-color: #6b6f75;
 }
-svg.chaticon.beam {
+svg.chaticon.beam , svg.chaticon.mixer {
     background-color: #6b6f75;
 }
 

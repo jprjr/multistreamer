@@ -2,28 +2,30 @@ local string = string
 local find = string.find
 local sub  = string.sub
 local len  = string.len
-local char = string.char
 local insert = table.insert
 local concat = table.concat
+local format = string.format
 
-function string:split(inSplitPattern)
+local s = {}
+
+local function split(self,inSplitPattern)
   local res = {}
   local start = 1
-  local splitStart, splitEnd = self:find(inSplitPattern,start)
+  local splitStart, splitEnd = find(self,inSplitPattern,start)
   while splitStart do
     insert(res, sub(self,start,splitStart-1))
     start = splitEnd + 1
-    splitStart, splitEnd = self:find(inSplitPattern, start)
+    splitStart, splitEnd = find(self,inSplitPattern, start)
   end
-  insert(res, self:sub(start) )
+  insert(res, sub(self,start) )
   return res
 end
 
-function string:to_table()
+local function to_table(self)
   local res = {}
-  local max = self:len()
+  local max = len(self)
   for i=1,max,1 do
-    res[i] = self:sub(i,i)
+    res[i] = sub(self,i,i)
   end
   return res
 end
@@ -48,16 +50,35 @@ local markdown_table = {
     ['\\'] = '\\\\',
 }
 
-function string:escape_markdown()
-  local tokens = self:to_table()
-  local i = 1
+local function escape_markdown(self)
+  if(len(self) == 1) then
+    return markdown_table[self]
+  end
+
+  local tokens = split(self,' ')
   for i=1,#tokens,1 do
-    if markdown_table[tokens[i]] then
-      tokens[i] = markdown_table[tokens[i]]
+    if find(tokens[i],"^https?://") then
+      tokens[i] = format('[%s](%s)',tokens[i],tokens[i])
+    else
+      local chars = to_table(tokens[i])
+      for j=1,#chars,1 do
+        if markdown_table[chars[j]] then
+          chars[j] = markdown_table[chars[j]]
+        end
+      end
+      tokens[i] = concat(chars,'')
     end
   end
 
-  return concat(tokens,'')
+  return concat(tokens,' ')
 end
 
-return string
+for k,_ in pairs(string) do
+  s[k] = string[k]
+end
+
+s.escape_markdown = escape_markdown
+s.to_table = to_table
+s.split = split
+
+return s

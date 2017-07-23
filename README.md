@@ -8,7 +8,7 @@ no to being bought a beer!
 
 This is a tool for simulcasting RTMP streams to multiple services:
 
-* [Beam](https://github.com/jprjr/multistreamer/wiki/Beam)
+* [Mixer](https://github.com/jprjr/multistreamer/wiki/Mixer)
 * [Facebook](https://github.com/jprjr/multistreamer/wiki/Facebook)
 * [Twitch](https://github.com/jprjr/multistreamer/wiki/Twitch)
 * [YouTube](https://github.com/jprjr/multistreamer/wiki/YouTube)
@@ -44,10 +44,11 @@ available via the regular Facebook web interface, as far as I know. :)
 Please note: you're responsible for ensuring you're not violating each
 service's Terms of Service via simulcasting.
 
-Here's some videos on installing/using:
+Here's some guides on installing/using:
 
+* [My user guide](https://github.com/jprjr/multistreamer/wiki/User-Guide)
 * [A short intro video](https://youtu.be/NBNLqaUn9mA)
-* [A in-depth video for users](https://youtu.be/j89dP0XetCk)
+* [A in-depth tutorial for users](https://youtu.be/j89dP0XetCk)
 * [Installing multistreamer with Docker](https://youtu.be/HdDDtBOLme4)
 * [Installing multistreamer without Docker](https://youtu.be/Wr4CD6RU_CU)
 

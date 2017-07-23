@@ -4,6 +4,10 @@ local string = require'multistreamer.string'
 local ngx = ngx
 local char = string.char
 local byte = string.byte
+local sub = string.sub
+local len = string.len
+local upper = string.upper
+local split = string.split
 local setmetatable = setmetatable
 local insert = table.insert
 local ipairs = ipairs
@@ -144,6 +148,10 @@ function IRCClient:join(room)
   return true, nil
 end
 
+function IRCClient:quit()
+  self.socket:send(ircline('QUIT'))
+end
+
 function IRCClient:part(room,reason)
   if not reason then
     reason = 'Leaving'
@@ -186,7 +194,7 @@ function IRCClient:cruise()
       msg = irc.parse_line(partial)
     end
     if msg and msg.command then
-      local func = self.commandFuncs[msg.command:upper()]
+      local func = self.commandFuncs[upper(msg.command)]
       if func then func(self,msg) end
     end
   end
@@ -198,8 +206,8 @@ end
 
 function IRCClient:serverMessage(msg)
   if byte(msg.args[2],1) == 1 then
-    local message = msg.args[2]:sub(2,msg.args[2]:len()-1)
-    local parts = message:split(' ')
+    local message = sub(msg.args[2],2,len(msg.args[2])-1)
+    local parts = split(message,' ')
     if parts[1] == 'ACTION' then
       self:emitEvent('emote',{
         from = msg.from,

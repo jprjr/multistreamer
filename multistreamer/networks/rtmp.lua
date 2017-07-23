@@ -8,8 +8,11 @@ local slugify = require('lapis.util').slugify
 
 local M = {}
 
+M.name = 'rtmp'
 M.displayname = 'Custom RTMP'
 M.allow_sharing = true
+M.read_comments = false
+M.write_comments = false
 
 function M.create_form()
   return {

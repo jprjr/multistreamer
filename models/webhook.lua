@@ -1,3 +1,4 @@
+--luacheck: globals ngx networks
 local Model = require('lapis.db.model').Model
 local pairs = pairs
 local insert = table.insert
@@ -5,11 +6,7 @@ local concat = table.concat
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local http = require'resty.http'
-local unpack = unpack
-if not unpack then
-  unpack = table.unpack
-end
-local Account = require('models.account')
+local unpack = unpack or table.unpack -- luacheck: compat
 
 local Webhook_types = {
     [1] = {
@@ -87,37 +84,44 @@ local Webhook_types = {
         value = 'raw',
         events = {
           ['comment:in'] = function(hook,msg)
-            msg.network = networks[msg.network]
-            msg.stream = hook:get_stream()
-            msg.stream_id = nil
-            msg.account = Account:find({ id = msg.account_id })
-            msg.account_id = nil
-            msg.account.network = nil
-            msg.user = msg.stream:get_user()
-            msg.hook_type = 'comment:in'
+            -- incoming message structure
+            -- {
+            --    type = 'text',
+            --    from = {
+            --      name = 'some-display-name',
+            --      id = 'some-user-id',
+            --    },
+            --    text = 'plain-text message',
+            --    markdown = 'markdown message'
+            --    account_id = account_id,
+            --    stream_id = stream_id,
+            --    network = network
+            -- }
 
-            msg.user.updated_at = nil
-            msg.user.created_at = nil
-            msg.user.access_token = nil
+            local network = networks[msg.network]
+            local stream = hook:get_stream()
+            local user = stream:get_user()
 
-            msg.stream.updated_at = nil
-            msg.stream.created_at = nil
-            msg.stream.user = nil
-            msg.stream.user_id = nil
-            msg.stream.uuid = nil
-            msg.stream.preview_required = nil
-
-            msg.network.write_comments = nil
-            msg.network.read_comments = nil
-            msg.network.allow_sharing = nil
-            msg.network.icon = nil
-            msg.network.redirect_uri = nil
-
-            msg.account.keystore = nil
-            msg.account.created_at = nil
-            msg.account.updated_at = nil
-            msg.account.network_user_id = nil
-            msg.account.user_id = nil
+            local out_msg = {
+              hook_type = 'comment:in',
+              type = msg.type,
+              text = msg.text,
+              markdown = msg.markdown,
+              network = {
+                displayname = network.displayname,
+                name = network.name,
+              },
+              account = {
+                id = msg.account_id,
+              },
+              stream = {
+                id = stream.id,
+              },
+              user = {
+                username = user.username,
+                id = user.id,
+              }
+            }
 
             local httpc = http.new()
             httpc:request_uri(hook.url, {
@@ -125,45 +129,42 @@ local Webhook_types = {
               headers = {
                 ['Content-Type'] = 'application/json',
               },
-              body = to_json(msg),
+              body = to_json(out_msg),
             })
           end,
           ['stream:start'] = function(hook,sas)
-            local msg = {}
-            msg.hook_type = 'stream:start'
-            msg.stream = hook:get_stream()
-            msg.user = msg.stream:get_user()
-            msg.accounts = {}
+            local stream = hook:get_stream()
+            local user = stream:get_user()
 
-            msg.user.updated_at = nil
-            msg.user.created_at = nil
-            msg.user.access_token = nil
+            local out_msg = {
+              hook_type = 'stream:start',
+              accounts = {},
+              user = {
+                id = user.id,
+                username = user.username,
+              },
+              stream = {
+                id = stream.id,
+                slug = stream.slug,
+                name = stream.name,
+              }
+            }
 
-            msg.stream.updated_at = nil
-            msg.stream.created_at = nil
-            msg.stream.user = nil
-            msg.stream.user_id = nil
-            msg.stream.uuid = nil
-            msg.stream.preview_required = nil
-
-            local urls = {}
             for _,v in pairs(sas) do
               local account = v:get_account()
-              account.http_url = v:get('http_url')
-              account.keystore = nil
-              account.created_at = nil
-              account.updated_at = nil
-              account.network_user_id = nil
-              account.user_id = nil
-              if type(account.network) ~= 'table' then
-                account.network = networks[account.network]
-              end
-              account.network.write_comments = nil
-              account.network.read_comments = nil
-              account.network.allow_sharing = nil
-              account.network.icon = nil
-              account.network.redirect_uri = nil
-              insert(msg.accounts,account)
+
+              local a = {
+                id = account.id,
+                network = {
+                  displayname = networks[account.network].displayname,
+                  name = networks[account.network].name,
+                },
+                slug = account.slug,
+                name = account.name,
+                http_url = v:get('http_url')
+              }
+
+              insert(out_msg.accounts,a)
             end
 
             local httpc = http.new()
@@ -172,25 +173,25 @@ local Webhook_types = {
               headers = {
                 ['Content-Type'] = 'application/json',
               },
-              body = to_json(msg),
+              body = to_json(out_msg),
             })
           end,
           ['stream:end'] = function(hook)
-            local msg = {}
-            msg.hook_type = 'stream:end'
-            msg.stream = hook:get_stream()
-            msg.user = msg.stream:get_user()
+            local stream = hook:get_stream()
+            local user = stream:get_user()
 
-            msg.user.updated_at = nil
-            msg.user.created_at = nil
-            msg.user.access_token = nil
-
-            msg.stream.updated_at = nil
-            msg.stream.created_at = nil
-            msg.stream.user = nil
-            msg.stream.user_id = nil
-            msg.stream.uuid = nil
-            msg.stream.preview_required = nil
+            local out_msg = {
+              hook_type = 'stream:end',
+              user = {
+                id = user.id,
+                username = user.username,
+              },
+              stream = {
+                id = stream.id,
+                slug = stream.slug,
+                name = stream.name,
+              },
+            }
 
             local httpc = http.new()
             httpc:request_uri(hook.url, {
@@ -198,7 +199,7 @@ local Webhook_types = {
               headers = {
                 ['Content-Type'] = 'application/json',
               },
-              body = to_json(msg),
+              body = to_json(out_msg),
             })
           end
         }

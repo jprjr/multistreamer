@@ -1,3 +1,4 @@
+-- luacheck: globals ngx
 local ngx = ngx
 local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
@@ -8,17 +9,16 @@ local decode_with_secret = require('lapis.util.encoding').decode_with_secret
 local to_json   = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
 local slugify = require('lapis.util').slugify
-local http = require'resty.http'
+local http = require'multistreamer.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
-local format = string.format
 local insert = table.insert
+local string = require 'multistreamer.string'
 local len = string.len
 local sort = table.sort
-local floor = math.floor
+local escape_markdown = string.escape_markdown
 local date = require'date'
 local ngx_log = ngx.log
-local ngx_err = ngx.ERR
 local ngx_debug = ngx.DEBUG
 local facebook_config = config.networks.facebook
 
@@ -27,79 +27,70 @@ local StreamAccount = require'models.stream_account'
 
 local M = {}
 
+M.name = 'facebook'
 M.displayname = 'Facebook'
 M.allow_sharing = false
-M.icon = '<svg class="chaticon facebook" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="1.414"><path d="M15.117 0H.883C.395 0 0 .395 0 .883v14.234c0 .488.395.883.883.883h7.663V9.804H6.46V7.39h2.086V5.607c0-2.066 1.262-3.19 3.106-3.19.883 0 1.642.064 1.863.094v2.16h-1.28c-1 0-1.195.48-1.195 1.18v1.54h2.39l-.31 2.42h-2.08V16h4.077c.488 0 .883-.395.883-.883V.883C16 .395 15.605 0 15.117 0" fill-rule="nonzero"/></svg>'
-
 M.read_comments = true
 M.write_comments = false
+M.redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/facebook'
+
+M.icon =
+  '<svg class="chaticon facebook" viewBox="0 0 16 16" xmlns="http://www.w3.' ..
+  'org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="r' ..
+  'ound" stroke-miterlimit="1.414"><path d="M15.117 0H.883C.395 0 0 .395 0 ' ..
+  '.883v14.234c0 .488.395.883.883.883h7.663V9.804H6.46V7.39h2.086V5.607c0-2' ..
+  '.066 1.262-3.19 3.106-3.19.883 0 1.642.064 1.863.094v2.16h-1.28c-1 0-1.1' ..
+  '95.48-1.195 1.18v1.54h2.39l-.31 2.42h-2.08V16h4.077c.488 0 .883-.395.883' ..
+  '-.883V.883C16 .395 15.605 0 15.117 0" fill-rule="nonzero"/></svg>'
+
 
 local graph_root = 'https://graph.facebook.com/v2.8'
+
+local function http_error_handler(res)
+  return from_json(res.body).error.message
+end
 
 local function facebook_client(access_token)
   if not access_token then
     return false,'access_token required'
   end
 
-  local f = {}
-  f.httpc = http.new()
-  f.access_token = access_token
+  local httpc = http.new(http_error_handler)
+  local _request = httpc.request
 
-  f.request = function(self,method,endpoint,params,headers,body)
-    local uri = graph_root .. endpoint
-    if params then
-      uri = uri .. '?' .. encode_query_string(params)
-    end
+  httpc.request = function(self,method,endpoint,params,headers,body)
+    params = params or {}
+    params.access_token = access_token
 
-    if body then
-      ngx_log(ngx_debug,body)
-    end
+    local url = graph_root .. endpoint
 
-    local res, err = self.httpc:request_uri(uri, {
-      method = method,
-      headers = headers,
-      body = body,
-    })
-    if err then
-      ngx_log(ngx_err,err)
-      return false, err
-    end
-
-    if res and type(res.status) ~= 'number' then
-      res.status = tonumber(res.status:find('^%d+'))
-    end
-
-    if res.status >= 400 then
-      ngx_log(ngx_err,res.body)
-      return false, res.body
-    end
-    ngx_log(ngx_debug,res.body)
+    local res, err = _request(self,method,url,params,headers,body)
+    if err then return false, err end
 
     return from_json(res.body), nil
   end
 
-  f.get = function(self,endpoint,params,headers)
-    if not params then params = {} end
-    params.access_token = self.access_token
-    return self:request('GET',endpoint,params,headers)
+  httpc.get = function(self,endpoint,params,headers)
+    return httpc.request(self,'GET',endpoint,params,headers)
   end
 
-  f.post = function(self,endpoint,params,headers)
-    if not params then params = {} end
-    params.access_token = self.access_token
-    return self:request('POST',endpoint,nil,headers,encode_query_string(params))
+  httpc.post = function(self,endpoint,params,headers)
+    return httpc.request(self,'POST',endpoint,nil,headers,encode_query_string(params))
   end
 
-  f.batch = function(self,requests,headers)
+  httpc.batch = function(self,requests,headers)
     local params = {
-      access_token = self.access_token,
+      access_token = access_token,
       include_headers = 'false',
       batch = to_json(requests),
     }
-    return self:post('/',params,headers)
+    return httpc.post(self,'/',params,headers)
   end
 
-  return f
+  httpc.__index = httpc
+  setmetatable(httpc,httpc)
+
+  return httpc
 end
 
 function M.get_oauth_url(user, stream_id)
@@ -119,6 +110,8 @@ local function refresh_targets(access_token)
     fields = 'id,name'}
   )
 
+  if my_info_err then return false, my_info_err end
+
   targets[my_info.id] = {
     type = 'profile',
     name = my_info.name,
@@ -136,14 +129,14 @@ local function refresh_targets(access_token)
       after = after,
       fields = 'id,name',
     })
-    for i,group in pairs(group_info.data) do
+    for _,group in pairs(group_info.data) do
       targets[group.id] = {
         type = 'group',
         name = group.name,
         token = access_token,
       }
     end
-  until group_info.paging == nil or group_info.paging.next == nil
+  until group_info_err or group_info.paging == nil or group_info.paging.next == nil
 
   local event_info, event_info_err
   local right_now = date(true)
@@ -156,7 +149,7 @@ local function refresh_targets(access_token)
       after = after,
       fields = 'id,name,is_viewer_admin,start_time',
     })
-    for i,event in pairs(event_info.data) do
+    for _,event in pairs(event_info.data) do
       local days_after = date.diff(right_now,date(event.start_time)):spandays()
       -- events in the future will be negative, events in the past
       -- will be positive. So we want < (some-time)
@@ -168,7 +161,7 @@ local function refresh_targets(access_token)
         }
       end
     end
-  until event_info.paging == nil or event_info.paging.next == nil
+  until event_info_err or event_info.paging == nil or event_info.paging.next == nil
 
   local page_info, page_info_err
   repeat
@@ -179,24 +172,20 @@ local function refresh_targets(access_token)
     page_info, page_info_err = fb_client:get('/me/accounts', {
       after = after
     })
-    for i,page in pairs(page_info.data) do
-      local name = page.name
-      local id = page.id
-      local access_token = page.access_token
-
-      targets[id] = {
+    for _,page in pairs(page_info.data) do
+      targets[page.id] = {
         type = 'page',
-        name = name,
-        token = access_token,
+        name = page.name,
+        token = page.access_token,
       }
     end
-  until page_info.paging == nil or page_info.paging.next == nil
+  until page_info_err or page_info.paging == nil or page_info.paging.next == nil
 
   return targets
 end
 
 function M.register_oauth(params)
-  local user, err = decode_with_secret(decode_base64(params.state))
+  local user, _ = decode_with_secret(decode_base64(params.state))
 
   if not user then
     return false, 'error'
@@ -206,61 +195,47 @@ function M.register_oauth(params)
     return false, 'error'
   end
 
-  local httpc = http.new()
+  local httpc = http.new(http_error_handler)
 
-  -- first exchange the 'code' for a short-lived access token
-  local res, err = httpc:request_uri(graph_root .. '/oauth/access_token?' ..
-    encode_query_string({
+  local token_res, token_err = httpc:get(graph_root .. '/oauth/access_token',
+    {
       client_id = facebook_config.app_id,
       redirect_uri = M.redirect_uri,
       client_secret = facebook_config.app_secret,
       code = params.code,
-    }))
+    }
+  )
 
-  if res and type(res.status) ~= 'number' then
-    res.status = tonumber(res.status:find('^%d+'))
-  end
+  if token_err then return false, nil, token_err end
 
-  if err or res.status >= 400 then
-    return false, nil, err or res.body
-  end
-  ngx_log(ngx_debug,res.body)
-
-  local creds = from_json(res.body)
+  local creds = from_json(token_res.body)
 
   -- then, echange the short-lived token for a long-lived token
-  res, err = httpc:request_uri(graph_root .. '/oauth/access_token?' ..
-    encode_query_string({
-      grant_type = 'fb_exchange_token',
-      client_id = facebook_config.app_id,
-      client_secret = facebook_config.app_secret,
-      fb_exchange_token = creds.access_token}))
+  local long_token_res, long_token_err = httpc:get(graph_root .. '/oauth/access_token',
+  {
+    grant_type = 'fb_exchange_token',
+    client_id = facebook_config.app_id,
+    client_secret = facebook_config.app_secret,
+    fb_exchange_token = creds.access_token,
+  })
 
-  if res and type(res.status) ~= 'number' then
-    res.status = tonumber(res.status:find('^%d+'))
-  end
+  if long_token_err then return false, nil, long_token_err end
 
-  if err or res.status >= 400 then
-      return false, nil, err or res.body
-  end
-
-  ngx_log(ngx_debug,res.body)
-  creds = from_json(res.body)
+  creds = from_json(long_token_res.body)
 
   if not creds.expires_in then
-    res, err = httpc:request_uri(graph_root .. '/debug_token?' ..
-      encode_query_string({
-        input_token = creds.access_token,
-        access_token = facebook_config.app_id .. '|' .. facebook_config.app_secret}))
-    if err then
-      ngx_log(ngx_debug,err)
+    local exp_res, exp_err = httpc:get(graph_root .. '/debug_token',
+    {
+      input_token = creds.access_token,
+      access_token = facebook_config.app_id .. '|' .. facebook_config.app_secret,
+    })
+    if exp_err then
+      ngx_log(ngx_debug,exp_err)
     end
-    if res.status ~= 200 then
-      ngx_log(ngx_debug,res.body)
-    end
-    if res and res.status == 200 then
-      ngx_log(ngx_debug,res.body)
-      local info = from_json(res.body)
+
+    if exp_res and exp_res.status == 200 then
+      ngx_log(ngx_debug,exp_res.body)
+      local info = from_json(exp_res.body)
 
       -- check if this is a non-expiring token
       if info.data.expires_at == 0 and info.data.valid == true then
@@ -279,7 +254,6 @@ function M.register_oauth(params)
 
   local user_info, err = fb_client:get('/me')
   if err then return false, nil, err end
-  ngx_log(ngx_debug,res.body)
 
   local sha1 = resty_sha1:new()
   sha1:update(user_info.id)
@@ -375,7 +349,7 @@ function M.metadata_form(account, stream)
     )
   end
 
-  for i,v in pairs(form) do
+  for _,v in pairs(form) do
     v.value = stream:get(v.key)
   end
 
@@ -442,11 +416,11 @@ end
 
 function M.publish_start(account, stream)
   local stream_o = stream
-  local account = account:get_all()
-  local stream = stream:get_all()
+  account = account:get_all()
+  stream = stream:get_all()
 
   local fields = M.metadata_fields()
-  for i,f in ipairs(fields) do
+  for _,f in ipairs(fields) do
     if f.required == true then
       if not stream[f.key] or len(stream[f.key]) == 0 then
         return false, 'Facebook: missing field "' .. f.label ..'"'
@@ -482,17 +456,17 @@ function M.publish_start(account, stream)
 
   local fb_client = facebook_client(access_token)
 
-  local vid_info, err = fb_client:post('/'..stream.target..'/live_videos',params)
+  local vid_info, vid_err = fb_client:post('/'..stream.target..'/live_videos',params)
 
-  if err then
-    return false, to_json(err)
+  if vid_err then
+    return false, vid_err
   end
 
-  local more_vid_info, err = fb_client:get('/' .. vid_info.id, {
+  local more_vid_info, more_vid_err = fb_client:get('/' .. vid_info.id, {
     fields = 'permalink_url',
   })
-  if err then
-    return false, to_json(err)
+  if more_vid_err then
+    return false, more_vid_err
   end
 
   stream_o:set('http_url','https://facebook.com' .. more_vid_info.permalink_url)
@@ -505,8 +479,8 @@ end
 function M.publish_stop(account, stream)
   local stream_o = stream
 
-  local account = account:get_all()
-  local stream = stream:get_all()
+  account = account:get_all()
+  stream = stream:get_all()
 
   if stream.sticky == 'YES' then
     return true
@@ -577,7 +551,7 @@ function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream)
+function M.notify_update(_,_)
   return true
 end
 
@@ -603,6 +577,8 @@ end
 function M.create_viewcount_func(account,stream,send)
   if not send then return nil end
 
+  local viewcount_func, stop_viewcount_func
+
   local targets = from_json(account.targets)
   local target = targets[stream.target]
   local access_token = target.token
@@ -610,8 +586,9 @@ function M.create_viewcount_func(account,stream,send)
   local video_id = stream.video_id
   local fb_client = facebook_client(access_token)
 
-  return function()
-    while true do
+  local viewRunning = true
+  viewcount_func = function()
+    while viewRunning do
       local res, err = fb_client:get('/' .. video_id, {
         fields = 'id,live_views' })
 
@@ -622,7 +599,14 @@ function M.create_viewcount_func(account,stream,send)
       end
       ngx.sleep(60)
     end
+    return true
   end
+
+  stop_viewcount_func = function()
+    viewRunning = false
+  end
+
+  return viewcount_func, stop_viewcount_func
 
 end
 
@@ -633,18 +617,19 @@ function M.create_comment_funcs(account, stream, send)
 
   local video_id = stream.video_id
   local fb_client = facebook_client(access_token)
-  local read_func
+  local read_func, stop_func
 
   if send then
     local afterComment = nil
     local afterReaction = nil
+    local readRunning = true
     local reactions = {}
     read_func = function()
-      while true do
-        local res, err = fb_client:batch({
+      while readRunning do -- {{{
+        local res, _ = fb_client:batch({
           {
             method = 'GET',
-            relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment, live_filter = 'no_filter'}),
+            relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment, live_filter = 'no_filter'}), -- luacheck: ignore
           },
           {
             method = 'GET',
@@ -654,7 +639,7 @@ function M.create_comment_funcs(account, stream, send)
         if res[1].code == 200 then
           local body = from_json(res[1].body)
           if body.paging then afterComment = body.paging.cursors.after end
-          for i,v in pairs(body.data) do
+          for _,v in pairs(body.data) do
             send({
               type = 'text',
               from = {
@@ -662,7 +647,7 @@ function M.create_comment_funcs(account, stream, send)
                 id = v.from.id,
               },
               text = v.message,
-              markdown = v.message:escape_markdown(),
+              markdown = escape_markdown(v.message),
             })
           end
         end
@@ -671,7 +656,7 @@ function M.create_comment_funcs(account, stream, send)
           if body.paging and body.paging.next then
               afterReaction = body.paging.cursors.after
           end
-          for i,v in pairs(body.data) do
+          for _,v in pairs(body.data) do
             if not reactions[v.id] then
               reactions[v.id] = true
               send({
@@ -681,20 +666,23 @@ function M.create_comment_funcs(account, stream, send)
                   id = v.id,
                 },
                 text = textify(v.type),
-                markdown = textify(v.type):escape_markdown(),
+                markdown = escape_markdown(textify(v.type)),
               })
             end
           end
         end
         ngx.sleep(6)
-      end
-      return false, nil
+      end -- }}}
+      return true
+    end
+    stop_func = function()
+      readRunning = false
     end
   end
 
   local write_func = nil
 
-  return read_func, write_func
+  return read_func, write_func, stop_func
 end
 
 

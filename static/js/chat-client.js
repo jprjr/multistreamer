@@ -13,9 +13,21 @@ var curAccount;
 var tarAccount;
 var ws;
 var live = false;
+var connected = false;
+var reconnect_func;
+var seconds = 0;
 var scroller = zenscroll.createScroller(chatMessages);
 
-icons['irc'] = '<svg class="chaticon irc" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="m 18.477051,7.5280762 h -4.390137 l -1.212891,4.9570308 h 4.060547 v 1.779786 h -4.521972 l -1.371094,5.550293 H 9.3408203 L 10.711914,14.264893 H 7.1523437 L 5.78125,19.815186 H 4.0805664 L 5.4516602,14.264893 H 1.5229492 V 12.485107 H 5.9130859 L 7.1259766,7.5280762 H 3.0654297 V 5.748291 H 7.5874023 L 8.9716797,0.18481445 H 10.672363 L 9.2880859,5.748291 h 3.5595701 l 1.384278,-5.56347655 h 1.700683 L 14.54834,5.748291 h 3.928711 z M 12.425781,7.501709 H 8.8134766 l -1.2392579,5.009766 h 3.6123043 z" /></svg>';
+icons['irc'] =
+    '<svg class="chaticon irc" xmlns="http://www.w3.org/2000/svg" viewBox="0 ' +
+    '0 20 20"><path d="m 18.477051,7.5280762 h -4.390137 l -1.212891,4.957030' +
+    '8 h 4.060547 v 1.779786 h -4.521972 l -1.371094,5.550293 H 9.3408203 L 1' +
+    '0.711914,14.264893 H 7.1523437 L 5.78125,19.815186 H 4.0805664 L 5.45166' +
+    '02,14.264893 H 1.5229492 V 12.485107 H 5.9130859 L 7.1259766,7.5280762 H' +
+    ' 3.0654297 V 5.748291 H 7.5874023 L 8.9716797,0.18481445 H 10.672363 L 9' +
+    '.2880859,5.748291 h 3.5595701 l 1.384278,-5.56347655 h 1.700683 L 14.548' +
+    '34,5.748291 h 3.928711 z M 12.425781,7.501709 H 8.8134766 l -1.2392579,5' +
+    '.009766 h 3.6123043 z" /></svg>';
 
 function findGetParameter(parameterName) {
     var result = null,
@@ -224,93 +236,6 @@ function buildChatInput(account) {
     }
 }
 
-function linkify(p) {
-    var w;
-    var e;
-    var i;
-    var prevText;
-    var postText;
-    var testSpace;
-    var curUrl;
-    var nodeList;
-    var re = /https?:\/\//;
-    w = p.walker();
-
-    while((e = w.next())) {
-        if(e.node.type == 'text') {
-            i = e.node.literal.search(re);
-
-            if(i > -1) {
-                prevText = e.node.literal.substr(0,i);
-                curUrl = e.node.literal.substr(i);
-                nodeList = [];
-                nodeList.push(e.node);
-            }
-            else if(curUrl !== undefined) {
-                testSpace = e.node.literal.substr(0,e.node.literal.indexOf(' '));
-
-                if(testSpace.length > 0) {
-                    nodeList.push(e.node);
-                    curUrl += testSpace;
-                    postText = e.node.literal.substr(e.node.literal.indexOf(' ')+1);
-
-                    if(prevText !== undefined && prevText.length > 0) {
-                        prevText = parser.parse(prevText);
-                        prevText.firstChild.firstChild.literal += ' ';
-                        nodeList[0].insertBefore(prevText.firstChild.firstChild);
-                    }
-
-                    if(postText !== undefined && postText.length > 0) {
-                        postText = parser.parse(postText);
-                        postText.firstChild.firstChild.literal = ' ' + postText.firstChild.firstChild.literal;
-                        nodeList[nodeList.length - 1].insertAfter(postText.firstChild.firstChild);
-                    }
-
-                    curUrl = parser.parse('[' + curUrl + '](' + curUrl +')');
-                    nodeList[0].insertAfter(curUrl.firstChild.firstChild);
-
-                    nodeList.forEach(function(n) {
-                        n.unlink();
-                    });
-
-                    prevText = undefined;
-                    postText = undefined;
-                    curUrl = undefined;
-                    nodeList = undefined;
-                }
-                else {
-                    curUrl += e.node.literal
-                    nodeList.push(e.node);
-                }
-            }
-        }
-    }
-
-    if(curUrl !== undefined) {
-        if(prevText !== undefined && prevText.length > 0) {
-            prevText = parser.parse(prevText);
-            prevText.firstChild.firstChild.literal += ' ';
-            nodeList[0].insertBefore(prevText.firstChild.firstChild);
-        }
-
-        if(postText !== undefined && postText.length > 0) {
-            postText = parser.parse(postText);
-            postText.firstChild.firstChild.literal = ' ' + postText.firstChild.firstChild.literal;
-            nodeList[nodeList.length - 1].insertAfter(postText.firstChild.firstChild);
-        }
-
-        curUrl = parser.parse('[' + curUrl + '](' + curUrl +')');
-        nodeList[0].insertAfter(curUrl.firstChild.firstChild);
-
-        nodeList.forEach(function(n) {
-            n.unlink();
-        });
-    }
-
-    return p;
-}
-
-
 function appendMessage(msg) {
   var newMsg = document.createElement('div');
   var nameDiv = document.createElement('div');
@@ -329,7 +254,7 @@ function appendMessage(msg) {
 
   nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';
   if(msg.markdown !== undefined && msg.markdown !== null) {
-    p = linkify(parser.parse(msg.markdown));
+    p = parser.parse(msg.markdown);
     msgDiv.innerHTML = writer.render(p);
   }
   else {
@@ -373,7 +298,12 @@ function updateViewCountResult(data) {
 
        if(live) {
            live_sp.className = 'live';
-           live_sp.innerHTML = 'Live';
+           if(!connected) {
+               live_sp.innerHTML = 'Disconnected from Multistreamer, reconnecting in ' + seconds + ' seconds';
+           }
+           else {
+               live_sp.innerHTML = 'Live';
+           }
            live_div.appendChild(live_sp);
            chatViewers.appendChild(live_div);
 
@@ -401,7 +331,12 @@ function updateViewCountResult(data) {
        }
        else {
            live_sp.className = 'offline';
-           live_sp.innerHTML = 'Offline';
+           if(!connected) {
+               live_sp.innerHTML = 'Disconnected from Multistreamer, reconnecting in ' + seconds + ' seconds';
+           }
+           else {
+               live_sp.innerHTML = 'Not Streaming';
+           }
            live_div.appendChild(live_sp);
            chatViewers.appendChild(live_div);
        }
@@ -415,6 +350,8 @@ function start_chat(endpoint) {
 
   ws = new WebSocket(endpoint);
   ws.onopen = function() {
+      connected = true;
+      updateViewCountResult();
       var msg = {
           type: 'status',
       };
@@ -422,13 +359,35 @@ function start_chat(endpoint) {
   };
 
   ws.onclose = function(e) {
+      connected = false;
       live = false;
+      seconds = 5;
       updateViewCountResult();
+      clearInterval(reconnect_func);
+      reconnect_func = setInterval(function() {
+          seconds--;
+          updateViewCountResult();
+          if(seconds == 0) {
+              clearInterval(reconnect_func);
+              start_chat(endpoint);
+          }
+      },1000);
   };
-  
+
   ws.onerror = function(e) {
+      connected = false;
       live = false;
+      seconds = 5;
       updateViewCountResult();
+      clearInterval(reconnect_func);
+      reconnect_func = setInterval(function() {
+          seconds--;
+          updateViewCountResult();
+          if(seconds == 0) {
+              clearInterval(reconnect_func);
+              start_chat(endpoint);
+          }
+      },1000);
   };
 
   ws.onmessage = function(msg) {
@@ -477,6 +436,7 @@ function start_chat(endpoint) {
         else if(data.status.data_pushing === false) {
             live = false;
             updateAccountList(data.accounts);
+            updateViewCountResult();
             if(curInput === undefined || curAccount.id > 0) {
                 buildChatInput(null);
             }

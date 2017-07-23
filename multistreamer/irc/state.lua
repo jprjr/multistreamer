@@ -168,6 +168,7 @@ local Account = require'models.account'
 
 local string = require'multistreamer.string'
 local char = string.char
+local sub = string.sub
 local insert = table.insert
 local pairs = pairs
 local ipairs = ipairs
@@ -366,7 +367,7 @@ function IRCState:createUser(user, connid, irc, res)
       break
     end
   end
-    
+
   return true, res
 end
 
@@ -920,8 +921,8 @@ function IRCState:processIrcMessage(msg, res)
   res = res or {}
   if not self.user then return true, nil end
 
-  if msg.target:sub(1,1) == '#' then
-    if not self.user.rooms[msg.target:sub(2)] then
+  if sub(msg.target,1,1) == '#' then
+    if not self.user.rooms[sub(msg.target,2)] then
       return false, res
     end
   elseif self.user.username ~= msg.target then

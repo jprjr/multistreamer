@@ -1,6 +1,6 @@
 <% if not params.widget then %>
 <div id="chatviewers">
-<div><span class="offline">Offline</span></div>
+<div><span class="offline">Disconnected from Multistreamer</span></div>
 </div>
 <% end %>
 

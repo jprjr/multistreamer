@@ -1,4 +1,5 @@
 local config = require('lapis.config').get()
+local gsub = string.gsub
 
 config.VERSION = '9.1.0'
 
@@ -71,10 +72,19 @@ if not config.lua_shared_dict_writers_size then
   config.lua_shared_dict_writers_size = '1m'
 end
 
-config.http_prefix = config.http_prefix:gsub('/+$','')
-config.public_http_url = config.public_http_url:gsub('/+$','')
-config.public_rtmp_url = config.public_rtmp_url:gsub('/+$','')
-config.private_http_url = config.private_http_url:gsub('/+$','')
-config.private_rtmp_url = config.private_rtmp_url:gsub('/+$','')
+config.http_prefix      = gsub(config.http_prefix,'/+$','')
+config.public_http_url  = gsub(config.public_http_url,'/+$','')
+config.public_rtmp_url  = gsub(config.public_rtmp_url,'/+$','')
+config.private_http_url = gsub(config.private_http_url,'/+$','')
+config.private_rtmp_url = gsub(config.private_rtmp_url,'/+$','')
+
+if type(config.networks.beam) == 'table' and not config.networks.mixer then
+  config.networks.mixer = {
+    client_secret = config.networks.beam.client_secret,
+    client_id     = config.networks.beam.client_id,
+    ingest_server = gsub(config.networks.beam.ingest_server,'beam.pro','mixer.com'),
+  }
+  config.networks.beam = nil
+end
 
 return config

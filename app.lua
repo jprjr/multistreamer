@@ -1,3 +1,4 @@
+-- luacheck: globals ngx networks
 local lapis = require'lapis'
 local app = lapis.Application()
 local config = require'multistreamer.config'
@@ -5,8 +6,6 @@ local db = require'lapis.db'
 
 local redis = require'multistreamer.redis'
 local publish = redis.publish
-local subscribe = redis.subscribe
-local endpoint = redis.endpoint
 
 local User = require'models.user'
 local Account = require'models.account'
@@ -17,8 +16,6 @@ local SharedStream  = require'models.shared_stream'
 local Webhook = require'models.webhook'
 
 local respond_to = lapis.application.respond_to
-local encode_with_secret = lapis.application.encode_with_secret
-local decode_with_secret = lapis.application.decode_with_secret
 local to_json   = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
 
@@ -41,7 +38,7 @@ app.layout = require'views.layout'
 
 app:before_filter(function(self)
   self.networks = networks
-  self.user = User:read_session(self)
+  self.user = User.read_session(self)
   if self.session.status_msg then
     self.status_msg = self.session.status_msg
     self.session.status_msg = nil
@@ -65,10 +62,7 @@ local function err_out(req, err)
 end
 
 local function plain_err_out(req,err,status)
-  local status = status
-  if not status then
-    status = 404
-  end
+  status = status or 404
   return req:write({
     layout = 'plain',
     content_type = 'text/plain',
@@ -102,7 +96,7 @@ local function get_all_streams_accounts(uuid)
 end
 
 app:match('login', config.http_prefix .. '/login', respond_to({
-  GET = function(self)
+  GET = function(_)
     return { render = 'login' }
   end,
   POST = function(self)
@@ -221,8 +215,8 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       account.network = networks[account.network]
       insert(self.accounts,account)
       if self.stream then
-        local sa = self.stream:get_stream_account(account)
-        if sa then
+        local _sa = self.stream:get_stream_account(account)
+        if _sa then
           insert(self.stream_accounts,account)
         end
       end
@@ -372,13 +366,13 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
               p.events[v.value] = false
             end
           end
+          Webhook:create(p)
           webhook_created = true
-          local webhook = Webhook:create(p)
           webhook_message = 'Webhook added. '
         end
       end
 
-      for i,v in ipairs(self.webhooks) do
+      for _,v in ipairs(self.webhooks) do
         if len(self.params['webhook.' .. v.id .. '.url']) <= 0 then
           webhook_message = webhook_message .. 'Deleted webhook ' .. v.url .. '. '
           v:delete()
@@ -433,7 +427,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.subset == 'dashboard' then -- {{{
       if self.metadata_level < 2 then
-        return err_out(self,'Nice try buddy')
+        return err_out(self,'Stream not found')
       end
 
       if self.params.title then
@@ -452,7 +446,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       for _,account in pairs(self.accounts) do
         local sa = self.stream:get_stream_account(account)
         if sa then
-          sa_keys = sa:get_all()
+          local sa_keys = sa:get_all()
           local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
           if ffmpeg_args and len(ffmpeg_args) > 0 then
             if sa_keys.ffmpeg_args == nil then
@@ -468,9 +462,13 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
           local metadata_fields = account.network.metadata_fields()
           if not metadata_fields then metadata_fields = {} end
-          for i,field in pairs(metadata_fields) do
+          for _,field in pairs(metadata_fields) do
             local v = self.params[field.key .. '.' .. account.id]
+            -- normalize checkbox to true/false
             if v and len(v) > 0 then
+              if field.type == 'checkbox' then
+                v = true
+              end
               if sa_keys[field.key] ~= v then
                 sa:set(field.key,v)
                 stream_updated = true
@@ -511,7 +509,10 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       end
 
       -- is there incoming data, and the user clicked the golivebutton? start the stream
-      if self.stream_status.data_incoming == true and self.stream_status.data_pushing == false and self.params['goLiveBtn'] ~= nil then
+      if self.stream_status.data_incoming == true and
+         self.stream_status.data_pushing == false and
+         self.params['goLiveBtn'] ~= nil
+      then
         self.stream_status.data_pushing = true
         local sas = {}
 
@@ -590,7 +591,7 @@ app:match('profile-edit', config.http_prefix .. '/profile/:id', respond_to({
   before = function(self)
     if not require_login(self) then return err_out(self,'login required') end
   end,
-  GET = function(self)
+  GET = function(_)
     return { render = 'profile' }
   end,
   POST = function(self)
@@ -643,9 +644,9 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
       for _,v in pairs(sas) do
         local account = v[1]
         local sa = v[2]
-        local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
-        if (not rtmp_url) or err then
-          return plain_err_out(self,err)
+        local rtmp_url, rtmp_err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
+        if (not rtmp_url) or rtmp_err then
+          return plain_err_out(self,rtmp_err)
         end
         sa:update({rtmp_url = rtmp_url})
         insert(hook_sas, sa)
@@ -708,9 +709,9 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     for _,v in pairs(sas) do
       local account = v[1]
       local sa = v[2]
-      local ok, err = account.network.notify_update(account:get_keystore(),sa:get_keystore())
+      local _, account_err = account.network.notify_update(account:get_keystore(),sa:get_keystore())
       if err then
-        return plain_err_out(self,err)
+        return plain_err_out(self,account_err)
       end
     end
 
@@ -783,7 +784,7 @@ app:get('site-root', config.http_prefix .. '/', function(self)
     account.shared_from = u.username
     insert(self.accounts,account)
   end
-  for k,v in pairs(self.accounts) do
+  for _,v in pairs(self.accounts) do
     if networks[v.network] then
       v.network = networks[v.network]
       v.errors = v.network.check_errors(v:get_keystore())
@@ -803,7 +804,7 @@ app:get('site-root', config.http_prefix .. '/', function(self)
     end
   end
 
-  for k,v in pairs(self.streams) do
+  for _,v in pairs(self.streams) do
     local stream_status = streams_dict:get(v.id)
     if stream_status then
       stream_status = from_json(stream_status)
@@ -847,14 +848,14 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
     if not stream then
       return err_out(self,'Not authorized to modify that stream')
     end
-    local ok, err = stream:check_owner(self.user)
-    if not ok then
+    local owner_ok, _ = stream:check_owner(self.user)
+    if not owner_ok then
       return err_out(self,'Not authorized to modify that stream')
     end
 
     self.stream = stream
   end,
-  GET = function(self)
+  GET = function(_)
     return { render = 'stream-delete' }
   end,
   POST = function(self)
@@ -895,7 +896,7 @@ app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
     end
     self.stream = stream
   end,
-  GET = function(self)
+  GET = function(_)
     return { layout = 'chatlayout', render = 'chat' }
   end,
 }))
@@ -950,7 +951,7 @@ app:match('stream-ws', config.http_prefix .. '/ws/:id',respond_to({
     self.stream = stream
   end,
   GET = function(self)
-    local wb_server = WebsocketServer:new(self.user,self.stream,self.chat_level)
+    local wb_server = WebsocketServer.new(self.user,self.stream,self.chat_level)
     wb_server:run()
   end,
 }))
@@ -972,7 +973,7 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
     self.account = account
     self.account.network = networks[self.account.network]
   end,
-  GET = function(self)
+  GET = function(_)
     return { render = "account-delete" }
   end,
   POST = function(self)
@@ -997,9 +998,9 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
       sa:delete()
       self.session.status_msg = { type = 'success', msg = 'Account removed' }
     else
-      local sas = self.account:get_shared_accounts()
-      if not sas then sas = {} end
-      for _,sa in pairs(sas) do
+      local ssas = self.account:get_shared_accounts()
+      if not ssas then ssas = {} end
+      for _,sa in pairs(ssas) do
         sa:delete()
       end
       self.account:get_keystore():unset_all()
@@ -1022,7 +1023,7 @@ app:match('stream-share',config.http_prefix .. '/stream/:id/share', respond_to({
     end
     self.stream = stream
   end,
-  GET = function(self)
+  GET = function(_)
     return { render = 'stream-share' }
   end,
   POST = function(self)
@@ -1054,7 +1055,7 @@ app:match('account-share', config.http_prefix .. '/account/:id/share', respond_t
       end
     end
   end,
-  GET = function(self)
+  GET = function(_)
     return { render = 'account-share' }
   end,
   POST = function(self)
@@ -1072,11 +1073,11 @@ app:match('account-share', config.http_prefix .. '/account/:id/share', respond_t
 }))
 
 
-for t,m in networks() do
+for _,m in networks() do
   if m.register_oauth then
     app:match('auth-'..m.name, config.http_prefix .. '/auth/' .. m.name, respond_to({
       GET = function(self)
-        local account, sa, err = m.register_oauth(self.params)
+        local _, sa, err = m.register_oauth(self.params)
         if err then return err_out(self,err) end
 
         self.session.status_msg = { type = 'success', msg = 'Account saved' }
@@ -1098,7 +1099,7 @@ for t,m in networks() do
           if not ok then return err_out(self,err) end
         end
       end,
-      GET = function(self)
+      GET = function(_)
         return { render = 'account' }
       end,
       POST = function(self)

@@ -1,3 +1,4 @@
+-- luacheck: globals networks
 local Model = require('lapis.db.model').Model
 local Keystore = require'models.keystore'
 local StreamAccount = require'models.stream_account'
@@ -83,7 +84,7 @@ local Account  = Model:extend('accounts', {
     return self:get_keystore():get_all()
   end,
   unset = function(self,key)
-    return self:get_keystore():unset(key,value)
+    return self:get_keystore():unset(key)
   end,
   share = function(self,user_id)
     local s_account = SharedAccount:find({account_id = self.id, user_id = user_id})

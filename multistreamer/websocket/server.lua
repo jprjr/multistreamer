@@ -1,7 +1,12 @@
+-- luacheck: globals ngx networks uuid
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local ws_server = require'resty.websocket.server'
 local slugify = require('lapis.util').slugify
+
+local string = require'multistreamer.string'
+local split = string.split
+local escape_markdown = string.escape_markdown
 
 local redis = require'multistreamer.redis'
 local subscribe = redis.subscribe
@@ -53,7 +58,7 @@ local function add_account(l_networks,msg,accounts,account)
   end
 end
 
-function Server:new(user, stream, chat_level)
+function Server.new(user, stream, chat_level)
   local t = {
     uuid = uuid(),
     user = user,
@@ -88,7 +93,10 @@ function Server:redis_relay()
 
     if res then
       local msg = from_json(res[3])
-      if res[2] == endpoint('comment:in') and not msg.relay and ( (msg.stream_id == self.stream.id) or (msg.to and (msg.to.id == self.user.id or msg.from.id == self.user.id))) then
+      if res[2] == endpoint('comment:in') and
+         not msg.relay and
+         ( (msg.stream_id == self.stream.id) or (msg.to and (msg.to.id == self.user.id or msg.from.id == self.user.id)))
+      then
         msg.uuid = nil
         self.ws:send_text(to_json(msg))
       elseif res[2] == endpoint('stream:start') and msg.id == self.stream.id then
@@ -157,7 +165,7 @@ function Server:websocket_relay()
         msg.stream_id = self.stream.id
         msg.uuid = self.uuid
 
-        local parts = msg.text:split(' ')
+        local parts = split(msg.text,' ')
 
         if parts[1] == '/irc' or parts[1] == '/msg' then
           msg.account_id = 0
@@ -181,11 +189,11 @@ function Server:websocket_relay()
                 name = u.username,
                 id = u.id,
               }
-              msg.markdown = msg.text:escape_markdown()
+              msg.markdown = escape_markdown(msg.text)
               publish('comment:in', msg)
             end
           else
-            msg.markdown = msg.text:escape_markdown()
+            msg.markdown = escape_markdown(msg.text)
             publish('comment:in', msg)
           end
         else
@@ -258,14 +266,14 @@ function Server:send_stream_status(status)
 
   local more_accounts = Account:select('where user_id = ?',self.user.id)
   if more_accounts then
-    for i,v in ipairs(more_accounts) do
+    for _,v in ipairs(more_accounts) do
       add_account(l_networks,msg,accounts,v)
     end
   end
 
   local yet_more_accounts = self.user:get_shared_accounts()
   if yet_more_accounts then
-    for i,sa in ipairs(yet_more_accounts) do
+    for _,sa in ipairs(yet_more_accounts) do
       local v = sa:get_account()
       add_account(l_networks,msg,accounts,v)
     end
@@ -306,7 +314,7 @@ function Server:run()
   local write_thread = spawn(Server.redis_relay,self)
   local read_thread  = spawn(Server.websocket_relay,self)
 
-  local ok, write_res, read_res = ngx.thread.wait(write_thread,read_thread)
+  ngx.thread.wait(write_thread,read_thread)
 
   if coro_status(write_thread) == 'running' then
     kill(write_thread)

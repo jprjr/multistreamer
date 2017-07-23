@@ -1,3 +1,4 @@
+-- luacheck: globals ngx networks
 local lapis = require'lapis'
 local app = lapis.Application()
 local config = require'multistreamer.config'
@@ -6,8 +7,6 @@ local api_prefix = config.http_prefix .. '/api/v1'
 local respond_to = require('lapis.application').respond_to
 local to_json   = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
-local encode_base64 = require('lapis.util.encoding').encode_base64
-local decode_base64 = require('lapis.util.encoding').decode_base64
 local json_params = require('lapis.application').json_params
 local cjson = require'cjson'
 local db = require'lapis.db'
@@ -89,7 +88,7 @@ local function get_stream(self, id)
     end
   end
   local sas = self.user:get_shared_streams()
-  for i,v in ipairs(sas) do
+  for _,v in ipairs(sas) do
     local s = v:get_stream()
     s:user_prep(self.user)
 
@@ -129,7 +128,7 @@ local function get_account(self, id)
     v:json_prep(self.user)
   end
   local sas = self.user:get_shared_accounts()
-  for i,v in ipairs(sas) do
+  for _,v in ipairs(sas) do
     local a = v:get_account()
     a:json_prep(self.user)
     insert(accounts,a)
@@ -185,9 +184,9 @@ app:match('api-v1-account',api_prefix .. '/account(/:id)', respond_to({
       })
       sa:delete()
     else
-      local sas = account:get_shared_accounts()
-      if not sas then sas = {} end
-      for _,sa in pairs(sas) do
+      local ssas = account:get_shared_accounts()
+      if not ssas then ssas = {} end
+      for _,sa in pairs(ssas) do
         sa:delete()
       end
       account:get_keystore():unset_all()
@@ -514,7 +513,7 @@ app:match('api-v1-stream',api_prefix .. '/stream(/:id)', respond_to({
         for _,v in ipairs(og_shares) do
           local ss = SharedStream:find({ stream_id = stream.id, user_id = v.user.id })
           if not ss then
-            ss = SharedStream:create({
+            SharedStream:create({
               stream_id = stream.id,
               user_id = v.user.id,
               chat_level = v.chat_level,

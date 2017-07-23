@@ -1,12 +1,10 @@
+-- luacheck: globals networks uuid
 local Model = require('lapis.db.model').Model
 local Keystore = require'models.keystore'
-local Account = require'models.account'
 local StreamAccount = require'models.stream_account'
 local SharedStream = require'models.shared_stream'
-local format = string.format
 local slugify = require('lapis.util').slugify
 local pairs = pairs
-local db = require'lapis.db'
 local insert = table.insert
 
 local Stream = Model:extend('streams', {
@@ -32,12 +30,12 @@ local Stream = Model:extend('streams', {
 
     for _,v in pairs(streams_accounts) do
       local acc = v:get_account()
-      local keys = v:get_all()
+      local sa_keys = v:get_all()
       local metadata_fields = networks[acc.network].metadata_form(acc,v)
       acc.settings = {}
       if metadata_fields then
         for _,f in ipairs(metadata_fields) do
-          acc.settings[f.key] = keys[f.key]
+          acc.settings[f.key] = sa_keys[f.key]
         end
       end
       acc.network_user_id = nil
@@ -63,7 +61,7 @@ local Stream = Model:extend('streams', {
       self.stream_shares = nil
     end
 
-    local ok, chat_level, meta_level = self:check_user(user)
+    local _, chat_level, meta_level = self:check_user(user)
     if meta_level < 2 then
       self.uuid = nil
     end
@@ -135,7 +133,7 @@ local Stream = Model:extend('streams', {
     local streams_accounts = self:get_streams_accounts()
 
     if streams_accounts then
-      for i,v in pairs(streams_accounts) do
+      for _,v in pairs(streams_accounts) do
         local account = v:get_account()
         accounts[account.id] = account
       end
@@ -172,7 +170,6 @@ end
 
 
 function Stream:save_stream(user,stream,params)
-  local stream = stream
   local slug = slugify(params.stream_name)
   local slug_stream = Stream:find({ user_id = user.id, slug = slug })
   params.preview_required = tonumber(params.preview_required)
@@ -206,7 +203,7 @@ function Stream:save_stream(user,stream,params)
   return stream
 end
 
-function Stream:save_accounts(user, stream, accounts)
+function Stream:save_accounts(_, stream, accounts) -- luacheck: ignore
   local updated = false
 
   for id, value in pairs(accounts) do

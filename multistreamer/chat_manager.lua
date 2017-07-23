@@ -1,6 +1,5 @@
+-- luacheck: globals ngx networks
 local ngx = ngx
-local config = require'multistreamer.config'
-local string = require'multistreamer.string'
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
 local publish = redis.publish
@@ -11,7 +10,6 @@ local Stream = require'models.stream'
 local Account = require'models.account'
 local StreamAccount = require'models.stream_account'
 local setmetatable = setmetatable
-local insert = table.insert
 local tonumber = tonumber
 local pairs = pairs
 
@@ -21,7 +19,6 @@ local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local writers = ngx.shared.writers
 local pid = ngx.worker.pid()
-local kill = ngx.thread.kill
 local spawn = ngx.thread.spawn
 local status_dict = ngx.shared.status;
 
@@ -91,13 +88,13 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
     self.streams[stream.id][tarAccount.id].aux[account.id] = {}
   end
 
-  local read_func, write_func = account.network.create_comment_funcs(
+  local read_func, write_func, stop_func = account.network.create_comment_funcs(
     account:get_keystore():get_all(),
     sa:get_keystore():get_all(),
     relay
   )
 
-  local viewcount_func = account.network.create_viewcount_func(
+  local viewcount_func, stop_viewcount_func = account.network.create_viewcount_func(
     account:get_keystore():get_all(),
     sa:get_keystore():get_all(),
     function(data)
@@ -108,11 +105,9 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
 
   if read_func then
     self.streams[stream.id][tarAccount.id].aux[account.id].read_thread = spawn(function()
-      while true do
-        local ok, err = read_func()
-        if err then
-          ngx_log(ngx_err,err)
-        end
+      local _, err = read_func()
+      if err then
+        ngx_log(ngx_err,err)
       end
     end)
     t.read_started = true
@@ -123,8 +118,16 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
     t.write_started = true
   end
 
+  if stop_func then
+    self.streams[stream.id][tarAccount.id].aux[account.id].stop = stop_func
+  end
+
   if viewcount_func then
     self.streams[stream.id][tarAccount.id].aux[account.id].viewcount_thread = spawn(viewcount_func)
+  end
+
+  if stop_viewcount_func then
+    self.streams[stream.id][tarAccount.id].aux[account.id].stop_viewcount = stop_viewcount_func
   end
 
   writers:set(stream.id .. '-' .. tarAccount.id .. '-' .. account.id, to_json(t))
@@ -189,21 +192,13 @@ function ChatMgr:handleStreamStart(msg)
     local account = sa:get_account()
     account.network = networks[account.network]
 
-    local t = {
-      read_started = false,
-      write_started = false,
-      stream_id = stream.id,
-      account_id = account.id,
-      cur_stream_account_id = account.id
-    }
-
-    local function relay(msg)
-      msg.account_id = account.id
-      msg.stream_id = stream.id
-      msg.network = account.network.name
-      publish('comment:in',msg)
+    local function relay(_msg)
+      _msg.account_id = account.id
+      _msg.stream_id = stream.id
+      _msg.network = account.network.name
+      publish('comment:in',_msg)
       for _,v in pairs(stream:get_webhooks()) do
-        v:fire_event('comment:in',msg)
+        v:fire_event('comment:in',_msg)
       end
     end
 
@@ -231,15 +226,18 @@ function ChatMgr:handleStreamEnd(msg)
     return nil
   end
 
+-- note: self.streams[stream.id][tarAccount.id].aux[account.id].read_thread = spawn(function()
   if self.streams[stream.id] then
-    for k,v in pairs(self.streams[stream.id]) do -- k is account id
+    for k,v in pairs(self.streams[stream.id]) do -- k is tarAccount.id
       if v then
         for i,j in pairs(v.aux) do
-          if j and j.read_thread then
-            kill(j.read_thread)
-          end
-          if j and j.viewcount_thread then
-            kill(j.viewcount_thread)
+          if j then
+            if j.stop then
+              j.stop()
+            end
+            if j.stop_viewcount then
+              j.stop_viewcount()
+            end
           end
           j.send = nil
           writers:set(stream.id .. '-' .. k .. '-' .. i, nil)

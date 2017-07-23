@@ -1,3 +1,4 @@
+-- luacheck: globals ngx
 local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
@@ -7,19 +8,25 @@ local decode_with_secret = require('lapis.util.encoding').decode_with_secret
 local to_json   = require('lapis.util').to_json
 local from_json = require('lapis.util').from_json
 local slugify = require('lapis.util').slugify
-local http = require'resty.http'
+local http = require'multistreamer.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
 local string = require'multistreamer.string'
 local format = string.format
 local len = string.len
+local split = string.split
+local sub = string.sub
+local match = string.match
+local find = string.find
+local gsub = string.gsub
+local to_table = string.to_table
+local escape_markdown = string.escape_markdown
 local insert = table.insert
-local concat = table.concat
 local sort = table.sort
 local tonumber = tonumber
 local ngx_log = ngx.log
 local ngx_err = ngx.ERR
-local ngx_debug = ngx.DEBUG
+local sleep = ngx.sleep
 local IRCClient = require'multistreamer.irc.client'
 
 local Account = require'models.account'
@@ -27,73 +34,65 @@ local StreamAccount = require'models.stream_account'
 
 local M = {}
 
+M.name = 'twitch'
 M.displayname = 'Twitch'
 M.allow_sharing = true
-M.icon = '<svg class="chaticon twitch" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="1.414"><g fill-rule="nonzero"><path d="M1.393 0L.35 2.783v11.13h3.824V16h2.088l2.085-2.088h3.13L15.65 9.74V0H1.394zm1.39 1.39H14.26v7.653l-2.435 2.435H8l-2.085 2.085v-2.085H2.783V1.39z"/><path d="M6.61 8.348H8V4.175H6.61v4.173zm3.824 0h1.39V4.175h-1.39v4.173z"/></g></svg>'
-
 M.read_comments = true
 M.write_comments = true
+M.redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/twitch'
 
-local api_uri = 'https://api.twitch.tv/kraken'
+M.icon =
+  '<svg class="chaticon twitch" viewBox="0 0 16 16" xmlns="http://www.w3.or' ..
+  'g/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="rou' ..
+  'nd" stroke-miterlimit="1.414"><g fill-rule="nonzero"><path d="M1.393 0L.' ..
+  '35 2.783v11.13h3.824V16h2.088l2.085-2.088h3.13L15.65 9.74V0H1.394zm1.39 ' ..
+  '1.39H14.26v7.653l-2.435 2.435H8l-2.085 2.085v-2.085H2.783V1.39z"/><path ' ..
+  'd="M6.61 8.348H8V4.175H6.61v4.173zm3.824 0h1.39V4.175h-1.39v4.173z"/></g' ..
+  '></svg>'
+
+local api_url = 'https://api.twitch.tv/kraken'
 local twitch_config = config.networks.twitch
+
+local function http_error_handler(res)
+  return from_json(res.body).message
+end
 
 local function twitch_api_client(access_token)
   if not access_token then
     return false,'access_token required'
   end
 
-  local t = {}
-  t.httpc = http.new()
-  t.access_token = access_token
+  local httpc = http.new(http_error_handler)
 
-  t.request = function(self,method,endpoint,params,headers,body)
-    local uri = api_uri .. endpoint
+  local _request = httpc.request
+
+  httpc.request = function(self,method,endpoint,params,headers,body)
+    local url = api_url .. endpoint
     local req_headers = {
-      ['Authorization'] = 'OAuth ' .. self.access_token,
+      ['Authorization'] = 'OAuth ' .. access_token,
       ['Accept'] = 'application/vnd.twitchtv.v5+json',
     }
-    if params then
-      uri = uri .. '?' .. encode_query_string(params)
-    end
     if headers then
       for k,v in pairs(headers) do
           req_headers[k] = v
       end
     end
 
-    local res, err = self.httpc:request_uri(uri, {
-      method = method,
-      headers = req_headers,
-      body = body,
-    })
-    if body then ngx_log(ngx_debug,body) end
-
-    if err then
-      ngx_log(ngx_err,err)
-      return false, { error = err }
-    end
-
-    if res and type(res.status) ~= 'number' then
-      res.status = tonumber(res.status:find('^%d+'))
-    end
-
-    if res.status > 400 then
-      ngx_log(ngx_err,res.body)
-      return false, from_json(res.body)
-    end
-    ngx_log(ngx_debug,res.body)
-
-    return from_json(res.body), nil
+    local res, err = _request(self,method,url,params,req_headers,body)
+    if err then return false, err end
+    return from_json(res.body)
   end
 
-  t.get = function(self,endpoint,params,headers)
-    return self:request('GET',endpoint,params,headers)
+  httpc.get = function(self,endpoint,params,headers)
+    return httpc.request(self,'GET',endpoint,params,headers)
   end
-  t.put = function(self,endpoint,params,headers)
-    return self:request('PUT',endpoint,nil,headers,to_json(params))
+  httpc.put = function(self,endpoint,params,headers)
+    return httpc.request(self,'PUT',endpoint,nil,headers,to_json(params))
   end
 
-  return t,nil
+  setmetatable(httpc,httpc)
+
+  return httpc,nil
 
 end
 
@@ -114,10 +113,10 @@ function M.metadata_fields()
   }
 end
 
-function M.metadata_form(account, stream)
+function M.metadata_form(_, stream)
 
   local form = M.metadata_fields()
-  for i,k in ipairs(form) do
+  for _,k in ipairs(form) do
     k.value = stream:get(k.key)
   end
 
@@ -126,7 +125,7 @@ end
 
 
 function M.get_oauth_url(user, stream_id)
-  return format('%s/oauth2/authorize?',api_uri)..
+  return format('%s/oauth2/authorize?',api_url)..
          encode_query_string({
            response_type = 'code',
            force_verify = 'true',
@@ -145,7 +144,7 @@ function M.register_oauth(params)
     return false, nil, 'Twitch Error: ' .. params.error
   end
 
-  local user, err = decode_with_secret(decode_base64(params.state))
+  local user, _ = decode_with_secret(decode_base64(params.state))
 
   if not user then
     return false, nil, 'Error: User not found'
@@ -155,7 +154,8 @@ function M.register_oauth(params)
     return false, nil, 'Twitch Error: failed to get temporary client token'
   end
 
-  local httpc = http.new()
+  local httpc = http.new(http_error_handler)
+
   local body = encode_query_string({
     client_id = twitch_config.client_id,
     client_secret = twitch_config.client_secret,
@@ -165,31 +165,22 @@ function M.register_oauth(params)
     grant_type = 'authorization_code',
   })
 
-  local res, err = httpc:request_uri(api_uri .. '/oauth2/token', {
-    method = 'POST',
-    body = body,
-  });
+  local res, err = httpc:post(api_url .. '/oauth2/token', nil, nil, body)
 
-  if res and type(res.status) ~= 'number' then
-    res.status = tonumber(res.status:find('^%d+'))
-  end
-
-  if err or res.status >= 400 then
-    return false, nil, err or res.body
-  end
+  if err then return false, nil, err end
 
   local creds = from_json(res.body)
 
   local tclient = twitch_api_client(creds.access_token)
-  local user_info, err = tclient:get('/user')
+  local user_info, user_err = tclient:get('/user')
 
-  if err then
-    return false, nil, err
+  if user_err then
+    return false, nil, user_err
   end
 
-  local channel_info, err = tclient:get('/channel')
-  if err then
-    return false, nil, err
+  local channel_info, channel_err = tclient:get('/channel')
+  if channel_err then
+    return false, nil, channel_err
   end
 
   local sha1 = resty_sha1:new()
@@ -243,10 +234,10 @@ end
 function M.publish_start(account, stream)
   local stream_o = stream
 
-  local account = account:get_all()
-  local stream = stream:get_all()
+  account = account:get_all()
+  stream = stream:get_all()
 
-  local rtmp_url = twitch_config.ingest_server:gsub('/+$','') .. '/'
+  local rtmp_url = gsub(twitch_config.ingest_server,'/+$','') .. '/'
 
   if account.stream_key then
     rtmp_url = rtmp_url .. account.stream_key
@@ -285,7 +276,7 @@ function M.publish_start(account, stream)
   return rtmp_url, nil
 end
 
-function M.publish_stop(account, stream)
+function M.publish_stop(_, stream)
   stream:unset('http_url')
 
   return true
@@ -310,62 +301,99 @@ function M.check_errors(account)
   return false
 end
 
-function M.notify_update(account, stream)
+function M.notify_update(_,_)
   return true
 end
 
+local function linkify(token)
+  if find(token,"^https?://") then
+    return format('[%s](%s)',token,token)
+  else
+    return escape_markdown(token)
+  end
+end
+
 local function emojify(message,emotes)
-  local msgTable = message:to_table()
-  local emotes = emotes:split('/')
-  for i,v in ipairs(emotes) do
-    local t = v:find(':')
+  local msgTable = to_table(message)
+  emotes = split(emotes,'/')
+  for _,v in ipairs(emotes) do
+    local t = find(v,':')
     if t then
-      local emote = v:sub(1,t-1)
-      local ranges = v:sub(t+1):split(',')
+      local emote = sub(v,1,t-1)
+      local ranges = split(sub(v,t+1),',')
       for _,r in ipairs(ranges) do
-        local b,e = r:match('(%d+)-(%d+)')
+        local b,e = match(r,'(%d+)-(%d+)')
         b = tonumber(b) + 1
         e = tonumber(e) + 1
-        local alt_text = message:sub(b,e)
+        local alt_text = sub(message,b,e)
         for i=b,e,1 do
           msgTable[i] = nil
         end
-        msgTable[b] = string.format('![%s](http://static-cdn.jtvnw.net/emoticons/v1/%s/1.0)',alt_text,emote)
+        msgTable[b] = format('![%s](http://static-cdn.jtvnw.net/emoticons/v1/%s/1.0)',alt_text,emote)
       end
     end
   end
+
   local keys = {}
-  local outmsg = {}
-  for k,v in pairs(msgTable) do
+
+  for k,_ in pairs(msgTable) do
     insert(keys,k)
   end
+
   sort(keys)
-  for i,k in ipairs(keys) do
+
+  local cur_token = ''
+  local outmsg = ''
+
+  for _,k in ipairs(keys) do
     local text = msgTable[k]
-    if text:len() == 1 then
-      text = text:escape_markdown()
+    if len(text) > 1 then
+      if len(cur_token) > 0 then
+        outmsg = outmsg .. linkify(cur_token)
+        cur_token = ''
+      end
+      outmsg = outmsg .. text
+    else
+      if text == ' ' then
+        outmsg = outmsg .. linkify(cur_token) .. ' '
+        cur_token = ''
+      else
+        cur_token = cur_token .. text
+      end
     end
-    insert(outmsg,text)
   end
-  return table.concat(outmsg,'')
+
+  if len(cur_token) > 0 then
+    outmsg = outmsg .. linkify(cur_token)
+  end
+  return outmsg
 end
 
-function M.create_viewcount_func(account, stream, send)
+function M.create_viewcount_func(account, _, send)
   if not send then return nil end
 
   local tclient = twitch_api_client(account['token'])
+  local viewRunning = true
+  local viewcount_func, stop_viewcount_func
 
-  return function()
-    while true do
+  viewcount_func = function()
+    while viewRunning do
       local res, err = tclient:get('/streams/' .. account['channel_id'])
       if not err then
         if type(res.stream) == 'table' then
           send({viewer_count = tonumber(res.stream.viewers)})
         end
       end
-      ngx.sleep(60)
+      sleep(60)
     end
+    return true
   end
+
+  stop_viewcount_func = function()
+    viewRunning = false
+  end
+
+  return viewcount_func, stop_viewcount_func
 
 end
 
@@ -419,26 +447,31 @@ function M.create_comment_funcs(account, stream, send)
     send(msg)
   end
 
-  if not irc_connect() then return nil,nil end
+  local irc_ok, irc_err = irc_connect()
+  if not irc_ok then return false, irc_err end
+
+  local running = true
+
+  local stop_func = function()
+    running = false
+    irc:quit()
+  end
 
   local read_func = function()
-    local irc_err
-    local running = true
     if send then
       irc:onEvent('message',sendMsg)
       irc:onEvent('emote',sendMsg)
     end
     while running do
-      local ok, err = irc:cruise()
-      if not ok then ngx_log(ngx_err,'[Twitch] IRC Client error: ' .. err) end
-      ok, err = irc_connect()
-      if not ok then
-        ngx_log(ngx_err,'[Twitch] IRC Connection error: ' .. err)
-        irc_err = err
-        running = false
+      local cruise_ok, cruise_err = irc:cruise()
+      if not cruise_ok and running then ngx_log(ngx_err,'[Twitch] IRC Client error: ' .. cruise_err) end
+      local reconnect_ok, reconnect_err = irc_connect()
+      if not reconnect_ok and running then
+        ngx_log(ngx_err,'[Twitch] IRC Connection error: ' .. reconnect_err)
+        return false, reconnect_err
       end
     end
-    return false, irc_err
+    return true
   end
 
   local write_func = function(message)
@@ -455,14 +488,14 @@ function M.create_comment_funcs(account, stream, send)
           name = account.channel,
         },
         text = message.text,
-        markdown = message.text:escape_markdown(),
+        markdown = escape_markdown(message.text),
         type = message.type,
       }
       send(msg)
     end
   end
 
-  return read_func, write_func
+  return read_func, write_func, stop_func
 end
 
 return M

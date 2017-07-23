@@ -36,6 +36,7 @@ local sql_files = {
   [6] = streamer_dir .. '/sql/1489949143.sql',
   [7] = streamer_dir .. '/sql/1492032677.sql',
   [8] = streamer_dir .. '/sql/1497734864.sql',
+  [9] = streamer_dir .. '/sql/1500610370.sql',
 }
 
 if(not arg[1] or not commands[arg[1]]) then
@@ -138,7 +139,7 @@ elseif(arg[1] == 'psql') then
 
 elseif(arg[1] == 'initdb') then
   posix.setenv('PGPASSWORD',config.postgres.password)
-  for i,f in ipairs(sql_files) do
+  for _,f in ipairs(sql_files) do
     local pid, errmsg = posix.fork()
     if pid == nil then
       print(errmsg)
@@ -168,6 +169,9 @@ elseif(arg[1] == 'push') then
   local ffmpeg_args = {
     '-v',
     'error',
+    '-copyts',
+    '-vsync',
+    '0',
     '-i',
     config.private_rtmp_url ..'/'.. config.rtmp_prefix ..'/'.. stream.uuid,
   }
@@ -184,10 +188,12 @@ elseif(arg[1] == 'push') then
     args = { '-c:v','copy','-c:a','copy' }
   end
 
-  for i,v in pairs(args) do
+  for _,v in pairs(args) do
     insert(ffmpeg_args,v)
   end
 
+  insert(ffmpeg_args,'-muxdelay')
+  insert(ffmpeg_args,'0')
   insert(ffmpeg_args,'-f')
   insert(ffmpeg_args,'flv')
   insert(ffmpeg_args,sa.rtmp_url)
@@ -212,7 +218,7 @@ elseif(arg[1] == 'pull') then
   }
 
   local args = shell.parse(stream.ffmpeg_pull_args)
-  for i,v in pairs(args) do
+  for _,v in pairs(args) do
     insert(ffmpeg_args,v)
   end
   insert(ffmpeg_args,'-f')

@@ -76,6 +76,9 @@
 <option value="<%= o.value %>" <%= o.value == v.value and 'selected' or '' %>><%= o.label %></option>
 <% end %>
 </select>
+
+<% elseif v.type == 'checkbox' then %>
+<input <%= v.value and 'checked ' or ''%>type="checkbox" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>>
 <% end %>
 </div>
 <% end %>

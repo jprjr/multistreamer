@@ -1,3 +1,4 @@
+-- luacheck: globals ngx
 local Model = require('lapis.db.model').Model
 local config = require'multistreamer.config'
 local http = require'resty.http'
@@ -71,24 +72,24 @@ function User:login(username,password)
   return user, error
 end
 
-function User:read_session(res)
+function User.read_session(res)
   if res.session and res.session.user then
     local u_session = res.session.user
     if(encode_base64(hmac_sha1(config.secret,u_session.username)) == u_session.key) then
-      return self:find({ username = u_session.username })
+      return User:find({ username = u_session.username })
     end
   end
   if res.params.token then
-    return self:find({ access_token = res.params.token })
+    return User:find({ access_token = res.params.token })
   end
   return nil
 end
 
-function User:unwrite_session(res)
+function User:unwrite_session(res) -- luacheck: ignore
   res.session.user = nil
 end
 
-function User:read_auth(self)
+function User:read_auth()
   local auth = self.req.headers['authorization']
   if not auth then
     return nil
@@ -100,7 +101,7 @@ function User:read_auth(self)
   return User:login(username,password)
 end
 
-function User:read_bearer(self)
+function User:read_bearer()
   local auth = self.req.headers['authorization']
   if not auth then
     return nil
