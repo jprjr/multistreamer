@@ -111,7 +111,7 @@ app:match('login', config.http_prefix .. '/login', respond_to({
 }))
 
 app:match('logout', config.http_prefix .. '/logout', function(self)
-  User:unwrite_session(self)
+  User.unwrite_session(self)
   return { redirect_to = self:url_for('site-root') }
 end)
 

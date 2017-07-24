@@ -30,7 +30,7 @@ local pairs = pairs
 local ipairs = ipairs
 
 local function read_bearer(self)
-  self.user = User:read_bearer(self)
+  self.user = User.read_bearer(self)
   if not self.user then
     return self:write({ status = 401, json = { error = 'endpoint requires authorization' }})
   end
@@ -140,7 +140,7 @@ end
 
 
 app:match('api-v1-auth',api_prefix .. '/auth', function(self)
-  local user = User:read_auth(self)
+  local user = User.read_auth(self)
   if not user then
     return { status = 401, json = { error = 'endpoint requires authorization' } }
   end

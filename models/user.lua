@@ -8,6 +8,9 @@ local hmac_sha1 = ngx.hmac_sha1
 local resty_random = require'resty.random'
 local resty_md5 = require "resty.md5"
 local str = require'resty.string'
+local match = string.match
+local upper = string.upper
+local sub = string.sub
 
 local ngx_log = ngx.log
 local ngx_err = ngx.ERR
@@ -21,7 +24,7 @@ local function make_token()
     local md5 = resty_md5:new()
     md5:update(rand)
     local digest = md5:final()
-    return str.to_hex(digest):upper():sub(1,20)
+    return sub(upper(str.to_hex(digest)),1,20)
 end
 
 local User = Model:extend('users', {
@@ -85,29 +88,29 @@ function User.read_session(res)
   return nil
 end
 
-function User:unwrite_session(res) -- luacheck: ignore
+function User.unwrite_session(res)
   res.session.user = nil
 end
 
-function User:read_auth()
-  local auth = self.req.headers['authorization']
+function User.read_auth(res)
+  local auth = res.req.headers['authorization']
   if not auth then
     return nil
   end
 
-  local userpassword = decode_base64(auth:match("Basic%s+(.*)"))
+  local userpassword = decode_base64(match(auth,"Basic%s+(.*)"))
   if not userpassword then return nil end
-  local username, password = userpassword:match("([^:]*):(.*)")
+  local username, password = match(userpassword,"([^:]*):(.*)")
   return User:login(username,password)
 end
 
-function User:read_bearer()
-  local auth = self.req.headers['authorization']
+function User.read_bearer(res)
+  local auth = res.req.headers['authorization']
   if not auth then
     return nil
   end
 
-  local bearertoken = auth:match("Bearer%s(.*)")
+  local bearertoken = match(auth,"Bearer%s(.*)")
   if not bearertoken then return nil end
   return User:find({ access_token = bearertoken })
 end
