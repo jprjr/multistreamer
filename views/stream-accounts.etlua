@@ -9,7 +9,7 @@
 
 <% for i, account in pairs(accounts) do %>
 <div class="pure-control-group">
-<label for="account.<%= account.id %>"><%= account.shared and '(Shared) ' or '' %><%= account.network.displayname %> - <%= account.name %></label>
+<label for="account.<%= account.id %>"><%= account.shared and '(Shared) ' or '' %><%= networks[account.network].displayname %> - <%= account.name %></label>
 <input type="checkbox" id="account.<%= account.id %>" name="account.<%= account.id %>" <% if stream and stream:get_account(account) then %>checked<% end %> />
 </div>
 <% end %>

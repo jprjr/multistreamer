@@ -1,6 +1,6 @@
 <script type="text/javascript">
 var submit_types = [<% for _,submit_type in ipairs({ 'dashboard', 'accounts', 'permissions', 'general', 'advanced', 'webhooks' }) do -%>
-<% if submit_type ~= active_submenu and (submit_type == 'dashboard' and metadata_level > 0) or metadata_level == 2 then %>'<%= submit_type %>',<% end -%>
+<% if submit_type ~= active_submenu and (submit_type == 'dashboard' and metadata_level > 0) or stream:check_owner(user) then %>'<%= submit_type %>',<% end -%>
 <% end -%>
 ];
 

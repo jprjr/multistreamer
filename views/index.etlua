@@ -32,18 +32,18 @@
 <% for k,v in pairs(accounts) do %>
 <% if v.network then %>
 
-<li><% if v.shared then %>(Shared by <%= v.shared_from %>) <% end %><%= v.network.displayname -%>
+<li><% if v.shared then %>(Shared by <%= v.shared_from %>) <% end %><%= networks[v.network].displayname -%>
 <% if v.name then %>: <%= v.name -%> <% end %><% if v.errors then %><span class="error">Error encountered: <%= v.errors %></span><% end %>
 
 <ul>
 
-<% if v.network.create_form and not v.shared then %>
-<li><a href="<%= url_for('account-'..v.network.name) %>/<%= v.id %>">Edit</a></li>
+<% if networks[v.network].create_form and not v.shared then %>
+<li><a href="<%= url_for('account-'..networks[v.network].name) %>/<%= v.id %>">Edit</a></li>
 <% end %>
 
 <li><a href="<%= url_for('account-delete',{id = v.id}) %>"><%= v.shared and 'Remove' or 'Delete'%></a></li>
 
-<% if not v.shared and v.network.allow_sharing then %>
+<% if not v.shared and networks[v.network].allow_sharing then %>
 <li><a href="<%= url_for('account-share',{id = v.id}) %>">Share</a></li>
 <% end %>
 </ul>

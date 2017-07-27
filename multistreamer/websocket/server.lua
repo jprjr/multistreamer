@@ -136,7 +136,7 @@ function Server:websocket_relay()
       if self.ws.fatal then
         return nil, err
       else
-        ngx_log(ngx_debug,'sending ping')
+        ngx_log(ngx_debug,'[Websocket] sending ping')
         self.ws:send_ping('ping')
       end
 
@@ -145,7 +145,7 @@ function Server:websocket_relay()
       return true, nil
 
     elseif typ == 'pong' then
-      ngx_log(ngx_debug,'received pong')
+      ngx_log(ngx_debug,'[Websocket] received pong')
 
     elseif typ == 'text' then
       local msg = from_json(data)
