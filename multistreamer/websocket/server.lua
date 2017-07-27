@@ -1,4 +1,8 @@
 -- luacheck: globals ngx networks uuid
+local ngx = ngx
+local networks = networks
+local uuid = uuid
+
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local ws_server = require'resty.websocket.server'

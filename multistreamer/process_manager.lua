@@ -1,5 +1,8 @@
 -- luacheck: globals ngx bash_path lua_bin
 local ngx = ngx
+local bash_path = bash_path
+local lua_bin = lua_bin
+
 local config = require'multistreamer.config'
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint

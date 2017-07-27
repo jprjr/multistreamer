@@ -1,4 +1,5 @@
 --luacheck: globals ngx networks
+--local ngx = ngx
 local Model = require('lapis.db.model').Model
 local pairs = pairs
 local insert = table.insert

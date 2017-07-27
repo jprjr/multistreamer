@@ -1,5 +1,6 @@
 -- luacheck: globals ngx networks
 local ngx = ngx
+local networks = networks
 local lapis = require'lapis'
 local app = lapis.Application()
 local config = require'multistreamer.config'
@@ -219,8 +220,6 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       account.shared = true
       account.shared_from = u.username
       insert(self.accounts,account)
-      if self.stream then
-      end
     end
     sort(self.accounts, sort_accounts)
     sort(self.stream_accounts, sort_accounts)
@@ -440,7 +439,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       end
 
       for _,account in pairs(self.stream_accounts) do
-        local sa = self.stream:get_stream_account(account) 
+        local sa = self.stream:get_stream_account(account)
         local sa_keys = sa:get_all()
         local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
         if ffmpeg_args and len(ffmpeg_args) > 0 then
@@ -520,7 +519,12 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
             local rtmp_url, err = networks[account.network].publish_start(account:get_keystore(),sa:get_keystore())
             if (not rtmp_url) or err then
               self.session.status_msg = { type = 'error', msg = 'Failed to start pusher: ' .. err}
-              ngx_log(ngx_warn,format('app:publish-start: failed to start %s (%s): %s',account.name, networks[account.network].name,err))
+              ngx_log(ngx_warn,format(
+                'app:publish-start: failed to start %s (%s): %s',
+                account.name,
+                networks[account.network].name,
+                err
+              ))
               return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=dashboard' }
             end
             sa:update({rtmp_url = rtmp_url})
@@ -645,7 +649,12 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
         local sa = v[2]
         local rtmp_url, rtmp_err = networks[account.network].publish_start(account:get_keystore(),sa:get_keystore())
         if (not rtmp_url) or rtmp_err then
-          ngx_log(ngx_warn,format('app:publish-start: failed to start %s (%s): %s',account.name, networks[account.network].name,rtmp_err))
+          ngx_log(ngx_warn,format(
+            'app:publish-start: failed to start %s (%s): %s',
+            account.name,
+            networks[account.network].name,
+            rtmp_err
+          ))
           return plain_err_out(self,rtmp_err)
         end
         sa:update({rtmp_url = rtmp_url})
