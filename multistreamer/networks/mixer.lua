@@ -1,4 +1,5 @@
 -- luacheck: globals ngx
+local ngx = ngx
 local Account = require'models.account'
 local StreamAccount = require'models.stream_account'
 local config = require'multistreamer.config'

@@ -1,4 +1,5 @@
 -- luacheck: globals ngx
+local ngx = ngx
 local config = require'multistreamer.config'
 local table_insert = table.insert
 local table_sort = table.sort

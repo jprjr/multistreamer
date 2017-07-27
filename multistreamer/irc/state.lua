@@ -157,6 +157,8 @@ ircMessage:
 ]]
 
 -- luacheck: globals ngx uuid
+local ngx = ngx
+local uuid = uuid
 
 local date = require'date'
 local slugify = require('lapis.util').slugify

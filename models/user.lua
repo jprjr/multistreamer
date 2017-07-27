@@ -1,4 +1,5 @@
 -- luacheck: globals ngx
+local ngx = ngx
 local Model = require('lapis.db.model').Model
 local config = require'multistreamer.config'
 local http = require'resty.http'

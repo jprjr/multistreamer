@@ -1,5 +1,7 @@
 -- luacheck: globals ngx networks
 local ngx = ngx
+local networks = networks
+
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
 local publish = redis.publish

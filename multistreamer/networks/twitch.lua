@@ -1,4 +1,6 @@
 -- luacheck: globals ngx
+local ngx = ngx
+
 local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
