@@ -151,6 +151,9 @@ config({'development','production'}, {
   -- see https://github.com/jprjr/sockexec for installation details
   -- sockexec_path = '/tmp/exec.sock',
 
+  -- allow/disallow transcoding (default: true)
+  -- allow_transcoding = true,
+
 })
 
 
