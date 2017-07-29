@@ -4,11 +4,12 @@
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit') %><% if stream then %>/<%= stream.id %><% end %>?subset=advanced" enctype="multipart/form-data">
 
+<% if config.allow_custom_puller then %>
 <div class="pure-control-group">
 <label for="ffmpeg_pull_args">FFMPEG Pull Args</label>
 <input type="text" name="ffmpeg_pull_args" <% if stream and stream.ffmpeg_pull_args then %>value="<%= stream.ffmpeg_pull_args %>"<% end %>/>
-</fieldset>
 </div>
+<% end %>
 
 
 <div class="pure-controls">
