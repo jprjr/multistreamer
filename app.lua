@@ -248,6 +248,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       local preview_required = nil
       local stream_name = nil
       if self.stream then
+        if not self.stream:check_owner(self.user) then
+          return err_out(self,'Stream not found')
+        end
         preview_required = self.stream.preview_required
         stream_name = self.stream.name
       end
@@ -275,6 +278,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     end -- }}}
 
     if self.params.subset == 'accounts' then -- {{{
+      if not self.stream:check_owner(self.user) then
+        return err_out(self,'Stream not found')
+      end
       local accounts = {}
       for _,account in pairs(self.accounts) do
         if self.params['account.'..account.id] and self.params['account.'..account.id] == 'on' then
@@ -290,6 +296,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     end -- }}}
 
     if self.params.subset == 'advanced' then -- {{{
+      if not self.stream:check_owner(self.user) then
+        return err_out(self,'Stream not found')
+      end
       if not self.params.ffmpeg_pull_args or len(self.params.ffmpeg_pull_args) == 0 then
         if self.stream.ffmpeg_pull_args ~= nil then
           self.stream:update({ffmpeg_pull_args = db.NULL})
@@ -306,6 +315,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     end -- }}}
 
     if self.params.subset == 'permissions' then -- {{{
+      if not self.stream:check_owner(self.user) then
+        return err_out(self,'Stream not found')
+      end
       for _,other_user in pairs(self.users) do
         local chat_level = 0
         local metadata_level = 0
@@ -338,6 +350,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     end -- }}}
 
     if self.params.subset == 'webhooks' then -- {{{
+      if not self.stream:check_owner(self.user) then
+        return err_out(self,'Stream not found')
+      end
       local webhook_created = false
       local webhook_updated = false
       local webhook_status = 'success'
