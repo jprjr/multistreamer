@@ -1,9 +1,9 @@
 <% if account.shared then %>
 <h3>Remove Account</h3>
-<p>This will remove account <%= account.name %> (<%= account.network.displayname %>) from your list of available accounts</p>
+<p>This will remove account <%= account.name %> (<%= networks[account.network].displayname %>) from your list of available accounts</p>
 <% else %>
 <h3>Delete Account</h3>
-<p>This will delete account <%= account.name %> (<%= account.network.displayname %>)</p>
+<p>This will delete account <%= account.name %> (<%= networks[account.network].displayname %>)</p>
 <% end %>
 
 

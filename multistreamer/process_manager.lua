@@ -1,5 +1,8 @@
 -- luacheck: globals ngx bash_path lua_bin
 local ngx = ngx
+local bash_path = bash_path
+local lua_bin = lua_bin
+
 local config = require'multistreamer.config'
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
@@ -43,7 +46,6 @@ local function start_process(callback,client,...)
     while(not err) do
       data, typ, err= client:receive()
       if err and err == 'timeout' then
-        ngx_log(ngx_debug,'[Process Manager] timeout, looping')
         err = nil
       end
       if typ == 'termsig' then
@@ -52,11 +54,11 @@ local function start_process(callback,client,...)
         errr = 'signal: ' .. data
       elseif typ == 'exitcode' then
         if tonumber(data) > 0 then
-          ngx_log(ngx_err,'[Process Manager] Process ended with exit code: ' .. data)
+          ngx_log(ngx_err,'[Process Manager] Process ended with error exit code: ' .. data)
           ok = false
           errr = 'exitcode: ' .. data
         else
-          ngx_log(ngx_debug,'[Process Manager] Process ended normally')
+          ngx_log(ngx_debug,'[Process Manager] Process ended with normal exit code: ' .. data)
         end
       elseif typ == 'stdout' then
         ngx_log(ngx_err,'[Process Manager] stdout: ' .. data)

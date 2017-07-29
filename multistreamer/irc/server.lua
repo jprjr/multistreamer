@@ -1,4 +1,9 @@
 -- luacheck: globals ngx uuid start_time networks
+local ngx = ngx
+local uuid = uuid
+local start_time = start_time
+local networks = networks
+
 local IRCState = require'multistreamer.irc.state'
 local irc = require'multistreamer.irc'
 local config = require'multistreamer.config'
@@ -29,7 +34,6 @@ local ngx_error = ngx.ERROR
 local ngx_err = ngx.ERR
 local coro_status = coroutine.status
 local unpack = unpack or table.unpack -- luacheck: compat
-local networks = networks
 
 local redis = require'multistreamer.redis'
 local publish = redis.publish

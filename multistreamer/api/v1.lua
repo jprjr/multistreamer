@@ -1,4 +1,7 @@
 -- luacheck: globals ngx networks
+local ngx = ngx
+local networks = networks
+
 local lapis = require'lapis'
 local app = lapis.Application()
 local config = require'multistreamer.config'
