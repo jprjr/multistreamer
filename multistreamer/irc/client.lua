@@ -1,7 +1,7 @@
 -- luacheck: globals ngx
+local ngx = ngx
 local irc = require'multistreamer.irc'
 local string = require'multistreamer.string'
-local ngx = ngx
 local char = string.char
 local byte = string.byte
 local sub = string.sub
@@ -15,15 +15,14 @@ local unpack = unpack or table.unpack -- luacheck: compat
 local concat = table.concat
 
 local ngx_log = ngx.log
-local ngx_debug = ngx.DEBUG
 local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
 
 local IRCClient = {}
 IRCClient.__index = IRCClient
 
 local function ircline(...)
   local line = irc.format_line(...)
-  ngx_log(ngx_debug,line)
   return line .. '\r\n'
 end
 
@@ -129,10 +128,6 @@ function IRCClient:login(nickname,username,realname,password)
       return false, sock_err
     end
 
-    if data then
-      ngx_log(ngx_debug,data)
-    end
-
     local msg = irc.parse_line(data)
     if msg.command == '001' then
       logging_in = false
@@ -188,7 +183,6 @@ function IRCClient:cruise()
     end
     local msg
     if data then
-      ngx_log(ngx_debug,data)
       msg = irc.parse_line(data)
     else
       msg = irc.parse_line(partial)
@@ -201,6 +195,7 @@ function IRCClient:cruise()
 end
 
 function IRCClient:serverPing(msg)
+  ngx_log(ngx_debug,'[IRC] Received ping, sending pong')
   self.socket:send(ircline('PONG',msg.args[1]))
 end
 

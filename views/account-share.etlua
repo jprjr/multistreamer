@@ -1,6 +1,6 @@
 <h3>Share Account</h3>
 
-<p>Sharing settings for <%= account.name %> (<%= account.network.displayname %>)<p>
+<p>Sharing settings for <%= account.name %> (<%= networks[account.network].displayname %>)<p>
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('account-share', { id = account.id }) %>" enctype="multipart/form-data">
 

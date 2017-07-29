@@ -1,4 +1,8 @@
 -- luacheck: globals ngx networks uuid
+local ngx = ngx
+local networks = networks
+local uuid = uuid
+
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local ws_server = require'resty.websocket.server'
@@ -136,7 +140,7 @@ function Server:websocket_relay()
       if self.ws.fatal then
         return nil, err
       else
-        ngx_log(ngx_debug,'sending ping')
+        ngx_log(ngx_debug,'[Websocket] sending ping')
         self.ws:send_ping('ping')
       end
 
@@ -145,7 +149,7 @@ function Server:websocket_relay()
       return true, nil
 
     elseif typ == 'pong' then
-      ngx_log(ngx_debug,'received pong')
+      ngx_log(ngx_debug,'[Websocket] received pong')
 
     elseif typ == 'text' then
       local msg = from_json(data)

@@ -1,4 +1,6 @@
 -- luacheck: globals ngx networks
+local ngx = ngx
+local networks = networks
 local lapis = require'lapis'
 local app = lapis.Application()
 local config = require'multistreamer.config'
@@ -25,11 +27,14 @@ local tonumber = tonumber
 local pairs = pairs
 local len = string.len
 local lower = string.lower
+local format = string.format
 local insert = table.insert
 local sort = table.sort
 local streams_dict = ngx.shared.streams
 local status_dict = ngx.shared.status
 local capture = ngx.location.capture
+local ngx_log = ngx.log
+local ngx_warn = ngx.WARN
 
 local pid = ngx.worker.pid()
 
@@ -55,6 +60,10 @@ app:before_filter(function(self)
   self.public_irc_port = config.public_irc_port
   self.public_irc_ssl = config.public_irc_ssl
 end)
+
+local function sort_accounts(a,b)
+  return networks[a.network].displayname < networks[b.network].displayname
+end
 
 local function err_out(req, err)
   req.session.status_msg = { type = 'error', msg = err }
@@ -89,7 +98,6 @@ local function get_all_streams_accounts(uuid)
   local ret = {}
   for _,sa in pairs(sas) do
     local account = sa:get_account()
-    account.network = networks[account.network]
     insert(ret, { account, sa } )
   end
   return stream, ret, nil
@@ -124,6 +132,11 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
       if not self.stream then
         return err_out(self,'Stream not found')
+      end
+
+      self.stream_accounts = {}
+      for _,v in pairs(self.stream:get_streams_accounts()) do
+        insert(self.stream_accounts,v:get_account())
       end
 
       self.metadata_level = self.stream:check_meta(self.user)
@@ -192,18 +205,12 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     self.webhook_events = Webhook.events
 
     self.accounts = {}
-    self.stream_accounts = {}
+    self.stream_accounts = self.stream_accounts or {}
+
     local acc = self.user:get_accounts()
     if not acc then acc = {} end
     for _,account in pairs(acc) do
-      account.network = networks[account.network]
       insert(self.accounts,account)
-      if self.stream then
-        local sa = self.stream:get_stream_account(account)
-        if sa then
-          insert(self.stream_accounts,account)
-        end
-      end
     end
 
     local sas = self.user:get_shared_accounts()
@@ -212,21 +219,10 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       local u = account:get_user()
       account.shared = true
       account.shared_from = u.username
-      account.network = networks[account.network]
       insert(self.accounts,account)
-      if self.stream then
-        local _sa = self.stream:get_stream_account(account)
-        if _sa then
-          insert(self.stream_accounts,account)
-        end
-      end
     end
-    sort(self.accounts, function(a,b)
-      return a.network.displayname < b.network.displayname
-    end)
-    sort(self.stream_accounts, function(a,b)
-      return a.network.displayname < b.network.displayname
-    end)
+    sort(self.accounts, sort_accounts)
+    sort(self.stream_accounts, sort_accounts)
     self.public_rtmp_url = config.public_rtmp_url
     self.rtmp_prefix = config.rtmp_prefix
   end,
@@ -247,7 +243,6 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
   end,
   POST = function(self)
     local stream_updated = false
-    local update_published = false
 
     if self.params.subset == 'general' then -- {{{
       local preview_required = nil
@@ -443,41 +438,43 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         self.stream:set('description',self.params.description)
       end
 
-      for _,account in pairs(self.accounts) do
+      for _,account in pairs(self.stream_accounts) do
         local sa = self.stream:get_stream_account(account)
-        if sa then
-          local sa_keys = sa:get_all()
-          local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
-          if ffmpeg_args and len(ffmpeg_args) > 0 then
-            if sa_keys.ffmpeg_args == nil then
-              sa:update({ffmpeg_args = ffmpeg_args })
+        local sa_keys = sa:get_all()
+        local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
+        if ffmpeg_args and len(ffmpeg_args) > 0 then
+          if sa_keys.ffmpeg_args == nil then
+            sa:update({ffmpeg_args = ffmpeg_args })
+            stream_updated = true
+          end
+        else
+          if sa_keys.ffmpeg_args ~= nil then
+            sa:update({ffmpeg_args = db.NULL })
+            stream_updated = true
+          end
+        end
+
+        local metadata_fields = networks[account.network].metadata_fields()
+        if not metadata_fields then metadata_fields = {} end
+        for _,field in pairs(metadata_fields) do
+          local v = self.params[field.key .. '.' .. account.id]
+          -- normalize checkbox to true/false
+          if v and len(v) > 0 then
+            if field.type == 'checkbox' then
+              v = true
+              if sa_keys[field.key] ~= nil then
+                sa_keys[field.key] = true
+              end
+            end
+
+            if sa_keys[field.key] ~= v then
+              sa:set(field.key,v)
               stream_updated = true
             end
           else
-            if sa_keys.ffmpeg_args ~= nil then
-              sa:update({ffmpeg_args = db.NULL })
+            if sa_keys[field.key] ~= nil then
+              sa:unset(field.key)
               stream_updated = true
-            end
-          end
-
-          local metadata_fields = account.network.metadata_fields()
-          if not metadata_fields then metadata_fields = {} end
-          for _,field in pairs(metadata_fields) do
-            local v = self.params[field.key .. '.' .. account.id]
-            -- normalize checkbox to true/false
-            if v and len(v) > 0 then
-              if field.type == 'checkbox' then
-                v = true
-              end
-              if sa_keys[field.key] ~= v then
-                sa:set(field.key,v)
-                stream_updated = true
-              end
-            else
-              if sa_keys[field.key] ~= nil then
-                sa:unset(field.key)
-                stream_updated = true
-              end
             end
           end
         end
@@ -519,9 +516,15 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         for _,account in pairs(self.accounts) do
           local sa = StreamAccount:find({stream_id = self.stream.id, account_id = account.id})
           if sa then
-            local rtmp_url, err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
+            local rtmp_url, err = networks[account.network].publish_start(account:get_keystore(),sa:get_keystore())
             if (not rtmp_url) or err then
               self.session.status_msg = { type = 'error', msg = 'Failed to start pusher: ' .. err}
+              ngx_log(ngx_warn,format(
+                'app:publish-start: failed to start %s (%s): %s',
+                account.name,
+                networks[account.network].name,
+                err
+              ))
               return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=dashboard' }
             end
             sa:update({rtmp_url = rtmp_url})
@@ -575,8 +578,8 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       streams_dict:set(self.stream.id, to_json(self.stream_status))
     end -- }}}
 
-    if stream_updated == true and update_published == false then
-      publish('stream:update',self.stream)
+    if stream_updated == true then
+      publish('stream:update',{ id = self.stream.id })
     end
 
     if not self.stream then
@@ -644,8 +647,14 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
       for _,v in pairs(sas) do
         local account = v[1]
         local sa = v[2]
-        local rtmp_url, rtmp_err = account.network.publish_start(account:get_keystore(),sa:get_keystore())
+        local rtmp_url, rtmp_err = networks[account.network].publish_start(account:get_keystore(),sa:get_keystore())
         if (not rtmp_url) or rtmp_err then
+          ngx_log(ngx_warn,format(
+            'app:publish-start: failed to start %s (%s): %s',
+            account.name,
+            networks[account.network].name,
+            rtmp_err
+          ))
           return plain_err_out(self,rtmp_err)
         end
         sa:update({rtmp_url = rtmp_url})
@@ -709,7 +718,7 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     for _,v in pairs(sas) do
       local account = v[1]
       local sa = v[2]
-      local _, account_err = account.network.notify_update(account:get_keystore(),sa:get_keystore())
+      local _, account_err = networks[account.network].notify_update(account:get_keystore(),sa:get_keystore())
       if err then
         return plain_err_out(self,account_err)
       end
@@ -758,7 +767,7 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
       local sa = v[2]
 
       sa:update({rtmp_url = db.NULL})
-      account.network.publish_stop(account:get_keystore(),sa:get_keystore())
+      networks[account.network].publish_stop(account:get_keystore(),sa:get_keystore())
     end
   end
 
@@ -786,8 +795,7 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   end
   for _,v in pairs(self.accounts) do
     if networks[v.network] then
-      v.network = networks[v.network]
-      v.errors = v.network.check_errors(v:get_keystore())
+      v.errors = networks[v.network].check_errors(v:get_keystore())
     end
   end
 
@@ -819,14 +827,7 @@ app:get('site-root', config.http_prefix .. '/', function(self)
   end
 
 
-  sort(self.accounts,function(a,b)
-    if not a.network.displayname then
-      return false
-    elseif not b.network.displayname then
-      return true
-    end
-    return a.network.displayname < b.network.displayname
-  end)
+  sort(self.accounts, sort_accounts)
 
   sort(self.streams,function(a,b)
     if a.live ~= b.live then
@@ -971,7 +972,6 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
       account.shared = true
     end
     self.account = account
-    self.account.network = networks[self.account.network]
   end,
   GET = function(_)
     return { render = "account-delete" }
@@ -1044,7 +1044,6 @@ app:match('account-share', config.http_prefix .. '/account/:id/share', respond_t
       return err_out(self,'Not authorized to share that account')
     end
     self.account = account
-    self.account.network = networks[self.account.network]
     self.users = User:select('where id != ?',self.user.id)
     for i,other_user in pairs(self.users) do
       local sa = SharedAccount:find({ account_id = self.account.id, user_id = other_user.id})

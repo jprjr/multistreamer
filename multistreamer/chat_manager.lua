@@ -1,5 +1,7 @@
 -- luacheck: globals ngx networks
 local ngx = ngx
+local networks = networks
+
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
 local publish = redis.publish
@@ -88,13 +90,13 @@ function ChatMgr:createChatFuncs(stream,account,tarAccount,relay)
     self.streams[stream.id][tarAccount.id].aux[account.id] = {}
   end
 
-  local read_func, write_func, stop_func = account.network.create_comment_funcs(
+  local read_func, write_func, stop_func = networks[account.network].create_comment_funcs(
     account:get_keystore():get_all(),
     sa:get_keystore():get_all(),
     relay
   )
 
-  local viewcount_func, stop_viewcount_func = account.network.create_viewcount_func(
+  local viewcount_func, stop_viewcount_func = networks[account.network].create_viewcount_func(
     account:get_keystore():get_all(),
     sa:get_keystore():get_all(),
     function(data)
@@ -162,8 +164,6 @@ function ChatMgr:handleChatWriterRequest(msg)
   local stream = Stream:find({ id = msg.stream_id })
   local account = Account:find({id = msg.account_id})
   local tarAccount = Account:find({ id = msg.cur_stream_account_id })
-  account.network = networks[account.network]
-  tarAccount.network = networks[tarAccount.network]
 
   local t = self:createChatFuncs(stream,account,tarAccount)
 
@@ -190,12 +190,11 @@ function ChatMgr:handleStreamStart(msg)
 
   for _,sa in pairs(sas) do
     local account = sa:get_account()
-    account.network = networks[account.network]
 
     local function relay(_msg)
       _msg.account_id = account.id
       _msg.stream_id = stream.id
-      _msg.network = account.network.name
+      _msg.network = networks[account.network].name
       publish('comment:in',_msg)
       for _,v in pairs(stream:get_webhooks()) do
         v:fire_event('comment:in',_msg)

@@ -1,4 +1,5 @@
 -- luacheck: globals ngx
+local ngx = ngx
 local Model = require('lapis.db.model').Model
 local config = require'multistreamer.config'
 local http = require'resty.http'
@@ -50,8 +51,6 @@ function User:login(username,password)
   local error = nil
   local user = nil
 
-  ngx_log(ngx_debug, 'checking if username is valid with auth_endpoint');
-
   local httpc = http.new()
   local res, err = httpc:request_uri(config.auth_endpoint, {
     method = "GET",
@@ -60,16 +59,16 @@ function User:login(username,password)
     }
   })
   if not res then
-    ngx_log(ngx_err, 'User: login - connection failed: ' .. err)
+    ngx_log(ngx_err, 'User:login: connection to ' .. config.auth_endpoint ..' failed: ' .. err)
     error = err
   elseif(res.status >= 200 and res.status < 300) then
-    ngx_log(ngx_debug, 'login succeeded');
+    ngx_log(ngx_debug, 'User:login: login succeeded for ' .. username);
     user = self:find({ username = username:lower() })
     if not user then
       user = self:create({username = username:lower(), access_token = make_token() })
     end
   else
-    ngx_log(ngx_debug, 'login failed');
+    ngx_log(ngx_debug, 'User:login: login failed for ' .. username);
   end
 
   return user, error

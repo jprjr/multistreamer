@@ -1,4 +1,7 @@
 -- luacheck: globals networks uuid
+local networks = networks
+local uuid = uuid
+
 local Model = require('lapis.db.model').Model
 local Keystore = require'models.keystore'
 local StreamAccount = require'models.stream_account'

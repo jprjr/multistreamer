@@ -1,4 +1,6 @@
 -- luacheck: globals ngx
+local ngx = ngx
+
 local config = require'multistreamer.config'
 local encode_query_string = require('lapis.util').encode_query_string
 local encode_base64 = require('lapis.util.encoding').encode_base64
@@ -26,6 +28,7 @@ local sort = table.sort
 local tonumber = tonumber
 local ngx_log = ngx.log
 local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
 local sleep = ngx.sleep
 local IRCClient = require'multistreamer.irc.client'
 
@@ -404,16 +407,19 @@ function M.create_comment_funcs(account, stream, send)
 
   local function irc_connect()
     local ok, err
+    ngx_log(ngx_debug,format('[%s] IRC: Connecting',M.displayname))
     ok, err = irc:connect('irc.chat.twitch.tv',6667)
     if not ok then
-      ngx_log(ngx_err,err)
+      ngx_log(ngx_err,format('[%s] IRC: Connection failed: %s',M.displayname,err))
       return false,err
     end
+    ngx_log(ngx_debug,format('[%s] IRC: logging in as %s',M.displayname,nick))
     ok, err = irc:login(nick,nil,nil,'oauth:'..account.token)
     if not ok then
-      ngx_log(ngx_err,err)
+      ngx_log(ngx_err,format('[%s] IRC: Login for "%s" failed: %s',M.displayname,nick,err))
       return false,err
     end
+    ngx_log(ngx_debug,format('[%s] IRC: logged in as %s',M.displayname,nick))
     irc:join(channel)
     irc:capreq('twitch.tv/tags')
     irc:capreq('twitch.tv/commands')
@@ -438,6 +444,8 @@ function M.create_comment_funcs(account, stream, send)
         name = nick,
       }
     end
+
+    ngx_log(ngx_debug,format('[%s] IRC: Received message from %s',M.displayname,msg.from.name))
 
     if event == 'message' then
       msg.type = 'text'
@@ -464,10 +472,20 @@ function M.create_comment_funcs(account, stream, send)
     end
     while running do
       local cruise_ok, cruise_err = irc:cruise()
-      if not cruise_ok and running then ngx_log(ngx_err,'[Twitch] IRC Client error: ' .. cruise_err) end
+
+      if not running then
+        ngx_log(ngx_debug,format('[%s] IRC Client ending normally for %s',M.displayname,nick))
+        return true
+      end
+
+      if not cruise_ok then
+        ngx_log(ngx_err,format('[%s] IRC Client error: %s, reconnecting',M.displayname,cruise_err))
+      end
+
       local reconnect_ok, reconnect_err = irc_connect()
-      if not reconnect_ok and running then
-        ngx_log(ngx_err,'[Twitch] IRC Connection error: ' .. reconnect_err)
+
+      if not reconnect_ok then
+        ngx_log(ngx_err,format('[%s] IRC Client error: %s, giving up',M.displayname,reconnect_err))
         return false, reconnect_err
       end
     end
