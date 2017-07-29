@@ -1,5 +1,4 @@
 -- luacheck: globals networks uuid
-local ngx = ngx
 local networks = networks
 local uuid = uuid
 
