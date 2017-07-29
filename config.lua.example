@@ -60,6 +60,11 @@ config({'development','production'}, {
 
   -- 'rtmp' just stores RTMP urls and has no config,
   networks = {
+    -- mixer = {
+    --   client_id = 'client_id',
+    --   client_secret = 'client_secret',
+    --   ingest_server = 'rtmp://somewhere',
+    -- },
     -- twitch = {
     --   client_id = 'client_id',
     --   client_secret = 'client_secret',
