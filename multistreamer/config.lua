@@ -76,6 +76,10 @@ if config.allow_transcoding == nil then
   config.allow_transcoding = true
 end
 
+if config.allow_custom_puller == nil then
+  config.allow_custom_puller = true
+end
+
 config.http_prefix      = gsub(config.http_prefix,'/+$','')
 config.public_http_url  = gsub(config.public_http_url,'/+$','')
 config.public_rtmp_url  = gsub(config.public_rtmp_url,'/+$','')

@@ -154,6 +154,9 @@ config({'development','production'}, {
   -- allow/disallow transcoding (default: true)
   -- allow_transcoding = true,
 
+  -- allow/disallow creating pullers (default: true)
+  -- allow_custom_puller = true,
+
 })
 
 
