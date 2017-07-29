@@ -72,6 +72,10 @@ if not config.lua_shared_dict_writers_size then
   config.lua_shared_dict_writers_size = '1m'
 end
 
+if config.allow_transcoding == nil then
+  config.allow_transcoding = true
+end
+
 config.http_prefix      = gsub(config.http_prefix,'/+$','')
 config.public_http_url  = gsub(config.public_http_url,'/+$','')
 config.public_rtmp_url  = gsub(config.public_rtmp_url,'/+$','')

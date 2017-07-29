@@ -42,6 +42,7 @@ app:enable('etlua')
 app.layout = require'views.layout'
 
 app:before_filter(function(self)
+  self.config = config
   self.networks = networks
   self.user = User.read_session(self)
   if self.session.status_msg then
