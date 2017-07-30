@@ -49,7 +49,7 @@ local function start_process(callback,client,...)
         err = nil
       end
       if typ == 'termsig' then
-        ngx_log(ngx_error,'[Process Manager] Process ended with signal ' .. data)
+        ngx_log(ngx_err,'[Process Manager] Process ended with signal ' .. data)
         ok = false
         errr = 'signal: ' .. data
       elseif typ == 'exitcode' then
