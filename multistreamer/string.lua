@@ -52,7 +52,7 @@ local markdown_table = {
 
 local function escape_markdown(self)
   if(len(self) == 1) then
-    return markdown_table[self]
+    return markdown_table[self] or self
   end
 
   local tokens = split(self,' ')
