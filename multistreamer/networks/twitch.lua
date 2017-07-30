@@ -309,6 +309,7 @@ function M.notify_update(_,_)
 end
 
 local function linkify(token)
+  if not token then return '' end
   if find(token,"^https?://") then
     return format('[%s](%s)',token,token)
   else
