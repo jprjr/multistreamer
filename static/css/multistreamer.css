@@ -154,6 +154,7 @@ div.chatmessage, div#chatinput {
     border-style: solid;
     border-width: 1px;
     flex-shrink: 0;
+    opacity: 1;
 }
 
 div.chatmessage.private {
@@ -275,10 +276,8 @@ svg.chaticon.beam , svg.chaticon.mixer {
     background-color: #6b6f75;
 }
 
-svg.chaticon.beam g path.st0 {fill:#8150EF;}
-svg.chaticon.beam g path.st1{fill:#4D90F4;}
-svg.chaticon.beam g path.st2{fill:#2F2F5D;}
-svg.chaticon.beam g path.st3{fill:#FFFFFF;}
+svg.chaticon.mixer g path.st0{fill:#03214F;}
+svg.chaticon.mixer g path.st1{fill:#1FBAED;}
 
 video {
     width: 100%;

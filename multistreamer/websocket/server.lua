@@ -25,6 +25,9 @@ local ngx_debug = ngx.DEBUG
 local ngx_err = ngx.ERR
 local ngx_ok = ngx.OK
 
+local now = ngx.now
+local floor = math.floor
+
 local setmetatable = setmetatable
 local format = string.format
 local pairs = pairs
@@ -182,6 +185,7 @@ function Server:websocket_relay()
             id = self.user.id,
           }
           msg.network = 'irc'
+          msg.timestamp = floor(now() * 1000)
 
           if parts[1] == '/msg' then
             local un = parts[2]

@@ -18,6 +18,25 @@ var reconnect_func;
 var seconds = 0;
 var scroller = zenscroll.createScroller(chatMessages);
 
+function whichTransitionEvent(){
+    var t;
+    var el = document.createElement('fakeelement');
+    var transitions = {
+      'transition':'transitionend',
+      'OTransition':'oTransitionEnd',
+      'MozTransition':'transitionend',
+      'WebkitTransition':'webkitTransitionEnd'
+    }
+
+    for(t in transitions){
+        if( el.style[t] !== undefined ){
+            return transitions[t];
+        }
+    }
+}
+
+var transitionEvent = whichTransitionEvent();
+
 icons['irc'] =
     '<svg class="chaticon irc" xmlns="http://www.w3.org/2000/svg" viewBox="0 ' +
     '0 20 20"><path d="m 18.477051,7.5280762 h -4.390137 l -1.212891,4.957030' +
@@ -37,13 +56,20 @@ function findGetParameter(parameterName) {
         .split("&")
         .forEach(function (item) {
         tmp = item.split("=");
-        if (tmp[0] === parameterName) result = true;
+        if (tmp[0] === parameterName) {
+            if(tmp.length === 1) {
+                result = true;
+            }
+            else {
+               result = tmp[1];
+            }
+        }
     });
     return result;
 }
 
 function atBottom(elem) {
-    if( findGetParameter('widget') ) {
+    if( findGetParameter('widget') !== null ) {
         return true;
     }
     return elem.scrollHeight - elem.scrollTop === elem.clientHeight;
@@ -242,6 +268,7 @@ function appendMessage(msg) {
   var msgDiv = document.createElement('div');
   var t;
   var p;
+  var fadeout;
 
   newMsg.className = 'chatmessage';
   if(msg.to) {
@@ -263,6 +290,25 @@ function appendMessage(msg) {
   msgDiv.className = msg.type;
   newMsg.appendChild(nameDiv);
   newMsg.appendChild(msgDiv);
+
+  fadeout = findGetParameter('fadeout');
+
+  if(fadeout !== null) {
+      if(fadeout === true) {
+          fadeout = 10;
+      }
+      fadeout *= 1000;
+
+      newMsg.style.opacity = 1;
+      newMsg.style.transition = 'opacity 1s';
+      setTimeout(function() {
+          newMsg.style.opacity = 0;
+      }, fadeout);
+      newMsg.addEventListener(transitionEvent, function() {
+          chatMessages.removeChild(newMsg);
+      });
+  }
+
 
   var shouldScroll = atBottom(chatMessages);
 
@@ -344,7 +390,7 @@ function updateViewCountResult(data) {
 }
 
 function start_chat(endpoint) {
-  if(findGetParameter('from_bottom')) {
+  if(findGetParameter('from_bottom') !== null) {
       chatMessages.style['justify-content'] = 'flex-end';
   }
 
@@ -401,8 +447,8 @@ function start_chat(endpoint) {
       return;
     }
     if(data.type === 'text' || data.type === 'emote') {
-        if(data.network !== 'irc' || !findGetParameter('hide_irc')) {
-            if(data.to === undefined || !findGetParameter('hide_pm')) {
+        if(data.network !== 'irc' || findGetParameter('hide_irc') === null) {
+            if(data.to === undefined || findGetParameter('hide_pm') === null) {
               appendMessage(data);
             }
         }

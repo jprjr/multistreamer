@@ -23,6 +23,8 @@ local writers = ngx.shared.writers
 local pid = ngx.worker.pid()
 local spawn = ngx.thread.spawn
 local status_dict = ngx.shared.status;
+local floor = math.floor
+local now = ngx.now
 
 local ChatMgr = {}
 ChatMgr.__index = ChatMgr
@@ -195,6 +197,10 @@ function ChatMgr:handleStreamStart(msg)
       _msg.account_id = account.id
       _msg.stream_id = stream.id
       _msg.network = networks[account.network].name
+      if not _msg.timestamp then
+        _msg.timestamp = floor(now() * 1000)
+
+      end
       publish('comment:in',_msg)
       for _,v in pairs(stream:get_webhooks()) do
         v:fire_event('comment:in',_msg)
