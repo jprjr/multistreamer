@@ -746,6 +746,7 @@ function M.create_comment_funcs(account, stream, send)
                 from = {
                   name = v.authorDetails.displayName,
                   id = v.authorDetails.channelId,
+                  picture = v.authorDetails.profileImageUrl,
                 },
                 text = v.snippet.textMessageDetails.messageText,
                 markdown = escape_markdown(v.snippet.textMessageDetails.messageText)
