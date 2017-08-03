@@ -30,6 +30,7 @@ local ngx_log = ngx.log
 local ngx_err = ngx.ERR
 local ngx_debug = ngx.DEBUG
 local sleep = ngx.sleep
+
 local IRCClient = require'multistreamer.irc.client'
 
 local Account = require'models.account'
@@ -61,10 +62,6 @@ local function http_error_handler(res)
 end
 
 local function twitch_api_client(access_token)
-  if not access_token then
-    return false,'access_token required'
-  end
-
   local httpc = http.new(http_error_handler)
 
   local _request = httpc.request
@@ -72,9 +69,11 @@ local function twitch_api_client(access_token)
   httpc.request = function(self,method,endpoint,params,headers,body)
     local url = api_url .. endpoint
     local req_headers = {
-      ['Authorization'] = 'OAuth ' .. access_token,
       ['Accept'] = 'application/vnd.twitchtv.v5+json',
     }
+    if access_token then
+      req_headers['Authorization'] = 'OAuth ' .. access_token
+    end
     if headers then
       for k,v in pairs(headers) do
           req_headers[k] = v
@@ -405,6 +404,8 @@ function M.create_comment_funcs(account, stream, send)
   local irc = IRCClient.new()
   local nick = account.channel:lower()
   local channel = '#' .. stream.channel:lower()
+  local icons = {}
+  local tclient = twitch_api_client()
 
   local function irc_connect()
     local ok, err
@@ -439,6 +440,17 @@ function M.create_comment_funcs(account, stream, send)
     if len(msg.from.name) == 0 then
       msg.from.name = data.from.nick
     end
+
+    if icons[msg.from.id] == nil then
+      local icon_res = tclient:get('/users/' .. msg.from.id, nil, {
+        ['Client-ID'] = twitch_config.client_id,
+      })
+      if icon_res then
+        icons[msg.from.id] = icon_res.logo
+      end
+    end
+
+    msg.from.picture = icons[msg.from.id]
 
     if data.to == nick then
       msg.to = {
