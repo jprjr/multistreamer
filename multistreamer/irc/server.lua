@@ -34,6 +34,8 @@ local ngx_error = ngx.ERROR
 local ngx_err = ngx.ERR
 local coro_status = coroutine.status
 local unpack = unpack or table.unpack -- luacheck: compat
+local floor = math.floor
+local now = ngx.now
 
 local redis = require'multistreamer.redis'
 local publish = redis.publish
@@ -768,6 +770,7 @@ function IRCServer:relayMessage(isroom,target,message)
     text = message,
     uuid = self.uuid,
     network = 'irc',
+    timestamp = floor(now() * 1000)
     markdown = escape_markdown(message),
     from = {
         name = self.user.username,
