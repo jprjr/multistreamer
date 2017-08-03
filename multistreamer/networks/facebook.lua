@@ -674,6 +674,7 @@ function M.create_comment_funcs(account, stream, send)
                 from = {
                   name = v.name,
                   id = v.id,
+                  picture = v.from.picture.data.url,
                 },
                 text = textify(v.type),
                 markdown = escape_markdown(textify(v.type)),
