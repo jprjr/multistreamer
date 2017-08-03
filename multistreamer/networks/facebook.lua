@@ -629,11 +629,20 @@ function M.create_comment_funcs(account, stream, send)
         local res, _ = fb_client:batch({
           {
             method = 'GET',
-            relative_url = video_id .. '/comments?' .. encode_query_string({after = afterComment, live_filter = 'no_filter'}), -- luacheck: ignore
+            relative_url = video_id .. '/comments?' ..
+              encode_query_string({
+                fields = 'created_time,from{name,id,picture},message,id',
+                after = afterComment,
+                live_filter = 'no_filter'
+              }),
           },
           {
             method = 'GET',
-            relative_url = video_id .. '/reactions?' .. encode_query_string({after = afterReaction}),
+            relative_url = video_id .. '/reactions?' ..
+              encode_query_string({
+                fields = 'from{name,id,picture},message,type,id',
+                after = afterReaction
+              }),
           }
         })
         if res[1].code == 200 then
@@ -645,6 +654,7 @@ function M.create_comment_funcs(account, stream, send)
               from = {
                 name = v.from.name,
                 id = v.from.id,
+                picture = v.from.picture.data.url,
               },
               text = v.message,
               markdown = escape_markdown(v.message),
