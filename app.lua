@@ -918,6 +918,28 @@ app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
   end,
 }))
 
+app:match('stream-chat-widget-config', config.http_prefix .. '/stream/:id/chat/widget', respond_to({
+  before = function(self)
+    local ok, err = require_login(self)
+    if not ok then
+      return err_out(self,err)
+    end
+
+    local stream = Stream:find({ id = self.params.id })
+    if not stream then
+      return err_out(self, 'Not authorized to view this chat')
+    end
+    local level = stream:check_chat(self.user)
+    if level == 0 then
+      return err_out(self, 'Not authorized to view this chat')
+    end
+    self.stream = stream
+  end,
+  GET = function(_)
+    return { layout = 'simplelayout', render = 'chat-widget-config' }
+  end,
+}))
+
 app:match('stream-chat-preview', config.http_prefix .. '/chat/preview', respond_to({
   GET = function(self)
     self.params.widget = true

@@ -11,7 +11,8 @@
     <% end %>
 
     <% if (not v.shared) or (v.shared and v.chat_level > 0) then %>
-    <li><a href="<%= url_for('stream-chat', { id = v.id })%>">Chat</a> (<a href="<%= url_for('stream-chat', { id = v.id})%>?widget&hide_irc&hide_pm&from_bottom&font_size=16&token=<%= user.access_token %>">Widget</a>)</li>
+    <li><a href="<%= url_for('stream-chat', { id = v.id })%>">Chat</a></li>
+    <li><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = v.id }) %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = v.id})%>">Chat Widget</a></li>
     <% end %>
     <% if not v.shared then %>
     <li><a href="<%= url_for('stream-delete', { id = v.id }) %>">Delete Stream</a></li>
