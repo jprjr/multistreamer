@@ -272,12 +272,12 @@ svg.chaticon.youtube {
 svg.chaticon.irc {
     background-color: #6b6f75;
 }
-svg.chaticon.beam , svg.chaticon.mixer {
+svg.chaticon.mixer {
     background-color: #6b6f75;
 }
 
-svg.chaticon.mixer g path.st0{fill:#03214F;}
-svg.chaticon.mixer g path.st1{fill:#1FBAED;}
+svg.chaticon.mixer path.st0{fill:#03214F;}
+svg.chaticon.mixer path.st1{fill:#1FBAED;}
 
 video {
     width: 100%;
