@@ -277,7 +277,12 @@ function appendMessage(msg) {
   }
 
   nameDiv.className = 'name';
-  nameDiv.innerHTML = icons[msg.network];
+  if(msg.from.picture) {
+    nameDiv.innerHTML = '<img class="chaticon" src="' + msg.from.picture + '">';
+  }
+  else {
+    nameDiv.innerHTML = icons[msg.network];
+  }
 
   nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';
   if(msg.markdown !== undefined && msg.markdown !== null) {
