@@ -35,7 +35,7 @@ M.write_comments = false
 M.redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/facebook'
 
 M.icon =
-  '<svg class="chaticon facebook" viewBox="0 0 16 16" xmlns="http://www.w3.' ..
+  '<svg viewBox="0 0 16 16" xmlns="http://www.w3.' ..
   'org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="r' ..
   'ound" stroke-miterlimit="1.414"><path d="M15.117 0H.883C.395 0 0 .395 0 ' ..
   '.883v14.234c0 .488.395.883.883.883h7.663V9.804H6.46V7.39h2.086V5.607c0-2' ..

@@ -157,6 +157,41 @@ div.chatmessage, div#chatinput {
     opacity: 1;
 }
 
+div.chatmessage.compact {
+    -webkit-flex-direction: column;
+    flex-direction:         column;
+    -webkit-align-items: left;
+    -webkit-box-align: left;
+    align-items: left;
+}
+
+div.chatmessage.compact div.name p, div.chatmessage.compact div.emote p, div#chatinput div.name p, div.chatpicker p {
+    margin-left: .5em;
+}
+
+div.chatmessage.compact div.icon svg.chaticon {
+    height: 1em;
+    min-height: 1em;
+    padding-top: .25em;
+    padding-bottom: .25em;
+    padding-left: .25em;
+    padding-right: .25em;
+    display: block;
+}
+
+div.chatmessage.compact div.icon svg.minicon {
+    display: none;
+}
+
+div.chatmessage.compact div.icon img.chaticon {
+    width: 1.5em;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+    display: block;
+}
+
 div.chatmessage.private {
     background-color: #ff7aab;
 }
@@ -180,13 +215,12 @@ div #chatpickerlist {
 
 div #chatinput {
     margin-bottom: 2em;
-    height: 3.5em;
-    min-height: 3.5em;
+    height: 3em;
+    min-height: 3em;
 }
 
 
 div.chatmessage div.name, div#chatinput div.name, div.chatpicker {
-    margin-right: .5em;
     display: -webkit-flex;
     display: flex;
     -webkit-align-items: center;
@@ -194,6 +228,9 @@ div.chatmessage div.name, div#chatinput div.name, div.chatpicker {
     align-items: center;
     -webkit-flex-shrink: 0;
     flex-shrink:         0;
+}
+
+div.chatmessage div.name div.icon, div.chatmessage div.emote div.icon {
     position: relative;
 }
 
@@ -203,12 +240,12 @@ div.chatpicker {
     background-color: #f2f2f2;
     margin-right: 0;
     width: 100%;
-    min-height: 3.5em;
+    min-height: 3em;
     box-sizing: border-box;
 }
 
 
-div.chatmessage div.name p, div#chatinput div.name p, div.chatpicker p {
+div.chatmessage div.name p, div.chatmessage div.emote p, div#chatinput div.name p, div.chatpicker p {
     font-weight: bold;
     margin-left: 1em;
     margin-top: 0;
@@ -216,7 +253,7 @@ div.chatmessage div.name p, div#chatinput div.name p, div.chatpicker p {
     margin-bottom: 0;
 }
 
-div.chatmessage div.text, div#chatinput div.message, div.chatmessage div.emote {
+div.chatmessage div.text, div#chatinput div.message {
     display: -webkit-flex;
     display: flex;
     -webkit-align-items: center;
@@ -224,15 +261,11 @@ div.chatmessage div.text, div#chatinput div.message, div.chatmessage div.emote {
     align-items: center;
 }
 
-div.chatmessage div.emote p {
-    font-weight: bold;
-}
-
 div.chatmessage div.text p, div#chatinput div.message input {
     margin-top: .5em;
     margin-bottom: .5em;
     margin-right: 1em;
-    margin-left: 0;
+    margin-left: .5em;
 }
 div#chatinput div.message {
     width: 100%;
@@ -251,21 +284,24 @@ div.chatmessage div.text p img {
 svg.chaticon {
     height: 2em;
     min-height: 2em;
-    padding-top: .75em;
-    padding-bottom: .75em;
+    padding-top: .5em;
+    padding-bottom: .5em;
     padding-left: .5em;
     padding-right: .5em;
+    display: block;
 }
 
 svg.minicon {
-    height: .5em;
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
+    height: 1em;
+    padding-top: .1em;
+    padding-bottom: .1em;
+    padding-left: .1em;
+    padding-right: .1em;
     z-index: 10;
     position: absolute;
     bottom: 0;
+    left: 0;
+    display: block;
 }
 
 img.chaticon {
@@ -274,6 +310,7 @@ img.chaticon {
     padding-bottom: 0;
     padding-left: 0;
     padding-right: 0;
+    display: block;
 }
 
 .chaticon path, .minicon path {

@@ -40,7 +40,7 @@ M.write_comments = true
 M.redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/youtube'
 
 M.icon =
-  '<svg class="chaticon youtube" viewBox="0 0 16 16" xmlns="http://www.w3.o' ..
+  '<svg viewBox="0 0 16 16" xmlns="http://www.w3.o' ..
   'rg/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="ro' ..
   'und" stroke-miterlimit="1.414"><path d="M0 7.345c0-1.294.16-2.59.16-2.59' ..
   's.156-1.1.636-1.587c.608-.637 1.408-.617 1.764-.684C3.84 2.36 8 2.324 8 ' ..

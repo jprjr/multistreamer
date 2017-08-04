@@ -37,7 +37,7 @@ M.write_comments = true
 M.redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/mixer'
 
 M.icon =
-  '<svg class="chaticon mixer" version="1.1" id="Layer_1" xmlns="http://www' ..
+  '<svg version="1.1" xmlns="http://www' ..
   '.w3.org/2000/svg"  x="0px" y="0px" viewBox="0 0 512 512" style="enable-b' ..
   'ackground:new 0 0 512 512;" xml:space="preserve"><path class="st0" d="M1' ..
   '16.03,77.68c-15.76-21.29-46.72-24.61-66.91-6.36c-17.42,16.04-18.8,43.13-' ..
