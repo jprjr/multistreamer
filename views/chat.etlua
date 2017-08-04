@@ -27,16 +27,119 @@
 // I know this is lame but oh well
 icons['twitch'] = '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="1.414"><g fill-rule="nonzero"><path d="M1.393 0L.35 2.783v11.13h3.824V16h2.088l2.085-2.088h3.13L15.65 9.74V0H1.394zm1.39 1.39H14.26v7.653l-2.435 2.435H8l-2.085 2.085v-2.085H2.783V1.39z"/><path d="M6.61 8.348H8V4.175H6.61v4.173zm3.824 0h1.39V4.175h-1.39v4.173z"/></g></svg>';
 
-setTimeout(function() {
-  appendMessage({
-      type: 'text',
-      from: {
-          name: 'Example User',
-          picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
-      },
-      text: 'An example message',
-      network: 'twitch',
-  })}, 1000);
+var messages = [
+  {
+    type: 'text',
+    from: {
+        name: 'Example User',
+        picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
+    },
+    text: 'An example short message',
+    network: 'twitch',
+  },
+  {
+    type: 'text',
+    from: {
+        name: 'Example User',
+        picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
+    },
+    text:
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque aliquam' +
+      ' augue quis pharetra sodales. Curabitur eu facilisis erat, eget faucibus' +
+      ' nisi. Donec dictum tortor eu elit dictum sagittis. Pellentesque habitan' +
+      't morbi tristique senectus et netus et malesuada fames ac turpis egestas' +
+      '. Vestibulum blandit arcu eget massa sodales, vitae congue risus semper.' +
+      ' Nullam faucibus odio ex, at sollicitudin tellus vulputate viverra. Done' +
+      'c dictum sagittis nisi. Proin in arcu in tellus mollis volutpat. Ut lobo' +
+      'rtis rutrum placerat. Donec sapien ex, mollis tincidunt nibh vel, venena' +
+      'tis placerat est.',
+    network: 'twitch',
+  },
+  {
+    type: 'emote',
+    from: {
+        name: 'Example User',
+        picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
+    },
+    text: 'is emoting right now',
+    network: 'twitch',
+  },
+  {
+    type: 'emote',
+    from: {
+        name: 'Example User',
+        picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
+    },
+    text: 'is emoting right now and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long ' +
+          'and this is really long and this is really long',
+    network: 'twitch',
+  },
+  {
+    type: 'text',
+    from: {
+        name: 'Twitch User',
+        picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
+    },
+    text: 'Coming up - an IRC message. Will not appear if "hide_irc" is on',
+    network: 'twitch',
+  },
+  {
+    type: 'text',
+    from: {
+        name: 'IRC User',
+    },
+    text: 'Here is an IRC message',
+    network: 'irc',
+  },
+  {
+    type: 'text',
+    from: {
+        name: 'Twitch User',
+        picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
+    },
+    text: 'Coming up - a whisper. Will not appear if "hide_pm" is on',
+    network: 'twitch',
+  },
+  {
+    type: 'text',
+    from: {
+        name: 'Twitch User',
+        picture: '<%= public_http_url .. http_prefix %>/static/img/user.png',
+    },
+    to: {
+        name: 'Another Twitch User',
+    },
+    text: 'Here is a whisper',
+    network: 'twitch',
+  },
+];
+
+var messageind = -1;
+function messageIndex() {
+    messageind++;
+    if (messageind >= messages.length) {
+        messageind = 0;
+    }
+    return messageind;
+
+}
+
+appendMessage(JSON.parse(JSON.stringify(messages[messageIndex()])));
+
+setInterval(function() {
+    appendMessage(JSON.parse(JSON.stringify(messages[messageIndex()])));
+}, 2000);
+
 
 <% end %>
 </script>
