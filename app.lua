@@ -918,6 +918,13 @@ app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
   end,
 }))
 
+app:match('stream-chat-preview', config.http_prefix .. '/chat/preview', respond_to({
+  GET = function(self)
+    self.params.widget = true
+    return { layout = 'chatlayout', render = 'chat' }
+  end,
+}))
+
 app:match('stream-video', config.http_prefix .. '/stream/:id/video(/*)', respond_to({
   before = function(self)
     local stream = Stream:find({ id = self.params.id })
