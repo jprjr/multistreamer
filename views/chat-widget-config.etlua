@@ -1,0 +1,115 @@
+<form class="pure-form pure-form-aligned">
+    <fieldset><legend>Chat Widget</legend>
+        <div class="pure-control-group">
+          <label for="widget_url">URL</label>
+          <input style="width: auto;" id="widget_url" type="text" value="<%= config.public_http_url .. config.http_prefix %>/stream/<%= stream.id %>/chat?token=<%= user.access_token %>&widget&font_size=16&hide_irc&hide_pm&from_bottom&show_picture">
+          <span class="pure-form-message-inline"><input type="button" value="Copy" class="pure-button pure-button-primary" id="copy_button"></span>
+        </div>
+    </fieldset>
+    <fieldset>
+        <div class="pure-control-group">
+            <label for="fadeout">Fadeout messages after (x) seconds</label>
+            <input id="fadeout" type="number" value="0">
+            <span class="pure-form-message-inline">0 to disable</span>
+        </div>
+        <div class="pure-control-group">
+            <label for="font_size">Font size (in pixels)</label>
+            <input id="font_size" type="number" value="16">
+        </div>
+        <div class="pure-control-group">
+            <label for="compact">Compact Widget</label>
+            <input id="compact" type="checkbox">
+        </div>
+        <div class="pure-control-group">
+            <label for="show_picture">Show Profile Pictures</label>
+            <input id="show_picture" type="checkbox" checked>
+        </div>
+        <div class="pure-control-group">
+            <label for="hide_irc">Hide IRC messages</label>
+            <input id="hide_irc" type="checkbox" checked>
+        </div>
+        <div class="pure-control-group">
+            <label for="hide_pm">Hide whispers/PMs/etc</label>
+            <input id="hide_pm" type="checkbox" checked>
+        </div>
+        <div class="pure-control-group">
+            <label for="from_bottom">Scroll messages from bottom</label>
+            <input id="from_bottom" type="checkbox" checked>
+        </div>
+    </fieldset>
+</form>
+
+<iframe id="preview_frame" style="position: absolute; top: 0; right: 0; height: 100%; width: 50%" src="<%= config.public_http_url .. config.http_prefix %>/chat/preview?widget&font_size=16&hide_irc&hide_pm&from_bottom&show_picture"></iframe>
+
+<script type="text/javascript">
+var preview_frame = document.getElementById('preview_frame');
+var widget_url_box = document.getElementById('widget_url');
+var fadeout_box = document.getElementById('fadeout');
+var font_size_box = document.getElementById('font_size');
+var compact_box = document.getElementById('compact');
+var show_picture_box = document.getElementById('show_picture');
+var hide_irc_box = document.getElementById('hide_irc');
+var hide_pm_box = document.getElementById('hide_pm');
+var from_bottom_box = document.getElementById('from_bottom');
+
+function update_preview() {
+    var widget_url = '<%= config.public_http_url .. config.http_prefix %>/stream/<%= stream.id %>/chat?token=<%= user.access_token %>&widget';
+    var preview_url = '<%= config.public_http_url .. config.http_prefix %>/chat/preview?widget';
+    var widget_settings = '';
+
+    if(fadeout_box.value + 0 > 0) {
+        widget_settings += '&fadeout=' + fadeout_box.value;
+    }
+    if(font_size_box.value + 0 > 0) {
+        widget_settings += '&font_size=' + font_size_box.value;
+    }
+    if(compact_box.checked) {
+        widget_settings += '&compact';
+    }
+    if(show_picture_box.checked) {
+        widget_settings += '&show_picture';
+    }
+    if(hide_irc_box.checked) {
+        widget_settings += '&hide_irc';
+    }
+    if(hide_pm_box.checked) {
+        widget_settings += '&hide_pm';
+    }
+    if(from_bottom_box.checked) {
+        widget_settings += '&from_bottom';
+    }
+
+    widget_url += widget_settings;
+    preview_url += widget_settings;
+
+    widget_url_box.value = widget_url;
+    preview_frame.setAttribute('src',preview_url);
+}
+
+fadeout_box.addEventListener('input',update_preview);
+font_size_box.addEventListener('input',update_preview);
+compact_box.addEventListener('change',update_preview);
+show_picture_box.addEventListener('change',update_preview);
+hide_irc_box.addEventListener('change',update_preview);
+hide_pm_box.addEventListener('change',update_preview);
+from_bottom_box.addEventListener('change',update_preview);
+
+var copy_button = document.getElementById('copy_button');
+
+copy_button.addEventListener('click', function() {
+    widget_url_box.select();
+    try {
+        var successful = document.execCommand('copy');
+        if(successful) {
+            alert('URL copied to clipboard');
+        }
+        else {
+            alert('Unable to copy');
+        }
+    }
+    catch(e) {
+    }
+});
+
+
+</script>

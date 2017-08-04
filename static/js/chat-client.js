@@ -26,6 +26,7 @@ var fadeoutTime = findGetParameter('fadeout');
 var shouldHideIRC = findGetParameter('hide_irc');
 var shouldHideWhispers = findGetParameter('hide_pm');
 var messageFromBottom = findGetParameter('from_bottom');
+var showProfilePictures = findGetParameter('show_picture');
 
 if(messageFromBottom !== null) {
   chatMessages.style['justify-content'] = 'flex-end';
@@ -340,7 +341,7 @@ function appendMessage(msg) {
     msg.from.name = msg.from.name + ' -> ' + msg.to.name
   }
 
-  if(msg.from.picture) {
+  if(showProfilePictures && msg.from.picture) {
     var profileImg = document.createElement('img');
     profileImg.setAttribute('class','chaticon');
     profileImg.setAttribute('src',msg.from.picture);

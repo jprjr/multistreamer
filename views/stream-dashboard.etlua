@@ -8,7 +8,8 @@
 <p><strong>Stream Key</strong> <button id="showBtn" type="button" class="pure-button">Show</button> <code id="stream-key"><%= stream.uuid %></code></p>
 <% end %>
 <% if metadata_level == 2 or chat_level > 0 then %>
-<p><a target="_blank" href="<%= url_for('stream-chat', { id = stream.id })%>">Chat</a> (<a target="_blank" href="<%= url_for('stream-chat', { id = stream.id})%>?widget&hide_irc&hide_pm&from_bottom&font_size=16&token=<%= user.access_token %>">Widget</a>)</p>
+<p><a target="_blank" href="<%= url_for('stream-chat', { id = stream.id })%>">Chat</a></p>
+<p><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = stream.id }) %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = stream.id})%>">Chat Widget</a></p>
 <p><strong>IRC Room</strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass">Join</a></p>
 <% end %>
 
