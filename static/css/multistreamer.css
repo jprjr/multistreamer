@@ -256,6 +256,14 @@ svg.chaticon {
     padding-right: .5em;
 }
 
+img.chaticon {
+    width: 3em;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
 svg.chaticon path {
     fill: #fff;
 }
