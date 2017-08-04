@@ -27,6 +27,11 @@ var shouldHideIRC = findGetParameter('hide_irc');
 var shouldHideWhispers = findGetParameter('hide_pm');
 var messageFromBottom = findGetParameter('from_bottom');
 
+if(messageFromBottom !== null) {
+  chatMessages.style['justify-content'] = 'flex-end';
+}
+
+
 if(fadeoutTime === true || fadeoutTime === 0) {
     fadeoutTime = 10;
 }
@@ -292,6 +297,12 @@ function buildChatInput(account) {
 }
 
 function appendMessage(msg) {
+  if(msg.network === 'irc' && shouldHideIRC) {
+      return;
+  }
+  if(msg.to !== undefined && shouldHideWhispers) {
+      return;
+  }
   var newMsg = document.createElement('div');
   var nameDiv = document.createElement('div');
   var nameImgDiv = document.createElement('div');
@@ -470,10 +481,6 @@ function updateViewCountResult(data) {
 }
 
 function start_chat(endpoint) {
-  if(messageFromBottom !== null) {
-      chatMessages.style['justify-content'] = 'flex-end';
-  }
-
   ws = new WebSocket(endpoint);
   ws.onopen = function() {
       connected = true;
@@ -527,11 +534,7 @@ function start_chat(endpoint) {
       return;
     }
     if(data.type === 'text' || data.type === 'emote') {
-        if(data.network !== 'irc' || shouldHideIRC === null) {
-            if(data.to === undefined || shouldHideWhisper === null) {
-              appendMessage(data);
-            }
-        }
+        appendMessage(data);
     }
     if(data.type === 'viewcountresult') {
         updateViewCountResult(data);
