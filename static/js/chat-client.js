@@ -266,9 +266,13 @@ function appendMessage(msg) {
   var newMsg = document.createElement('div');
   var nameDiv = document.createElement('div');
   var msgDiv = document.createElement('div');
+  var svgIcon = document.createElement('svg');
   var t;
   var p;
   var fadeout;
+
+  nameDiv.appendChild(svgIcon);
+  svgIcon.outerHTML = icons[msg.network];
 
   newMsg.className = 'chatmessage';
   if(msg.to) {
@@ -278,10 +282,8 @@ function appendMessage(msg) {
 
   nameDiv.className = 'name';
   if(msg.from.picture) {
-    nameDiv.innerHTML = '<img class="chaticon" src="' + msg.from.picture + '">';
-  }
-  else {
-    nameDiv.innerHTML = icons[msg.network];
+    svgIcon.className = 'minicon ' + msg.network;
+    nameDiv.innerHTML = nameDiv.innerHTML + '<img class="chaticon" src="' + msg.from.picture + '">';
   }
 
   nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';

@@ -194,6 +194,7 @@ div.chatmessage div.name, div#chatinput div.name, div.chatpicker {
     align-items: center;
     -webkit-flex-shrink: 0;
     flex-shrink:         0;
+    position: relative;
 }
 
 div.chatpicker {
@@ -256,6 +257,17 @@ svg.chaticon {
     padding-right: .5em;
 }
 
+svg.minicon {
+    height: .5em;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+    z-index: 10;
+    position: absolute;
+    bottom: 0;
+}
+
 img.chaticon {
     width: 3em;
     padding-top: 0;
@@ -264,28 +276,28 @@ img.chaticon {
     padding-right: 0;
 }
 
-svg.chaticon path {
+.chaticon path, .minicon path {
     fill: #fff;
 }
 
-svg.chaticon.facebook {
+.facebook {
     background-color: #3b5998;
 }
-svg.chaticon.twitch {
+.twitch {
     background-color: #6441a5;
 }
-svg.chaticon.youtube {
+.youtube {
     background-color: #cd201f;
 }
-svg.chaticon.irc {
+.irc {
     background-color: #6b6f75;
 }
-svg.chaticon.mixer {
+.mixer {
     background-color: #6b6f75;
 }
 
-svg.chaticon.mixer path.st0{fill:#03214F;}
-svg.chaticon.mixer path.st1{fill:#1FBAED;}
+.mixer path.st0{fill:#03214F;}
+.mixer path.st1{fill:#1FBAED;}
 
 video {
     width: 100%;
