@@ -8,6 +8,7 @@ var accountList = undefined;
 var commonmark = window.commonmark;
 var parser = new commonmark.Parser();
 var writer = new commonmark.HtmlRenderer();
+var domParser = new DOMParser();
 var curInput;
 var curAccount;
 var tarAccount;
@@ -17,6 +18,32 @@ var connected = false;
 var reconnect_func;
 var seconds = 0;
 var scroller = zenscroll.createScroller(chatMessages);
+var transitionEvent = whichTransitionEvent();
+
+var isCompact = findGetParameter('compact');
+var isWidget = findGetParameter('widget');
+var fadeoutTime = findGetParameter('fadeout');
+var shouldHideIRC = findGetParameter('hide_irc');
+var shouldHideWhispers = findGetParameter('hide_pm');
+var messageFromBottom = findGetParameter('from_bottom');
+
+if(fadeoutTime === true || fadeoutTime === 0) {
+    fadeoutTime = 10;
+}
+if(fadeoutTime !== null) {
+    fadeoutTime *= 1000;
+}
+
+icons['irc'] =
+    '<svg class="chaticon irc" xmlns="http://www.w3.org/2000/svg" viewBox="0 ' +
+    '0 20 20"><path d="m 18.477051,7.5280762 h -4.390137 l -1.212891,4.957030' +
+    '8 h 4.060547 v 1.779786 h -4.521972 l -1.371094,5.550293 H 9.3408203 L 1' +
+    '0.711914,14.264893 H 7.1523437 L 5.78125,19.815186 H 4.0805664 L 5.45166' +
+    '02,14.264893 H 1.5229492 V 12.485107 H 5.9130859 L 7.1259766,7.5280762 H' +
+    ' 3.0654297 V 5.748291 H 7.5874023 L 8.9716797,0.18481445 H 10.672363 L 9' +
+    '.2880859,5.748291 h 3.5595701 l 1.384278,-5.56347655 h 1.700683 L 14.548' +
+    '34,5.748291 h 3.928711 z M 12.425781,7.501709 H 8.8134766 l -1.2392579,5' +
+    '.009766 h 3.6123043 z" /></svg>';
 
 function whichTransitionEvent(){
     var t;
@@ -34,19 +61,6 @@ function whichTransitionEvent(){
         }
     }
 }
-
-var transitionEvent = whichTransitionEvent();
-
-icons['irc'] =
-    '<svg class="chaticon irc" xmlns="http://www.w3.org/2000/svg" viewBox="0 ' +
-    '0 20 20"><path d="m 18.477051,7.5280762 h -4.390137 l -1.212891,4.957030' +
-    '8 h 4.060547 v 1.779786 h -4.521972 l -1.371094,5.550293 H 9.3408203 L 1' +
-    '0.711914,14.264893 H 7.1523437 L 5.78125,19.815186 H 4.0805664 L 5.45166' +
-    '02,14.264893 H 1.5229492 V 12.485107 H 5.9130859 L 7.1259766,7.5280762 H' +
-    ' 3.0654297 V 5.748291 H 7.5874023 L 8.9716797,0.18481445 H 10.672363 L 9' +
-    '.2880859,5.748291 h 3.5595701 l 1.384278,-5.56347655 h 1.700683 L 14.548' +
-    '34,5.748291 h 3.928711 z M 12.425781,7.501709 H 8.8134766 l -1.2392579,5' +
-    '.009766 h 3.6123043 z" /></svg>';
 
 function findGetParameter(parameterName) {
     var result = null,
@@ -69,7 +83,7 @@ function findGetParameter(parameterName) {
 }
 
 function atBottom(elem) {
-    if( findGetParameter('widget') !== null ) {
+    if(!isWidget) {
         return true;
     }
     return elem.scrollHeight - elem.scrollTop === elem.clientHeight;
@@ -92,7 +106,12 @@ function buildChatPickerList(accounts) {
             if(icons[account.network.name] && account.writable === true) {
                 var chatPicker = document.createElement('div');
                 chatPicker.className = 'chatpicker';
-                chatPicker.innerHTML = icons[account.network.name] + '<p>' + account.name + '</p>';
+                var svgIcon = domParser.parseFromString(icons[account.network.name],'image/svg+xml').documentElement;
+                svgIcon.setAttribute('class','chaticon ' + account.network.name);
+                var pName = document.createElement('p');
+                pName.textContent = account.name;
+                chatPicker.appendChild(svgIcon);
+                chatPicker.appendChild(pName);
                 chatPicker.onclick = function() {
                     buildChatInput(account);
                 };
@@ -177,7 +196,12 @@ function buildChatInput(account) {
     var inputElement;
 
     if(account !== null) {
-        nameElement.innerHTML = icons[account.network.name] + '<p>' + account.name + '</p>';
+        var svgIcon = domParser.parseFromString(icons[account.network.name],'image/svg+xml').documentElement;
+        svgIcon.setAttribute('class','chaticon ' + account.network.name);
+        var pName = document.createElement('p');
+        pName.textContent = account.name;
+        nameElement.appendChild(svgIcon);
+        nameElement.appendChild(pName);
         curAccount = account; // the 'from' account
         if(account.ready === true) {
             inputElement = buildChatBox(account, account);
@@ -222,7 +246,12 @@ function buildChatInput(account) {
                     liveAccounts.forEach(function(a) {
                       if (a.id === parseInt(inputElement.value,10)) {
                         tarAccount = a;
-                        nameElement.innerHTML = icons[account.network.name] + '<p>' + account.name + ' -> ' + a.name + '</p>';
+                        var svgIcon = domParser.parseFromString(icons[account.network.name],'image/svg+xml').documentElement;
+                        svgIcon.setAttribute('class','chaticon ' + account.network.name);
+                        var pName = document.createElement('p');
+                        pName.textContent = account.name + ' -> ' + a.name;
+                        nameElement.appendChild(svgIcon);
+                        nameElement.appendChild(pName);
                       }
                     });
                     ws.send(JSON.stringify({
@@ -265,52 +294,96 @@ function buildChatInput(account) {
 function appendMessage(msg) {
   var newMsg = document.createElement('div');
   var nameDiv = document.createElement('div');
+  var nameImgDiv = document.createElement('div');
   var msgDiv = document.createElement('div');
-  var svgIcon = document.createElement('svg');
+  var svgIcon = domParser.parseFromString(icons[msg.network],'image/svg+xml');
   var t;
-  var p;
-  var fadeout;
+  var nameMarkdown;
+  var msgMarkdown;
 
-  nameDiv.appendChild(svgIcon);
-  svgIcon.outerHTML = icons[msg.network];
+  /* <div class="chatmessage (private)">
+   *   <div class="name">
+   *     <div class="icon">
+   *       <img src="">
+   *       <svg>
+   *     </div>
+   *     <p>Name</p>
+   *   </div>
+   *   <div class="text/emote">
+   *     <p>Message</p>
+   *   </div>
+   * </div>
+  */
 
-  newMsg.className = 'chatmessage';
+  newMsg.setAttribute('class','chatmessage');
+  nameDiv.setAttribute('class','name');
+  nameImgDiv.setAttribute('class','icon');
+  msgDiv.setAttribute('class','text');
+
+  if(isCompact) {
+    newMsg.setAttribute('class',newMsg.getAttribute('class') + ' compact');
+  }
+
   if(msg.to) {
-    newMsg.className += ' private';
+    newMsg.setAttribute('class',newMsg.getAttribute('class') + ' private');
     msg.from.name = msg.from.name + ' -> ' + msg.to.name
   }
 
-  nameDiv.className = 'name';
   if(msg.from.picture) {
-    svgIcon.className = 'minicon ' + msg.network;
-    nameDiv.innerHTML = nameDiv.innerHTML + '<img class="chaticon" src="' + msg.from.picture + '">';
-  }
-
-  nameDiv.innerHTML = nameDiv.innerHTML + '<p>' + msg.from.name + '</p>';
-  if(msg.markdown !== undefined && msg.markdown !== null) {
-    p = parser.parse(msg.markdown);
-    msgDiv.innerHTML = writer.render(p);
+    var profileImg = document.createElement('img');
+    profileImg.setAttribute('class','chaticon');
+    profileImg.setAttribute('src',msg.from.picture);
+    svgIcon.documentElement.setAttribute('class','minicon ' + msg.network);
+    nameImgDiv.appendChild(profileImg);
   }
   else {
-    msgDiv.innerHTML = '<p>' + msg.text + '</p>';
+    svgIcon.documentElement.setAttribute('class','chaticon ' + msg.network);
   }
-  msgDiv.className = msg.type;
-  newMsg.appendChild(nameDiv);
-  newMsg.appendChild(msgDiv);
+  nameImgDiv.appendChild(svgIcon.documentElement);
 
-  fadeout = findGetParameter('fadeout');
-
-  if(fadeout !== null) {
-      if(fadeout === true) {
-          fadeout = 10;
+  if(msg.type === 'emote') {
+      nameDiv.setAttribute('class','emote');
+      if(msg.markdown !== undefined && msg.markdown !== null) {
+        msg.from.name = msg.from.name + ' ' + msg.markdown;
+        delete msg.markdown
       }
-      fadeout *= 1000;
+      else {
+        msg.from.name = msg.from.name + ' ' + msg.text;
+      }
+      delete msg.text;
+  }
 
+  nameMarkdown = parser.parse(msg.from.name)
+  nameDiv.innerHTML = writer.render(nameMarkdown);
+
+  if(msg.markdown !== undefined && msg.markdown !== null) {
+    msg.text = msg.markdown;
+  }
+
+  if(msg.text !== undefined && msg.text !== null) {
+    msgMarkdown = parser.parse(msg.text);
+    msgDiv.innerHTML = writer.render(msgMarkdown);
+    msg.text = true;
+  }
+  else {
+    msg.text = false;
+  }
+
+
+  nameDiv.insertBefore(nameImgDiv,nameDiv.firstChild);
+  newMsg.appendChild(nameDiv);
+
+  if(msg.text) {
+    newMsg.appendChild(msgDiv);
+  }
+
+
+  if(fadeoutTime) {
       newMsg.style.opacity = 1;
       newMsg.style.transition = 'opacity 1s';
       setTimeout(function() {
           newMsg.style.opacity = 0;
-      }, fadeout);
+      }, fadeoutTime);
       newMsg.addEventListener(transitionEvent, function() {
           chatMessages.removeChild(newMsg);
       });
@@ -397,7 +470,7 @@ function updateViewCountResult(data) {
 }
 
 function start_chat(endpoint) {
-  if(findGetParameter('from_bottom') !== null) {
+  if(messageFromBottom !== null) {
       chatMessages.style['justify-content'] = 'flex-end';
   }
 
@@ -454,8 +527,8 @@ function start_chat(endpoint) {
       return;
     }
     if(data.type === 'text' || data.type === 'emote') {
-        if(data.network !== 'irc' || findGetParameter('hide_irc') === null) {
-            if(data.to === undefined || findGetParameter('hide_pm') === null) {
+        if(data.network !== 'irc' || shouldHideIRC === null) {
+            if(data.to === undefined || shouldHideWhisper === null) {
               appendMessage(data);
             }
         }

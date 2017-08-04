@@ -46,7 +46,7 @@ M.write_comments = true
 M.redirect_uri = config.public_http_url .. config.http_prefix .. '/auth/twitch'
 
 M.icon =
-  '<svg class="chaticon twitch" viewBox="0 0 16 16" xmlns="http://www.w3.or' ..
+  '<svg viewBox="0 0 16 16" xmlns="http://www.w3.or' ..
   'g/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="rou' ..
   'nd" stroke-miterlimit="1.414"><g fill-rule="nonzero"><path d="M1.393 0L.' ..
   '35 2.783v11.13h3.824V16h2.088l2.085-2.088h3.13L15.65 9.74V0H1.394zm1.39 ' ..
