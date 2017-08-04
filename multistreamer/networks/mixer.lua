@@ -477,6 +477,7 @@ function M.create_comment_funcs(account, stream, send)
                 from = {
                   name = msg.data.user_name,
                   id = msg.data.user_id,
+                  picture = api_url .. '/users/' .. msg.data.user_id .. '/avatar?w=50'
                 },
                 text = txt,
                 markdown = escape_markdown(txt),
