@@ -889,7 +889,13 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
     for _,wh in pairs(self.stream:get_webhooks()) do
       wh:delete()
     end
-    publish('stream:delete',self.stream)
+    publish('stream:delete',{
+      id = self.stream.id,
+      user = {
+        username = self.stream.user.username,
+      },
+      slug = self.stream.slug
+    })
     self.stream:delete()
     self.session.status_msg = { type = 'success', msg = 'Stream removed' }
     return { redirect_to = self:url_for('site-root') }
