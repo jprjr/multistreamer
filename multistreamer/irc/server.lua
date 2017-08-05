@@ -770,7 +770,7 @@ function IRCServer:relayMessage(isroom,target,message)
     text = message,
     uuid = self.uuid,
     network = 'irc',
-    timestamp = floor(now() * 1000)
+    timestamp = floor(now() * 1000),
     markdown = escape_markdown(message),
     from = {
         name = self.user.username,
