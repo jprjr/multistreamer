@@ -537,5 +537,5 @@ I'll be honest, I'm not sure how trademark law applies here (but I'm sure it doe
 so I feel obligated to mention that all trademarked images are property of their
 respective companies.
 
-The network module for Beam uses an embedded SVG icon from [beam-branding-kit](https://github.com/WatchBeam/beam-branding-kit),
-it is property of [Beam](https://beam.pro).
+The network module for Mixer uses an embedded SVG icon from [mixer-branding-kit](https://github.com/mixer/branding-kit),
+it is property of [Mixer](https://mixer.com).
