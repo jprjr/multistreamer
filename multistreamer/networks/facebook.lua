@@ -640,7 +640,7 @@ function M.create_comment_funcs(account, stream, send)
             method = 'GET',
             relative_url = video_id .. '/reactions?' ..
               encode_query_string({
-                fields = 'from{name,id,picture},message,type,id',
+                fields = 'id,name,type,picture',
                 after = afterReaction
               }),
           }
@@ -674,7 +674,7 @@ function M.create_comment_funcs(account, stream, send)
                 from = {
                   name = v.name,
                   id = v.id,
-                  picture = v.from.picture.data.url,
+                  picture = v.picture.data.url,
                 },
                 text = textify(v.type),
                 markdown = escape_markdown(textify(v.type)),
