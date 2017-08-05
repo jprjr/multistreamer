@@ -16,9 +16,11 @@ local insert = table.insert
 local string = require 'multistreamer.string'
 local len = string.len
 local sort = table.sort
+local format = string.format
 local escape_markdown = string.escape_markdown
 local date = require'date'
 local ngx_log = ngx.log
+local ngx_err = ngx.ERR
 local ngx_debug = ngx.DEBUG
 local facebook_config = config.networks.facebook
 
@@ -47,6 +49,7 @@ M.icon =
 local graph_root = 'https://graph.facebook.com/v2.8'
 
 local function http_error_handler(res)
+  ngx_log(ngx_err,res.body)
   return from_json(res.body).error.message
 end
 
@@ -349,8 +352,52 @@ function M.metadata_form(account, stream)
     )
   end
 
-  for _,v in pairs(form) do
+  for i,v in pairs(form) do
     v.value = stream:get(v.key)
+    if v.type == 'checkbox' then
+      if v.value == 'true' then
+        v.value = true
+      elseif v.value == 'false' then
+        v.value = false
+      else
+        v.value = nil
+      end
+
+      -- nil means never set, default to 'true' for delete event
+      if i == 7 and v.value == nil then
+        v.value = true
+      end
+    end
+  end
+
+  if form[3].value ~= nil then
+    -- fetch events!
+    local fb_client = facebook_client(targets[form[3].value].token)
+    local live_vids, _ = fb_client:get('/' .. form[3].value .. '/live_videos',
+      { fields = 'status,stream_url,title,id,description,planned_start_time',
+        limit = 10 })
+    if live_vids then
+      for _,vid in pairs(live_vids.data) do
+        if not vid.title then
+          vid.title = vid.description
+        end
+        if vid.planned_start_time then
+          vid.title = format('%s (%s)',vid.title,vid.planned_start_time)
+        elseif vid.status == 'LIVE' then
+          vid.title = format('%s (LIVE)',vid.title)
+        end
+        if vid.status ~= 'VOD' and vid.status ~= 'PROCESSING' then
+          insert(form[6].options,
+            { label = vid.title,
+              value = vid.id })
+        end
+      end
+    end
+  else
+    form[6].options = {
+      { label = 'Choose a profile/page, then refresh',
+        value = 0} }
+    form[6].value = 0
   end
 
   return form
@@ -402,14 +449,19 @@ function M.metadata_fields()
     },
     [6] = {
       type = 'select',
-      label = 'Sticky Mode',
-      key = 'sticky',
-      required = true,
+      label = 'Use Existing Event/Video',
+      key = 'event',
+      required = false,
       options = {
-          { value = 'NO', label = 'No' },
-          { value = 'YES', label = 'Yes' },
+        { value = 0, label = 'Create new event/video' }
       },
-    }
+    },
+    [7] = {
+      type = 'checkbox',
+      label = 'End live video when stream ends',
+      key = 'endlive',
+      required = true,
+    },
   }
 
 end
@@ -437,11 +489,6 @@ function M.publish_start(account, stream)
   local description = stream.description
   local title = stream.title
 
-  if stream.sticky == 'YES' and stream.rtmp_url then
-    -- rtmp url already set
-    return stream.rtmp_url, nil
-  end
-
   local params = {}
 
   if privacy and target.type == 'profile' then
@@ -453,23 +500,23 @@ function M.publish_start(account, stream)
   params.stream_type = stream_type
   params.status = 'LIVE_NOW'
   params.stop_on_delete_stream = 'false'
+  params.fields = 'id,permalink_url,stream_url,status,is_manual_mode'
 
   local fb_client = facebook_client(access_token)
+  local vid_info, vid_err
 
-  local vid_info, vid_err = fb_client:post('/'..stream.target..'/live_videos',params)
+  if stream.event == nil or stream.event == '0' then
+    vid_info, vid_err = fb_client:post('/'..stream.target..'/live_videos',params)
+  else
+    vid_info, vid_err = fb_client:get('/' .. stream.event, {
+      fields = params.fields})
+  end
 
   if vid_err then
     return false, vid_err
   end
 
-  local more_vid_info, more_vid_err = fb_client:get('/' .. vid_info.id, {
-    fields = 'permalink_url',
-  })
-  if more_vid_err then
-    return false, more_vid_err
-  end
-
-  stream_o:set('http_url','https://facebook.com' .. more_vid_info.permalink_url)
+  stream_o:set('http_url','https://facebook.com' .. vid_info.permalink_url)
   stream_o:set('video_id',vid_info.id)
   stream_o:set('rtmp_url',vid_info.stream_url)
 
@@ -482,13 +529,13 @@ function M.publish_stop(account, stream)
   account = account:get_all()
   stream = stream:get_all()
 
-  if stream.sticky == 'YES' then
-    return true
-  end
-
   stream_o:unset('http_url')
   stream_o:unset('video_id')
   stream_o:unset('rtmp_url')
+
+  if stream.endlive == 'false' or stream.endlive == false then
+    return true
+  end
 
   local targets = from_json(account.targets)
   local target = targets[stream.target]

@@ -475,21 +475,33 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         for _,field in pairs(metadata_fields) do
           local v = self.params[field.key .. '.' .. account.id]
           -- normalize checkbox to true/false
-          if v and len(v) > 0 then
-            if field.type == 'checkbox' then
+          if field.type == 'checkbox' then
+            if v and len(v) > 0 then
               v = true
-              if sa_keys[field.key] ~= nil then
-                sa_keys[field.key] = true
-              end
+            else
+              v = false
             end
+            if sa_keys[field.key] == 'true' then
+              sa_keys[field.key] = true
+            elseif sa_keys[field.key] == 'false' then
+              sa_keys[field.key] = false
+            else
+              sa_keys[field.key] = nil
+            end
+          else
+            if not v or len(v) == 0 then
+              v = nil
+            end
+          end
 
-            if sa_keys[field.key] ~= v then
-              sa:set(field.key,v)
+          if v == nil then
+            if sa_keys[field.key] ~= nil then
+              sa:unset(field.key)
               stream_updated = true
             end
           else
-            if sa_keys[field.key] ~= nil then
-              sa:unset(field.key)
+            if sa_keys[field.key] ~= v then
+              sa:set(field.key,v)
               stream_updated = true
             end
           end
