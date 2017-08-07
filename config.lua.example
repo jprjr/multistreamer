@@ -98,7 +98,7 @@ config({'development','production'}, {
   -- nginx rtmp "listen" directive, see
   -- https://github.com/arut/nginx-rtmp-module/wiki/Directives#listen
   -- default: listen on all ipv6 addresses (which includes all ipv4 addresses, too)
-  rtmp_listen = '[::]:1935'',
+  rtmp_listen = '[::]:1935',
 
   -- nginx irc "listen" directive, see
   -- https://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
