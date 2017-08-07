@@ -48,7 +48,7 @@ Here's some guides on installing/using:
 
 * [My user guide](https://github.com/jprjr/multistreamer/wiki/User-Guide)
 * [A short intro video](https://youtu.be/NBNLqaUn9mA)
-* [A in-depth tutorial for users](https://youtu.be/j89dP0XetCk)
+* [A in-depth tutorial for users](https://youtu.be/Uz2vXppsMIw)
 * [Installing multistreamer with Docker](https://youtu.be/HdDDtBOLme4)
 * [Installing multistreamer without Docker](https://youtu.be/Wr4CD6RU_CU)
 
