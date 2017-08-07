@@ -97,13 +97,13 @@ config({'development','production'}, {
 
   -- nginx rtmp "listen" directive, see
   -- https://github.com/arut/nginx-rtmp-module/wiki/Directives#listen
-  -- default: listen on all ipv6 addresses (which includes all ipv4 addresses, too)
-  rtmp_listen = '[::]:1935',
+  -- default: listen on all ipv6+ipv4 addresses
+  rtmp_listen = '[::]:1935 ipv6only=off',
 
   -- nginx irc "listen" directive, see
   -- https://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
-  -- default: listen on all ipv6 addresses (which includes all ipv4 addresses, too)
-  irc_listen = '[::]:6667',
+  -- default: listen on all ipv6+ipv4 addresses
+  irc_listen = '[::]:6667 ipv6only=off',
 
   -- set the IRC hostname reported by the server
   irc_hostname = 'localhost',
