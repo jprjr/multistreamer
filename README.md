@@ -6,6 +6,10 @@ no to being bought a beer!
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NNKN85X52NEP6)
 [![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=jprjr&url=https://github.com/jprjr/multistreamer&title=multistreamer&language=en_GB&tags=github&category=software)
 
+If you want to get this up and running quickly, check out my Docker
+image - https://github.com/jprjr/docker-multistreamer and its corresponding
+video - https://youtu.be/HdDDtBOLme4
+
 This is a tool for simulcasting RTMP streams to multiple services:
 
 * [Mixer](https://github.com/jprjr/multistreamer/wiki/Mixer)
@@ -46,7 +50,7 @@ service's Terms of Service via simulcasting.
 
 Here's some guides on installing/using:
 
-* [My user guide](https://github.com/jprjr/multistreamer/wiki/User-Guide)
+* [My User Guide](https://github.com/jprjr/multistreamer/wiki/User-Guide)
 * [A short intro video](https://youtu.be/NBNLqaUn9mA)
 * [A in-depth tutorial for users](https://youtu.be/Uz2vXppsMIw)
 * [Installing multistreamer with Docker](https://youtu.be/HdDDtBOLme4)
