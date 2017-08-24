@@ -318,7 +318,11 @@ end
 
 local function emojify(message,emotes)
   local msgTable = to_table(message)
-  emotes = split(emotes,'/')
+  if not emotes then
+    emotes = {}
+  else
+    emotes = split(emotes,'/')
+  end
   for _,v in ipairs(emotes) do
     local t = find(v,':')
     if t then
