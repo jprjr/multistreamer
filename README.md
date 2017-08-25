@@ -62,7 +62,7 @@ Here's some guides on installing/using:
 * [Installation](#installation)
   + [Install with Docker](#install-with-docker)
   + [Install OpenResty with `setup-openresty`](#install-openresty-with-setup-openresty)
-  + [Alternative: Install OpenResty with RTMP Manually](#alternative-install-openresty-with-rtmp manually)
+  + [Alternative: Install OpenResty with RTMP Manually](#alternative-install-openresty-with-rtmp-manually)
   + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
   + [Setup Redis](#setup-redis)
   + [Setup Sockexec](#setup-sockexec)
