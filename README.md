@@ -61,7 +61,8 @@ Here's some guides on installing/using:
 * [Requirements](#requirements)
 * [Installation](#installation)
   + [Install with Docker](#install-with-docker)
-  + [Install OpenResty with RTMP](#install-openresty-with-rtmp)
+  + [Install OpenResty with `setup-openresty`](#install-openresty-with-setup-openresty)
+  + [Alternative: Install OpenResty with RTMP Manually](#alternative-install-openresty-with-rtmp manually)
   + [Alternative: Install nginx with Lua and rtmp](#alternative-install-nginx-with-lua-and-rtmp)
   + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
   + [Setup Redis](#setup-redis)
@@ -106,68 +107,79 @@ I have a Docker image available, along with a docker-compose file for
 quickly getting up and running. Instructions are available here:
 https://github.com/jprjr/docker-multistreamer
 
-### Install OpenResty with RTMP
+### Install OpenResty with `setup-openresty`
+
+I've written a script for setting up OpenResty and LuaRocks: https://github.com/jprjr/setup-openresty
+
+This is now my preferred way for setting up OpenResty. It automatically
+installs build pre-requisites for a good number of distros, and installs
+Lua 5.1.5 in addition to LuaJIT. This allows LuaRocks to build C modules
+that no longer build against LuaJIT (like cjson).
+
+To install, simply:
+
+```bash
+git clone https://github.com/jprjr/setup-openresty
+cd setup-openresty
+sudo ./setup-openresty
+  --prefix=/opt/openresty-rtmp \
+  --with-rtmp \
+  --with-stream \
+  --with-stream-lua
+```
+
+### Alternative: Install OpenResty with RTMP Manually
 
 You don't explicitly need OpenResty - it's just convenient because it already
 includes the Lua module (and the Lua module's requirements).
 
+You'll want to install Lua 5.1.5 as well, so that LuaRocks can build older
+C modules. Included inline is a patch for building liblua as a dynamic library.
+
 ```bash
-sudo apt-get install libreadline-dev libncurses5-dev libpcre3-dev \
-    libssl-dev perl make build-essential unzip curl git
+sudo apt-get -y install \
+  libreadline-dev \
+  libncurses5-dev \
+  libpcre3-dev \
+  libssl-dev \
+  perl \
+  make \
+  build-essential \
+  unzip \
+  curl \
+  git
 mkdir openresty-build && cd openresty-build
-curl -R -L https://openresty.org/download/openresty-1.11.2.2.tar.gz | tar xz
-curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.1.10.tar.gz | tar xz
-curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/e527417c5d04da0c26c12cf4d8a0ef0f1e36e051.tar.gz | tar xz
+curl -R -L https://openresty.org/download/openresty-1.11.2.5.tar.gz | tar xz
+curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.2.0.tar.gz | tar xz
+curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/a3a050bfacfb8d097ee276380c4e606031f2aaf2.tar.gz | tar xz
 curl -R -L http://luarocks.github.io/luarocks/releases/luarocks-2.4.2.tar.gz | tar xz
-cd openresty-1.11.2.2
+curl -R -L https://www.lua.org/ftp/lua-5.1.5.tar.gz | tar xz
+
+cd openresty-1.11.2.5
 ./configure \
   --prefix=/opt/openresty-rtmp \
   --with-pcre-jit \
   --with-ipv6 \
   --with-stream \
   --with-stream_ssl_module \
-  --add-module=../nginx-rtmp-module-1.1.10 \
-  --add-module=../stream-lua-nginx-module-e527417c5d04da0c26c12cf4d8a0ef0f1e36e051
+  --add-module=../nginx-rtmp-module-1.2.0 \
+  --add-module=../stream-lua-nginx-module-a3a050bfacfb8d097ee276380c4e606031f2aaf2
 make
 sudo make install
+
+cd ../lua-5.1.5
+patch -p1 < /path/to/lua-5.1.5.patch # in this repo under misc
+sed -e 's,/usr/local,/opt/openresty-rtmp,g' -i src/luaconf.h
+make CFLAGS="-fPIC -O2 -Wall -DLUA_USE_LINUX" linux
+sudo make INSTALL_TOP="/opt/openresty-rtmp/luajit" TO_LIB="liblua.a liblua.so" install
+
 cd ../luarocks-2.4.2
 ./configure \
   --prefix=/opt/openresty-rtmp \
   --with-lua=/opt/openresty-rtmp/luajit \
-  --lua-suffix=jit \
-  --with-lua-include=/opt/openresty-rtmp/luajit/include/luajit-2.1
-```
-
-### Alternative: Install nginx with Lua and rtmp
-
-Here's a short script to download nginx and install it to `/opt/nginx-rtmp`
-
-```bash
-mkdir nginx-build && cd nginx-build
-curl -R -L http://nginx.org/download/nginx-1.10.2.tar.gz | tar xz
-curl -R -L https://github.com/simpl/ngx_devel_kit/archive/v0.3.0.tar.gz | tar xz
-curl -R -L https://github.com/openresty/lua-nginx-module/archive/v0.10.7.tar.gz | tar xz
-curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.1.10.tar.gz | tar xz
-curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/e527417c5d04da0c26c12cf4d8a0ef0f1e36e051.tar.gz | tar xz
-cd nginx-1.10.2
-export LUAJIT_LIB=$(pkg-config --variable=libdir luajit)
-export LUAJIT_INC=$(pkg-config --variable=includedir luajit)
-./configure \
-  --prefix=/opt/nginx-rtmp \
-  --with-threads \
-  --with-file-aio \
-  --with-ipv6 \
-  --with-http_ssl_module \
-  --with-pcre \
-  --with-pcre-jit \
-  --with-stream \
-  --with-stream_ssl_module \
-  --add-module=../ngx_devel_kit-0.3.0 \
-  --add-module=../lua-nginx-module-0.10.7 \
-  --add-module=../nginx-rtmp-module-1.1.10 \
-  --add-module=../stream-lua-nginx-module-e527417c5d04da0c26c12cf4d8a0ef0f1e36e051
-make
-sudo make install
+  --rocks-tree=/opt/openresty-rtmp/luajit
+make build
+sudo make bootstrap
 ```
 
 ### Setup database and user in Postgres
