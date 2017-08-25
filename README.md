@@ -133,7 +133,9 @@ You don't explicitly need OpenResty - it's just convenient because it already
 includes the Lua module (and the Lua module's requirements).
 
 You'll want to install Lua 5.1.5 as well, so that LuaRocks can build older
-C modules. Included inline is a patch for building liblua as a dynamic library.
+C modules. I have a patch in this repo for building `liblua` as a dynamic
+library, just in case some C module tries to link against `liblua` for
+some reason.
 
 ```bash
 sudo apt-get -y install \
