@@ -85,18 +85,19 @@ Here's some guides on installing/using:
 
 ## Requirements
 
-* nginx/OpenResty with some modules:
+* [OpenResty](https://openresty.org/en/) with some extra modules:
   * [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module)
-  * [lua-nginx-module](https://github.com/openresty/lua-nginx-module)
   * [stream-lua-nginx-module](https://github.com/openresty/stream-lua-nginx-module)
-  * note: the default OpenResty bundle does not include the rtmp module or the
-    TCP lua module - these can be be added with `--add-module`, see
-    [http://openresty.org/en/installation.html](http://openresty.org/en/installation.html)
 * ffmpeg
 * lua 5.1
-* luajit (included with OpenResty)
 * luarocks
-* (optional) bash
+* luajit (included with OpenResty)
+* a POSIX shell (bash, ash, dash, etc)
+
+Note you specifically need OpenResty for this. I no longer support or recommend
+compiling a custom Nginx with the Lua module, you'll need the OpenResty
+distribution, which includes Lua modules like `lua-resty-websocket`,
+`lua-resty-redis`, `lua-resty-lock`, and so on.
 
 ## Installation
 
@@ -128,9 +129,6 @@ sudo ./setup-openresty
 ```
 
 ### Alternative: Install OpenResty with RTMP Manually
-
-You don't explicitly need OpenResty - it's just convenient because it already
-includes the Lua module (and the Lua module's requirements).
 
 You'll want to install Lua 5.1.5 as well, so that LuaRocks can build older
 C modules. I have a patch in this repo for building `liblua` as a dynamic
@@ -287,67 +285,50 @@ You'll need some Lua modules installed:
 
 * lua-resty-exec
 * lua-resty-jit-uuid
-* lua-resty-string
 * lua-resty-http
-* lua-resty-upload
 * lapis
 * etlua
 * luaposix
 * luafilesystem
 * whereami
 
-Note: `lapis` depends on `lua-cjson`, and as of this writing, `lua-cjson`
-fails to compile if you build the module against LuaJIT-2.1 (the default
-with OpenResty).
+#### Installing locally
 
-I recommend using a LuaRocks that defaults to using Lua 5.1, since modules
-for Lua 5.1 work in LuaJIT.
-
-If you install modules to a folder named `lua_modules`, the  bash script will
+If you install modules to a folder named `lua_modules`, the  bash script (`./bin/multistreamer`)
 setup nginx/Lua to only use that folder. So, assuming you're still in
 the `multistreamer` folder:
 
 ```bash
-luarocks --tree=lua_modules install lua-resty-exec
-luarocks --tree=lua_modules install lua-resty-jit-uuid
-luarocks --tree=lua_modules install lua-resty-string
-luarocks --tree=lua_modules install lua-resty-http
-luarocks --tree=lua_modules install lua-resty-upload
-luarocks --tree=lua_modules install lapis
-luarocks --tree=lua_modules install etlua
-luarocks --tree=lua_modules install luaposix
-luarocks --tree=lua_modules install luafilesystem
-luarocks --tree=lua_modules install whereami
+/opt/openresty-rtmp/bin/luarocks install --tree=lua_modules --only-deps rockspecs/multistreamer-dev-1.rockspec
 ```
+
 
 **Note**: older verions of LuaRocks might not automatically install dependencies.
 Here's the full list of modules, including dependencies:
 
 ```
-luarocks --tree=lua_modules install bit32
-luarocks --tree=lua_modules install lua-cjson
-luarocks --tree=lua_modules install date
-luarocks --tree=lua_modules install luacrypto
-luarocks --tree=lua_modules install ansicolors
-luarocks --tree=lua_modules install lpeg
-luarocks --tree=lua_modules install etlua
-luarocks --tree=lua_modules install loadkit
-luarocks --tree=lua_modules install luafilesystem
-luarocks --tree=lua_modules install mimetypes
-luarocks --tree=lua_modules install luasocket
-luarocks --tree=lua_modules install luabitop
-luarocks --tree=lua_modules install pgmoon
-luarocks --tree=lua_modules install netstring
-luarocks --tree=lua_modules install lua-resty-exec
-luarocks --tree=lua_modules install lua-resty-jit-uuid
-luarocks --tree=lua_modules install lua-resty-string
-luarocks --tree=lua_modules install lua-resty-http
-luarocks --tree=lua_modules install lua-resty-upload
-luarocks --tree=lua_modules install lapis
-luarocks --tree=lua_modules install etlua
-luarocks --tree=lua_modules install luaposix
-luarocks --tree=lua_modules install luafilesystem
-luarocks --tree=lua_modules install whereami
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install bit32
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-cjson
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install date
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luacrypto
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install ansicolors
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lpeg
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install etlua
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install loadkit
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luafilesystem
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install mimetypes
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luasocket
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luabitop
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install pgmoon
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install netstring
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-resty-exec
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-resty-jit-uuid
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-resty-http
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lapis
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install etlua
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luaposix
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luafilesystem
+/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install whereami
 ```
 
 Using Mac OS? `lapis` will probably fail to install because `luacrypto`

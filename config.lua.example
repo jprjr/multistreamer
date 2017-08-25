@@ -24,7 +24,7 @@ config({'development','production'}, {
   rtmp_prefix = 'multistreamer',
 
   -- path to your nginx+lua+rtmp binary
-  nginx = '/usr/sbin/nginx',
+  nginx = '/opt/openresty/nginx/sbin/nginx',
 
   -- path to psql
   psql = '/usr/bin/psql',
@@ -149,7 +149,7 @@ config({'development','production'}, {
 
   -- set the path to sockexec's socket
   -- see https://github.com/jprjr/sockexec for installation details
-  -- sockexec_path = '/tmp/exec.sock',
+  sockexec_path = '/tmp/exec.sock',
 
   -- allow/disallow transcoding (default: true)
   -- allow_transcoding = true,
