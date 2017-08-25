@@ -13,6 +13,7 @@
 <input type="checkbox" id="account.<%= account.id %>" name="account.<%= account.id %>" <% if stream and stream:get_account(account) then %>checked<% end %> />
 </div>
 <% end %>
+
 </fieldset>
 
 <fieldset>
