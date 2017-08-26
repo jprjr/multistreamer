@@ -125,6 +125,7 @@ sudo ./setup-openresty
   --prefix=/opt/openresty-rtmp \
   --with-rtmp \
   --with-stream \
+  --with-stream-ssl \
   --with-stream-lua
 ```
 
