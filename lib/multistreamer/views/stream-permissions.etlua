@@ -1,0 +1,33 @@
+<h3><%= stream.name %></h3>
+
+<% render('multistreamer.views.stream-menu', { active_submenu = 'permissions' }) %>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit', { id = stream.id }) %>?subset=permissions" enctype="multipart/form-data">
+
+<% for _,other_user in pairs(users) do %>
+<fieldset>
+<legend><%= other_user.username %></legend>
+<div class="pure-control-group">
+<label for="user.<%= other_user.id %>.chat">Chat Permissions</label>
+<select name="user.<%= other_user.id %>.chat">
+<option value="0" <% if other_user.chat_level == 0 then %>selected<% end %>>None</option>
+<option value="1" <% if other_user.chat_level == 1 then %>selected<% end %>>View Chat</option>
+<option value="2" <% if other_user.chat_level == 2 then %>selected<% end %>>Write Chat</option>
+</select>
+</div>
+<div class="pure-control-group">
+<label for="user.<%= other_user.id %>.metadata">Metadata Permissions</label>
+<select name="user.<%= other_user.id %>.metadata">
+<option value="0" <% if other_user.metadata_level == 0 then %>selected<% end %>>None</option>
+<option value="1" <% if other_user.metadata_level == 1 then %>selected<% end %>>View Metadata</option>
+<option value="2" <% if other_user.metadata_level == 2 then %>selected<% end %>>Edit Metadata</option>
+</select>
+</div>
+<% end %>
+
+<div class="pure-controls">
+<input class="pure-button pure-button-primary" type="submit" id="submitBtn" value="Save" />
+</div>
+</form>
+
+<% render('multistreamer.views.stream-functions', { active_submenu = 'permissions' }) %>

@@ -3,7 +3,8 @@ Description=multistreamer
 After=network.target
 
 [Service]
-ExecStart=/opt/multistreamer/bin/multistreamer -e production run
+ExecStart=/opt/multistreamer/bin/multistreamer -c /etc/multistreamer/config.yaml run
+ExecStartPre=/opt/multistreamer/bin/multistreamer -c /etc/multistreamer/config.yaml check
 User=multistreamer
 
 [Install]

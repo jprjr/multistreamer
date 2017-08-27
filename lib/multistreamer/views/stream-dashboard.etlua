@@ -1,0 +1,184 @@
+<script src="<%= url_for('site-root') %>static/js/hls.min.js"></script>
+<h3><%= stream.name %></h3>
+
+<% render('multistreamer.views.stream-menu', { active_submenu = 'dashboard' }) %>
+
+<% if metadata_level == 2 then %>
+<p><strong>RTMP URL</strong> <code><%= public_rtmp_url %>/<%= rtmp_prefix %></code></p>
+<p><strong>Stream Key</strong> <button id="showBtn" type="button" class="pure-button">Show</button> <code id="stream-key"><%= stream.uuid %></code></p>
+<% end %>
+<% if metadata_level == 2 or chat_level > 0 then %>
+<p><a target="_blank" href="<%= url_for('stream-chat', { id = stream.id })%>?show_picture">Chat</a></p>
+<p><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = stream.id }) %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = stream.id})%>">Chat Widget</a></p>
+<p><strong>IRC Room</strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass">Join</a></p>
+<% end %>
+
+<% if metadata_level > 0 then %>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit', { id = stream.id}) %>?subset=dashboard" enctype="multipart/form-data">
+
+<fieldset><legend>Stream Preview</legend>
+<div class="pure-g">
+<div class="pure-u-1-3">
+<video controls poster="<%= url_for('site-root') %>static/img/novideo.jpg" id="thevideo"></video>
+</div>
+<% if metadata_level == 2 then %>
+<div class="pure-u-1-3 pure-controls">
+<% if stream.ffmpeg_pull_args then %>
+<% if stream_status.data_pulling then %>
+<button class="pure-button pure-button-primary" type="submit" id="customPullBtnStop" name="customPullBtnStop">Stop Puller</button>
+<% else %>
+<button class="pure-button pure-button-primary" type="submit" id="customPullBtn" name="customPullBtn">Start Puller</button>
+<% end %>
+<% end %>
+<% if stream.preview_required and stream_status.data_incoming and not stream_status.data_pushing then %>
+<button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn">Go Live!</button>
+<% else %>
+<button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled>Go Live!</button>
+<% end %>
+<button class="pure-button pure-button-primary" type="submit" id="stopLiveBtn" name="stopLiveBtn" <%= stream_status.data_pushing == true and '' or 'disabled'%>>Stop Pushing</button>
+</div>
+<% end %>
+</div>
+</fieldset>
+
+<div class="pure-control-group"><label for="title">Title</label>
+<input type="text" id="title" name="title" <% if stream:get('title') then %>value="<%= stream:get('title') %>"<% end %> <%= metadata_level < 2 and 'readonly' or '' %>/></div>
+
+<div class="pure-control-group"><label for="description">Description</label>
+<textarea id="description" name="description" <%= metadata_level < 2 and 'readonly' or '' %>><% if stream:get('description') then %><%= stream:get('description') %><% end %></textarea></div>
+
+<% if metadata_level == 2 then %>
+<div class="pure-control-group"><label>Copy above fields to below fields</label>
+<button id="copyDownBtn" type="button" class="pure-button">Copy</button>
+</div>
+<% end %>
+
+<% for _,account in pairs(stream_accounts) do %>
+<fieldset><legend><%= account.name %> (<%= networks[account.network].displayname %>) Settings</legend>
+<% local metadata_form, err = networks[account.network].metadata_form(account:get_keystore(),stream:get_stream_account(account):get_keystore()) %>
+
+<% if err then %>
+<p>Error loading form for this account. Error: <%= err %></p>
+<% elseif metadata_form then %>
+<% for i,v in ipairs(metadata_form) do %>
+<div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= v.label %><%= v.required and ' *' or '' %></label>
+
+<% if v.type == 'text' then %>
+<input type="text" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> <%= metadata_level < 2 and 'readonly' or ''%> />
+
+<% elseif v.type == 'textarea' then %>
+<textarea id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>><%= v.value ~= nil and v.value or '' %></textarea>
+
+<% elseif v.type == 'select' then %>
+<select id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>>
+<option value="" disabled <% if not v.value then %>selected<% end %>>Select</option>
+<% for i,o in ipairs(v.options) do %>
+<option value="<%= o.value %>" <%= o.value == v.value and 'selected' or '' %>><%= o.label %></option>
+<% end %>
+</select>
+
+<% elseif v.type == 'checkbox' then %>
+<input <%= v.value and 'checked ' or ''%>type="checkbox" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>>
+<% end %>
+</div>
+<% end %>
+
+<% else %>
+<p>No settings for this account</o>
+<% end %>
+
+<% if config.allow_transcoding then %>
+<% local ffmpeg_args = stream:get_stream_account(account).ffmpeg_args %>
+<div class="pure-control-group"><label for="ffmpeg_args.<%= account.id %>">FFMPEG Args (blank for default)</label>
+<input type="text" id="ffmpeg_args.<%= account.id %>" name="ffmpeg_args.<%= account.id %>" <% if ffmpeg_args then %>value="<%= ffmpeg_args %>" <% end %> <%= metadata_level < 2 and 'readonly' or '' %> />
+</div>
+<% end %>
+
+</fieldset>
+<% end %>
+
+<% if metadata_level == 2 then %>
+<div class="pure-controls">
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn" name="submitBtn">Submit</button>
+</div>
+<% end %>
+</form>
+
+<script type="text/javascript">
+var copyDownBtn = document.getElementById('copyDownBtn');
+var showBtn = document.getElementById('showBtn');
+
+var titleKeys = [];
+var descriptionKeys = [];
+var titleInput = document.getElementById('title');
+var descriptionInput = document.getElementById('description');
+var streamKey = document.getElementById('stream-key');
+<% for _,account in pairs(stream_accounts) do -%>
+<% local metadata_fields, err = networks[account.network].metadata_fields() -%>
+<% if metadata_fields then -%>
+<% for _,field in pairs(metadata_fields) do -%>
+<% if field.key == 'title' then -%>
+titleKeys.push('<%= field.key %>.<%= account.id %>');
+<% elseif field.key == 'description' then -%>
+descriptionKeys.push('<%= field.key %>.<%= account.id %>');
+<% end -%>
+<% end -%>
+<% end -%>
+<% end -%>
+copyDownBtn.onclick = function() {
+  titleKeys.forEach(function(k) {
+    var a = document.getElementById(k);
+    a.value = titleInput.value;
+  });
+  descriptionKeys.forEach(function(k) {
+    var a = document.getElementById(k);
+    a.value = descriptionInput.value;
+  });
+}
+
+function hideStreamKey() {
+  streamKey.style.display='none';
+  showBtn.onclick = showStreamKey;
+}
+
+function showStreamKey() {
+  streamKey.style.display='inline';
+  showBtn.onclick = hideStreamKey;
+}
+
+showBtn.onclick = showStreamKey;
+</script>
+
+<script>
+  var url = '<%= url_for('stream-video', { id = stream.id , splat = 'index.m3u8' }) %>';
+  var goLiveBtn = document.getElementById('goLiveBtn');
+  if(Hls.isSupported()) {
+
+    function loadVideo() {
+      var video = document.getElementById('thevideo');
+
+      var hls = new Hls();
+      hls.attachMedia(video);
+      hls.loadSource(url);
+      hls.on(Hls.Events.ERROR, function(event, data) {
+        setTimeout(loadVideo, 10000);
+        hls.destroy();
+      });
+      hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+        console.log("manifest loaded, found " + data.levels.length + " quality level");
+        video.play();
+        <% if stream.preview_required == 1 and not stream_status.data_pushing then %>goLiveBtn.removeAttribute('disabled');<% end %>
+      });
+    }
+    loadVideo();
+  }
+  else {
+    goLiveBtn.removeAttribute('disabled');
+  }
+
+</script>
+
+<% end %>
+
+<% render('multistreamer.views.stream-functions', { active_submenu = 'dashboard' }) %>

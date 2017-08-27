@@ -1,0 +1,75 @@
+<h3><%= stream.name %></h3>
+
+<% render('multistreamer.views.stream-menu', { active_submenu = 'webhooks' }) %>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit', { id = stream.id }) %>?subset=webhooks" enctype="multipart/form-data">
+
+<fieldset><legend>New Webhook</legend>
+<div class="pure-control-group">
+<label for="webhook.0.url">Webhook URL</label>
+<input type="text" name="webhook.0.url"></input>
+</div>
+
+<div class="pure-control-group">
+<label for="webhook.0.notes">Webhook Notes</label>
+<input type="text" name="webhook.0.notes"></input>
+</div>
+
+<div class="pure-control-group">
+<label for="webhook.0.type">Webhook Type</label>
+<select name="webhook.0.type">
+<option value="-1" disabled selected>Select Type</option>
+<% for _,v in ipairs(webhook_types) do %>
+<option value="<%= v.value %>"><%= v.name %></option>
+<% end %>
+</select>
+</div>
+
+<% for i,v in ipairs(webhook_events) do %>
+<div class="pure-control-group">
+<label for="webhook.0.event.<%= v.value %>"><%= v.name %></label>
+<input type="checkbox" name="webhook.0.event.<%= v.value %>" checked />
+</div>
+<% end %>
+
+</fieldset>
+
+<% for i, webhook in ipairs(webhooks) do %>
+<fieldset><legend>Webhook <%= i %></legend>
+<div class="pure-control-group">
+<label for="webhook.<%= webhook.id %>.url">Webhook URL</label>
+<input type="text" name="webhook.<%= webhook.id %>.url" value="<%= webhook.url %>"></input>
+</div>
+
+<div class="pure-control-group">
+<label for="webhook.<%= webhook.id %>.notes">Webhook Notes</label>
+<input type="text" name="webhook.<%= webhook.id %>.notes" value="<%= webhook.notes %>"></input>
+</div>
+
+<div class="pure-control-group">
+<label for="webhook.<%= webhook.id %>.type">Webhook Type</label>
+<select name="webhook.<%= webhook.id %>.type">
+<option value="-1" disabled selected>Select Type</option>
+<% for _,v in ipairs(webhook_types) do %>
+<option value="<%= v.value %>"<% if webhook.type == v.value then %> selected<% end %>><%= v.name %></option>
+<% end %>
+</select>
+</div>
+
+<% for i,v in ipairs(webhook_events) do %>
+<div class="pure-control-group">
+<label for="webhook.<%= webhook.id %>.event.<%= v.value %>"><%= v.name %></label>
+<input type="checkbox" name="webhook.<%= webhook.id %>.event.<%= v.value %>" <% if webhook:check_event(v.value) then %>checked <% end %> />
+</div>
+<% end %>
+
+<% end %>
+</fieldset>
+
+<div class="pure-controls">
+<input class="pure-button pure-button-primary" type="submit" value="Save" id="submitBtn" />
+</div>
+
+</form>
+
+<% render('multistreamer.views.stream-functions', { active_submenu = 'webhooks' }) %>

@@ -58,30 +58,33 @@ Here's some guides on installing/using:
 
 ## Table of Contents
 
-* [Requirements](#requirements)
-* [Installation](#installation)
-  + [Install with Docker](#install-with-docker)
-  + [Install OpenResty with `setup-openresty`](#install-openresty-with-setup-openresty)
-  + [Alternative: Install OpenResty with RTMP Manually](#alternative-install-openresty-with-rtmp-manually)
-  + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
-  + [Setup Redis](#setup-redis)
-  + [Setup Sockexec](#setup-sockexec)
-  + [Setup Authentication Server](#setup-authentication-server)
-  + [Clone and setup](#clone-and-setup)
-  + [Install Lua modules](#install-lua-modules)
-  + [Initialize the database](#initialize-the-database)
-* [Usage](#usage)
-  + [Start the server](#start-the-server)
-  + [Alternative: run as systemd service](#alternative-run-as-systemd-service)
-  + [Web Usage](#web-usage)
-  + [IRC Usage](#irc-usage)
-* [Reference](#reference)
-  + [`bin/multistreamer` usage:](#binmultistreamer-usage)
-  + [Alternative install options:](#alternative-install-options)
-    - [Remove Bash dependency](#remove-bash-dependency)
-* [Roadmap](#roadmap)
-* [Versioning](#versioning)
-* [Licensing](#licensing)
+- [multistreamer](#multistreamer)
+  * [Table of Contents](#table-of-contents)
+  * [Requirements](#requirements)
+  * [Installation](#installation)
+    + [Install with Docker](#install-with-docker)
+    + [Install OpenResty with `setup-openresty`](#install-openresty-with-setup-openresty)
+    + [Alternative: Install OpenResty with RTMP Manually](#alternative-install-openresty-with-rtmp-manually)
+    + [Setup database and user in Postgres](#setup-database-and-user-in-postgres)
+    + [Setup Redis](#setup-redis)
+    + [Setup Sockexec](#setup-sockexec)
+    + [Setup Authentication Server](#setup-authentication-server)
+    + [Clone and setup](#clone-and-setup)
+    + [Install Multistreamer](#install-multistreamer)
+      - [Global install](#global-install)
+      - [Self-contained install](#self-contained-install)
+    + [Initialize the database](#initialize-the-database)
+    + [Customization](#customization)
+  * [Usage](#usage)
+    + [Start the server](#start-the-server)
+    + [Alternative: run as systemd service](#alternative-run-as-systemd-service)
+    + [Web Usage](#web-usage)
+    + [IRC Usage](#irc-usage)
+  * [Reference](#reference)
+    + [`bin/multistreamer` usage:](#binmultistreamer-usage)
+  * [Roadmap](#roadmap)
+  * [Versioning](#versioning)
+  * [Licensing](#licensing)
 
 ## Requirements
 
@@ -175,11 +178,11 @@ sudo make INSTALL_TOP="/opt/openresty-rtmp/luajit" TO_LIB="liblua.a liblua.so" i
 
 cd ../luarocks-2.4.2
 ./configure \
-  --prefix=/opt/openresty-rtmp \
-  --with-lua=/opt/openresty-rtmp/luajit \
-  --rocks-tree=/opt/openresty-rtmp/luajit
+  --prefix=/opt/openresty-rtmp/luajit \
+  --with-lua=/opt/openresty-rtmp/luajit
 make build
 sudo make bootstrap
+sudo ln -s /opt/openresty-rtmp/luajit/bin/luarocks /opt/openresty-rtmp/bin/luarocks
 ```
 
 ### Setup database and user in Postgres
@@ -250,7 +253,11 @@ http {
 I have some some projects for quickly setting up authentication servers:
 
 * htpasswd: https://github.com/jprjr/htpasswd-auth-server
+  * Authenticate users against an htpasswd file
+* postgres: https://github.com/jprjr/postgres-auth-server
+  * Store users in postgres, includes a web interface for adding/managing users
 * LDAP: https://github.com/jprjr/ldap-auth-server
+  * Authenticate users against LDAP
 
 
 ### Clone and setup
@@ -260,94 +267,62 @@ Clone this repo somewhere, copy the example config file, and edit it as-needed
 ```bash
 git clone https://github.com/jprjr/multistreamer.git
 cd multistreamer
-cp config.lua.example config.lua
-# edit config.lua
+cp etc/config.yaml.example /etc/multistreamer/config.yaml
+# edit /etc/multistreamer/config.yaml
 ```
 
-I've tried to comment `config.lua.example` and describe what each setting
+I've tried to comment `config.yaml.example` and describe what each setting
 does as best as I can.
-
-The config file allows storing multiple environments in a single file,
-see http://leafo.net/lapis/reference/configuration.html for details.
 
 One of the more important items in the config file is the `networks` section,
 right now the supported networks are:
 
-* `facebook` - supports profiles and pages, auto-creates live video, pushes video.
 * `rtmp` - just push video to an RTMP URL
-* `twitch` - supports editing/updating channel information and pushing video
-* `youtube` - auto-creates live "events" and pushes video
+* `facebook`
+* `mixer`
+* `twitch`
+* `youtube`
 
 Each module has more details in the [wiki.](https://github.com/jprjr/multistreamer/wiki)
 
-### Install Lua modules
+### Install Multistreamer
 
-You'll need some Lua modules installed:
+#### Global install
 
-* lua-resty-exec
-* lua-resty-jit-uuid
-* lua-resty-http
-* lapis
-* etlua
-* luaposix
-* luafilesystem
-* whereami
+```bash
+/opt/openresty/bin/luarocks install multistreamer
+```
 
-#### Installing locally
+If you used the `setup-openresty` script from above, you'll find
+`multistreamer` at `/opt/openresty/bin/multistreamer`, else it
+depends on your particular setup.
+
+
+#### Self-contained install
 
 If you install modules to a folder named `lua_modules`, the  bash script (`./bin/multistreamer`)
 setup nginx/Lua to only use that folder. So, assuming you're still in
 the `multistreamer` folder:
 
 ```bash
-/opt/openresty-rtmp/bin/luarocks install --tree=lua_modules --only-deps rockspecs/multistreamer-dev-1.rockspec
-```
-
-
-**Note**: older verions of LuaRocks might not automatically install dependencies.
-Here's the full list of modules, including dependencies:
-
-```
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install bit32
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-cjson
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install date
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luacrypto
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install ansicolors
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lpeg
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install etlua
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install loadkit
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luafilesystem
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install mimetypes
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luasocket
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luabitop
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install pgmoon
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install netstring
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-resty-exec
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-resty-jit-uuid
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lua-resty-http
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install lapis
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install etlua
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luaposix
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install luafilesystem
-/opt/openresty-rtmp/bin/luarocks --tree=lua_modules install whereami
+/opt/openresty-rtmp/bin/luarocks install --tree=lua_modules --only-deps multistreamer
 ```
 
 Using Mac OS? `lapis` will probably fail to install because `luacrypto`
 will fail to build. If you're using Homebrew, you can install
 `luacrypto` with:
 
-`luarocks --tree lua_modules install luacrypto OPENSSL_DIR=/usr/local/opt/openssl`
+```bash
+luarocks --tree=lua_modules install luacrypto OPENSSL_DIR=/usr/local/opt/openssl
+luarocks --tree=lua_modules install --only-dels multistreamer
 
-Then proceed to install `lapis`.
+```
+
 
 ### Initialize the database
 
-If you run `./bin/multistreamer -e <environment> initdb`, a new database will
-be created.
-
-Alternatively, you could run something like:
-
-`psql -U <username> -h <host> -f sql/1477785578.sql`
+Multistreamer will automatically create tables when starting, or
+you can trigger them manually with `./bin/multistreamer initdb`
 
 ### Customization
 
@@ -359,7 +334,7 @@ Just copy the `static` folder to `local`, then edit/replace files as needed.
 
 ### Start the server
 
-Once it's been setup, you can start the server with `./bin/multistreamer -e <environment> run`
+Once it's been setup, you can start the server with `./bin/multistreamer run`
 
 ### Alternative: run as systemd service
 
@@ -375,8 +350,8 @@ sudo useradd \
 
 Then copy `misc/multistreamer.service` to
 `/etc/systemd/system/multistreamer.service`, and edit it as-needed - you'll
-probably need to change the `ExecStart` line to point to wherever you
-cloned the git repo.
+probably need to change the `ExecStart` and `ExecStartPre` lines to point
+to wherever you cloned the git repo.
 
 ### Web Usage
 
@@ -451,34 +426,16 @@ Attached is a screenshot of Adium. I'm the user `john`, and my stream is named
 Here's the full list of options for `multistreamer`:
 
 ```
-multistreamer [-h] [-l /path/to/lua] -e <environment> <action>
+multistreamer [-l /path/to/lua] [-c /path/to/config.yaml] [-v] <action>
 ```
 
-* `-h` - displays help
 * `-l /path/to/lua` - explicitly provide a path to the lua/luajit binary
-* `-e <environment>` - one of the environments defined in `config.lua`
+* `-c /path/to/config.yaml`` - specify a config file, defaults to `/etc/multistreamer/config.yaml`
+* `-v` - prints the current version of multistreamer
 * `<action>` - can be one of
   * `run` - launches nginx
-  * `initdb` - initialized the database
-  * `psql` - starts up a psql session for your environment
-  * `live <uuid>` - **internal**, the rtmp module calls this to setup
-    and run ffmpeg.
-
-
-### Alternative install options:
-
-#### Remove Bash dependency
-
-The bash script at `bin/multistreamer` sets a few environment variables
-before calling `bin/multistreamer.lua`, and attempts to figure out which
-`lua` implementation to use.
-
-If you can't or don't want to use bash you can call `bin/multistreamer.lua` - just
-be sure to set the following environment variables:
-
-* `LAPIS_ENVIRONMENT` - required
-* `LUA_PACKAGE_PATH` - optional
-* `LUA_PACKAGE_CPATH` - optional
+  * `initdb` - initializes the database
+  * `check` - checks the config file, postgres, redis, etc
 
 ## Roadmap
 
@@ -516,15 +473,6 @@ as LICENSE-purecss.
 This project includes a copy of commonmark.js (`static/js/commonmark.min.js`),
 which is licensed under a BSD-style licnese. The commonmark.js license is
 available as LICENSE-commonmark-js
-
-This project includes a copy of lua-resty-redis (`resty/redis.lua`),
-which is licensed under a BSD license. The license for lua-resty-redis is
-available as LICENSE-lua-resty-redis
-
-This project includes a copy of lua-resty-websocket (`resty/websocket/protocol.lua`,
-`resty/websocket/client.lua`, `resty/websocket/server.lua`) which is license under
-a BSD license. The license for lua-resty-websocket is available as
-LICENSE-lua-resty-websocket.
 
 This project includes a copy of zenscroll (`static/js/zenscroll-min.js`), which
 is public-domain code. The license for zenscroll is availble as LICENSE-zenscroll.

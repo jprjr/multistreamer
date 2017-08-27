@@ -1,0 +1,36 @@
+<h3><%= stream.name %></h3>
+
+<% render('multistreamer.views.stream-menu', { active_submenu = 'accounts' }) %>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit') %><% if stream then %>/<%= stream.id %><% end %>?subset=accounts" enctype="multipart/form-data">
+
+<fieldset>
+<legend>Enable/Disable accounts</legend>
+
+<% for i, account in pairs(accounts) do %>
+<div class="pure-control-group">
+<label for="account.<%= account.id %>"><%= account.shared and '(Shared) ' or '' %><%= networks[account.network].displayname %> - <%= account.name %></label>
+<input type="checkbox" id="account.<%= account.id %>" name="account.<%= account.id %>" <% if stream and stream:get_account(account) then %>checked<% end %> />
+</div>
+<% end %>
+
+</fieldset>
+
+<fieldset>
+<legend>Add new account</legend>
+<% for k,v in networks() do %>
+<% if v.get_oauth_url then %>
+<p><a href="<%= v.get_oauth_url(user,stream.id) %>"><%= v.displayname %></a></p>
+<% else %>
+<p><a href="<%= url_for('account-'..v.name) %>?stream=<%= stream.id %>"><%= v.displayname %></a></p>
+<% end %>
+<% end %>
+</fieldset>
+
+<div class="pure-controls">
+<input class="pure-button pure-button-primary" type="submit" value="Save" id="submitBtn" />
+</div>
+
+</form>
+
+<% render('multistreamer.views.stream-functions', { active_submenu = 'accounts' }) %>

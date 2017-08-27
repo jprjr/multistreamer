@@ -1,6 +1,8 @@
 /config.lua
+/etc/config.yaml
 /lua_modules
 /static/favicon.ico
 /.lua-version
 *.swp
 /local/
+/share/multistreamer/html/local

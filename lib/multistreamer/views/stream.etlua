@@ -1,0 +1,31 @@
+<% if stream then %>
+<h3><%= stream.name %></h3>
+<% else %>
+<h3>Create Stream</h3>
+<% end %>
+
+<% if stream then %>
+<% render('multistreamer.views.stream-menu', { active_submenu = 'general' }); %>
+<% end %>
+
+<form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit') %><% if stream then %>/<%= stream.id %><% end %>?subset=general" enctype="multipart/form-data">
+
+<div class="pure-control-group"><label for="stream_name">Stream Name (Internal)</label>
+<input type="text" name="stream_name" <% if stream then %>value="<%= stream.name %>"<% end %> /></div>
+
+<div class="pure-control-group"><label for="preview_required">Require Preview before going live</label>
+<select name="preview_required">
+<option value="0" <% if stream and stream.preview_required == 0 then %>selected<% end %>>No</option>
+<option value="1" <% if stream and stream.preview_required == 1 then %>selected<% end %>>Yes</option>
+</select>
+</div>
+
+
+<div class="pure-controls">
+<input class="pure-button pure-button-primary" type="submit" value="Save" id="submitBtn" />
+</div>
+</form>
+
+<% if stream then %>
+<% render('multistreamer.views.stream-functions', { active_submenu = 'general' }); %>
+<% end %>

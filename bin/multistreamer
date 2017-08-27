@@ -47,55 +47,47 @@ script_abs_name() {
 # }}}
 
 usage() { # {{{
-    printf "Usage:\n %s [-h] -e environment [-l /path/to/lua]\n" "$(script_name)"
-    printf "  -h                - show this help\n"
-    printf "  -e <environment>  - use environment from config.lua\n"
-    printf "  -l </path/to/lua> - specify lua binary\n"
+    printf "Usage:\n %s [-l /path/to/lua]\n" "$(script_name)"
 } # }}}
 
 install_dir=$(dirname $(script_abs_dir))
 
-while getopts "he:l:" opt; do
+while getopts ":l:" opt; do
     case "$opt" in
-        e) lapis_env=$OPTARG ;;
         l) lua_bin=$OPTARG ;;
-        h) usage ; exit ;;
-        \?) usage; exit ;;
         :) printf "Option -%s requires in argument\n" "${OPTARG}" >&2 ; exit 1;;
     esac
 done
 
-shift $((OPTIND-1))
-
-if [ -z "${lapis_env}" ] ; then
-    usage
-    exit 1
-fi
-
-export LAPIS_ENVIRONMENT=${lapis_env}
-
 if [ -z "${lua_bin}" ] ; then
     if command -v lua >/dev/null 2>&1; then
-        if lua -e 'return true' ; then
-            lua_bin=lua
-        fi
+        lua_bin=lua
     elif command -v luajit >/dev/null 2>&1; then
-        if luajit -e 'return true' ; then
-            lua_bin=luajit
-        fi
+        lua_bin=luajit
     else
         printf "Unable to find a suitable lua - please specify with -l /path/to/lua\n"
         exit 1
     fi
 fi
 
-lua_bin=$(command -v ${lua_bin})
+export LUA_PATH=$("${lua_bin}" -e "print(package.path)")
+export LUA_CPATH=$("${lua_bin}" -e "print(package.cpath)")
 
+# if 3rd-party modules in lua_modules, use it exclusively
 if [ -e "${install_dir}/lua_modules" ] ; then
     lua_major_ver=$(${lua_bin} -e "print(_VERSION:match('%d+%.%d+'))")
     export LUA_PATH="${install_dir}/lua_modules/share/lua/${lua_major_ver}/?.lua;${install_dir}/lua_modules/share/lua/${lua_major_ver}/?/init.lua;./?.lua;"
     export LUA_CPATH="${install_dir}/lua_modules/lib/lua/${lua_major_ver}/?.so;"
 fi
 
-cd "${install_dir}"
-exec "${lua_bin}" "${install_dir}/bin/multistreamer.lua" "$@"
+# running from cloned directory, add local lib to search path
+if [ -e "${install_dir}/lib/multistreamer" ] ; then
+    export LUA_PATH="${install_dir}/lib/?.lua;${install_dir}/lib/?/init.lua;${LUA_PATH}"
+    export PATH="${install_dir}/bin:$PATH"
+fi
+
+if [ -e "${install_dir}/share/multistreamer/html" ] ; then
+    export MULTISTREAMER_STATIC_DIR="${install_dir}/share/multistreamer/html"
+fi
+
+exec "${lua_bin}" "$(command -v multistreamer.lua)" "$@"
