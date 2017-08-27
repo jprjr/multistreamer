@@ -431,7 +431,7 @@ multistreamer [-l /path/to/lua] [-c /path/to/config.yaml] [-v] <action>
 ```
 
 * `-l /path/to/lua` - explicitly provide a path to the lua/luajit binary
-* `-c /path/to/config.yaml`` - specify a config file, defaults to `/etc/multistreamer/config.yaml`
+* `-c /path/to/config.yaml` - specify a config file, defaults to `/etc/multistreamer/config.yaml`
 * `-v` - prints the current version of multistreamer
 * `<action>` - can be one of
   * `run` - launches nginx
