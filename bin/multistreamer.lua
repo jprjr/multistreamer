@@ -280,8 +280,8 @@ secret: '<%= secret %>'
 
 ### whether to log queries and requests
 logging:
-    queries: <%= logging.queries %>
-    requests: <%= logging.requests %>
+  queries: <%= logging.queries %>
+  requests: <%= logging.requests %>
 
 ### if deploying somewhere other than the root of a domain
 ### set this to your prefix (ie, '/multistreamer')
