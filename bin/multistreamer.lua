@@ -231,7 +231,243 @@ elseif(arg[1] == 'pull') then
   exit(1)
 
 elseif(arg[1] == 'dump_yaml') then
-  
+
+  if config.logging.queries then
+    config.logging.queries = 'true'
+  else
+    config.logging.queries = 'false'
+  end
+  if config.logging.requests then
+    config.logging.requests = 'true'
+  else
+    config.logging.requests = 'false'
+  end
+
+  if config.public_irc_ssl then
+    config.public_irc_ssl = 'true'
+  else
+    config.public_irc_ssl = 'false'
+  end
+
+  if config.networks.rtmp then
+    config.networks.rtmp = 'true'
+  else
+    config.networks.rtmp = 'false'
+  end
+  if config.irc_force_join then
+    config.irc_force_join = 'true'
+  else
+    config.irc_force_join = 'false'
+  end
+
+  if config.allow_transcoding then
+    config.allow_transcoding = 'true'
+  else
+    config.allow_transcoding = 'false'
+  end
+  if config.allow_custom_puller then
+    config.allow_custom_puller = 'true'
+  else
+    config.allow_custom_puller = 'false'
+  end
+
+  local yaml_template = [[
+### name of the cookie used to store session data
+session_name: '<%= session_name %>'
+
+### key for encrypting session data
+secret: '<%= secret %>'
+
+### whether to log queries and requests
+logging:
+    queries: <%= logging.queries %>
+    requests: <%= logging.requests %>
+
+### if deploying somewhere other than the root of a domain
+### set this to your prefix (ie, '/multistreamer')
+http_prefix: '<%= http_prefix %>'
+
+### set an rtmp prefix
+### note: this can only be a single string
+### no slashes etc
+### defaults to 'multistreamer' if unset
+rtmp_prefix: '<%= rtmp_prefix %>'
+
+### path to your nginx+lua+rtmp binary
+nginx: '<%= nginx %>'
+
+### path to psql
+psql: '<%= psql %>'
+
+### path to ffmpeg
+ffmpeg: '<%= ffmpeg %>'
+
+### set your logging level
+log_level: '<%= log_level %>'
+
+### setup your external urls (without prefixes)
+public_http_url: '<%= public_http_url %>'
+public_rtmp_url: '<%= public_rtmp_url %>'
+
+### setup your private (loopback) urls (without prefixes)
+private_http_url: '<%= private_http_url %>'
+private_rtmp_url: '<%= private_rtmp_url %>'
+
+### setup your public IRC hostname, for the web
+### interface
+public_irc_hostname: '<%= public_irc_hostname %>'
+
+### setup your public IRC port, to report in the
+### web interface
+public_irc_port: '<%= public_irc_port %>'
+
+### set to true if you've setup an SSL terminator in front
+### of multistreamer
+public_irc_ssl: <%= public_irc_ssl %>
+
+
+### configure streaming networks/services
+### you'll need to register a new app with each
+### service and insert keys/ids in here
+
+### 'rtmp' just stores RTMP urls and has no config
+networks:
+  <% if networks.mixer then %>
+  mixer:
+    client_id: '<%= networks.mixer.client_id %>'
+    client_secret: '<%= networks.mixer.client_secret %>'
+    ingest_server: '<%= networks.mixer.ingest_server %>'
+  <% else %>
+  #mixer:
+  #  client_id: 'client_id'
+  #  client_secret: 'client_secret'
+  #  ingest_server: 'rtmp://somewhere'
+  <% end %>
+
+  <% if networks.twitch then %>
+  twitch:
+    client_id: '<%= networks.twitch.client_id %>'
+    client_secret: '<%= networks.twitch.client_secret %>'
+    ingest_server: '<%= networks.twitch.ingest_server %>'
+    # see https://bashtech.net/twitch/ingest.php
+    # for a list of endpoints
+  <% else %>
+  #twitch:
+  #  client_id: 'client_id'
+  #  client_secret: 'client_secret'
+  #  ingest_server: 'rtmp://somewhere'
+    # see https://bashtech.net/twitch/ingest.php
+    # for a list of endpoints
+  <% end %>
+
+  <% if networks.facebook then %>
+  facebook:
+    app_id: '<%= networks.facebook.app_id %>'
+    app_secret: '<%= networks.facebook.app_secret %>'
+  <% else %>
+  #facebook:
+  #  app_id: 'app_id'
+  #  app_secret: 'app_secret'
+  <% end %>
+
+  <% if networks.youtube then %>
+  youtube:
+    client_id: '<%= networks.youtube.client_id %>'
+    client_secret: '<%= networks.youtube.client_secret %>'
+    country: '<%= networks.youtube.country %>'
+    # 2-character country code, used for listing available categories
+  <% else %>
+  #youtube:
+  #  client_id: 'client_id'
+  #  client_secret: 'client_secret'
+  #  country: 'us'
+    # 2-character country code, used for listing available categories
+  <% end %>
+
+  rtmp: <%= networks.rtmp %>
+
+### postgres connection settings
+postgres:
+  host: '<%= postgres.host %>'
+  user: '<%= postgres.user %>'
+  password: '<%= postgres.password %>'
+  database: '<%= postgres.database %>'
+  <% if postgres.port then %>port: '<%= postgres.port %>'<% else %>port: 5432<% end %>
+
+### nginx http "listen" directive, see
+### http://nginx.org/en/docs/http/ngx_http_core_module.html#listen
+http_listen: '<%= http_listen %>'
+
+### nginx rtmp "listen" directive, see
+### https://github.com/arut/nginx-rtmp-module/wiki/Directives#listen
+### default: listen on all ipv6+ipv4 addresses
+rtmp_listen: '<%= rtmp_listen %>'
+
+### nginx irc "listen" directive, see
+### https://nginx.org/en/docs/stream/ngx_stream_core_module.html#listen
+### default: listen on all ipv6+ipv4 addresses
+irc_listen: '<%= irc_listen %>'
+
+### set the IRC hostname reported by the server
+irc_hostname: '<%= irc_hostname %>'
+
+### should users be automatically brought into chat rooms when
+### their streams go live? (default false)
+### this is handy for clients like Adium, Pidgin, etc that don't
+### have a great IRC interface
+irc_force_join: <%= irc_force_join %>
+
+### number of worker processes
+worker_processes: <%= worker_processes %>
+
+### http auth endpoint
+### multistreamer will make an HTTP request with the 'Authorization'
+### header to this URL when a user logs in
+### see http://nginx.org/en/docs/http/ngx_http_auth_request_module.html
+### see https://github.com/jprjr/ldap-auth-server for an LDAP implementation
+auth_endpoint: '<%= auth_endpoint %>'
+
+### redis host
+redis_host: '<%= redis_host %>'
+
+### prefix for redis keys
+redis_prefix: '<%= redis_prefix %>'
+
+### path to trusted ssl certificate store
+ssl_trusted_certificate: '<%= ssl_trusted_certificate %>'
+
+### dns resolver
+dns_resolver: '<%= dns_resolver %>'
+
+### maximum ssl verify depth
+ssl_verify_depth: <%= ssl_verify_depth %>
+
+### sizes for shared dictionaries (see https://github.com/openresty/lua-nginx-module#lua_shared_dict)
+lua_shared_dict_streams_size: '<%= lua_shared_dict_streams_size %>'
+lua_shared_dict_writers_size: '<%= lua_shared_dict_writers_size %>'
+
+### specify the run directory to hold temp files etc
+### defaults to $HOME/.multistreamer if not set
+<% if work_dir then -%>
+work_dir: '<%= work_dir %>'
+<% else -%>
+#work_dir: ''
+<% end %>
+
+### set the path to sockexec's socket
+### see https://github.com/jprjr/sockexec for installation details
+sockexec_path: '<%= sockexec_path %>'
+
+### allow/disallow transcoding (default: true)
+allow_transcoding: <%= allow_transcoding %>
+
+### allow/disallow creating pullers (default: true)
+allow_custom_puller: <%= allow_custom_puller %>
+]]
+
+  local template = etlua.compile(yaml_template)
+  print(template(config))
+
 
 end
 
