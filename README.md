@@ -437,6 +437,31 @@ multistreamer [-l /path/to/lua] [-c /path/to/config.yaml] [-v] <action>
   * `initdb` - initializes the database
   * `check` - checks the config file, postgres, redis, etc
 
+### Migrating from Multistreamer 10 -> 11
+
+In Multistreamer 11, I made changes to (hopefully) make Multistreamer easier
+to deploy.
+
+* You can install Multistreamer using LuaRocks
+  * You can also do a self-contained install with a single luarocks call
+* `config.lua` is removed in favor of a YAML config-file
+  * You can no longer store multiple environments in a single file, use
+    one file per environment.
+  * You can specify a config file with `-c /path/to/config.yaml`
+  * `/etc/multistreamer/config.yaml` is read in by default
+
+Version 10.2.5 can dump an existing environment's config to YAML, so to migrate:
+
+```bash
+git checkout 10.2.5
+./bin/multistreamer -e (environment) dump_yaml > config.yaml
+# checkout config.yaml, make sure everything makes sense
+mkdir /etc/multistreamer
+cp config.yaml /etc/multistreamer/config.yaml
+luarocks --tree=lua_modules install --only-deps rockspecs/multistreamer-dev-1.rockspec
+# or use luarocks --tree=lua_modules install --only-deps multistreamer to pull from luarocks
+```
+
 ## Roadmap
 
 New features I'd like to work on:
