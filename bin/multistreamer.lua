@@ -23,6 +23,7 @@ local commands = {
   ['run'] = 1,
   ['initdb'] = 1,
   ['psql'] = 1,
+  ['dump_yaml'] = 1,
   ['push'] = 1, -- internal command
   ['pull'] = 1, -- internal command
 }
@@ -228,6 +229,9 @@ elseif(arg[1] == 'pull') then
   local _, err = posix.exec(config.ffmpeg,ffmpeg_args)
   print(err)
   exit(1)
+
+elseif(arg[1] == 'dump_yaml') then
+  
 
 end
 
