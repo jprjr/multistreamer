@@ -450,11 +450,13 @@ to deploy.
     one file per environment.
   * You can specify a config file with `-c /path/to/config.yaml`
   * `/etc/multistreamer/config.yaml` is read in by default
+* Database migrations are automatic
 
 Version 10.2.5 can dump an existing environment's config to YAML, so to migrate:
 
 ```bash
 git checkout 10.2.5
+./bin/multistreamer -e (environment) initdb # prep db for auto-migrations
 ./bin/multistreamer -e (environment) dump_yaml > config.yaml
 # checkout config.yaml, make sure everything makes sense
 mkdir /etc/multistreamer
