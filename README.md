@@ -315,7 +315,7 @@ will fail to build. If you're using Homebrew, you can install
 
 ```bash
 luarocks --tree=lua_modules install luacrypto OPENSSL_DIR=/usr/local/opt/openssl
-luarocks --tree=lua_modules install --only-dels multistreamer
+luarocks --tree=lua_modules install --only-deps multistreamer
 
 ```
 
