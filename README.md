@@ -82,6 +82,7 @@ Here's some guides on installing/using:
     + [IRC Usage](#irc-usage)
   * [Reference](#reference)
     + [`bin/multistreamer` usage:](#binmultistreamer-usage)
+    + [Migrating from Multistreamer 10 -> 11](#migrating-from-multistreamer-10---11)
   * [Roadmap](#roadmap)
   * [Versioning](#versioning)
   * [Licensing](#licensing)
