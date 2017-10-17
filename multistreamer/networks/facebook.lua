@@ -561,39 +561,33 @@ function M.check_errors(account)
   end
 
   if exp and exp < 864000 then -- if token expires in <10 days
-    local httpc = http.new()
+    local httpc = http.new(http_error_handler)
 
-    local res, err = httpc:request_uri(graph_root .. '/oauth/access_token?' ..
-      encode_query_string({
+    -- httpc.get = function(self,endpoint,params,headers)
+    local res, err = httpc:get(graph_root .. '/oauth/client_code',
+      {
         access_token = token,
         client_id = facebook_config.app_id,
         client_secret = facebook_config.app_secret,
         redirect_uri = M.redirect_uri,
       })
-    )
 
-    if err or res.status >= 400 then
-      return 'Token expiring soon, unable to refresh'
-    end
+    if err then return 'Token expiring soon, but unable to refresh: ' .. err end
 
     local code = from_json(res.body).code
 
-    res, err = httpc:request_uri(graph_root .. '/oauth/access_token?' ..
-      encode_query_string({
+    res, err = httpc:get(graph_root .. '/oauth/access_token',
+      {
         code = code,
         client_id = facebook_config.app_id,
         redirect_uri = M.redirect_uri,
       })
-    )
 
-    if err or res.status >= 400 then
-      return 'Token expiring soon, unable to refresh'
-    end
+    if err then return 'Token expiring soon, but unable to refresh: ' .. err end
 
     local creds = from_json(res.body)
     account:set('access_token',creds.access_token, tonumber(creds.expires_in))
   end
-
 
   return false
 end
