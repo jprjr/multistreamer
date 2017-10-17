@@ -137,7 +137,10 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
       self.stream_accounts = {}
       for _,v in pairs(self.stream:get_streams_accounts()) do
-        insert(self.stream_accounts,v:get_account())
+        local sa = v:get_account()
+        if networks[sa.network] then
+          insert(self.stream_accounts, sa)
+        end
       end
 
       self.metadata_level = self.stream:check_meta(self.user)
@@ -211,7 +214,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
     local acc = self.user:get_accounts()
     if not acc then acc = {} end
     for _,account in pairs(acc) do
-      insert(self.accounts,account)
+      if networks[account.network] then
+        insert(self.accounts,account)
+      end
     end
 
     local sas = self.user:get_shared_accounts()
@@ -220,7 +225,9 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       local u = account:get_user()
       account.shared = true
       account.shared_from = u.username
-      insert(self.accounts,account)
+      if networks[account.network] then
+        insert(self.accounts,account)
+      end
     end
     sort(self.accounts, sort_accounts)
     sort(self.stream_accounts, sort_accounts)
@@ -807,23 +814,29 @@ app:get('site-root', config.http_prefix .. '/', function(self)
     return { redirect_to = 'login' }
   end
 
-  self.accounts = self.user:get_accounts()
+  self.accounts = {}
   self.streams = self.user:get_streams()
-  if not self.accounts then self.accounts = {} end
+  local accounts = self.user:get_accounts()
+
+  if not accounts then accounts = {} end
   if not self.streams then self.streams = {} end
 
   local sas = self.user:get_shared_accounts()
 
   for _,sa in pairs(sas) do
     local account = sa:get_account()
-    local u = account:get_user()
-    account.shared = true
-    account.shared_from = u.username
-    insert(self.accounts,account)
+    if networks[account.network] then
+      local u = account:get_user()
+      account.shared = true
+      account.shared_from = u.username
+      insert(self.accounts,account)
+    end
   end
-  for _,v in pairs(self.accounts) do
+
+  for _,v in pairs(accounts) do
     if networks[v.network] then
       v.errors = networks[v.network].check_errors(v:get_keystore())
+      insert(self.accounts,v)
     end
   end
 
