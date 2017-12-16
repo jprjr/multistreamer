@@ -142,7 +142,7 @@ stream {
   lua_code_cache on;
   lua_ssl_trusted_certificate <%= ssl_trusted_certificate %>;
   lua_ssl_verify_depth <%= ssl_verify_depth %>;
-  lua_resolver <%= dns_resolver %>;
+  resolver <%= dns_resolver %>;
 
   init_by_lua_block {
     require'multistreamer.config'.loadconfig(os.getenv('CONFIG_FILE'))

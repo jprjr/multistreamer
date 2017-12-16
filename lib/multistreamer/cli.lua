@@ -19,8 +19,9 @@ local optarg, optind
 local function help(code)
   io.stderr:write('Usage: multistreamer [-c /path/to/config.yaml] <action>\n')
   io.stderr:write('Available actions:\n')
-  io.stderr:write('  run   -- run server\n')
-  io.stderr:write('  check -- check config file\n')
+  io.stderr:write('  run    -- run server\n')
+  io.stderr:write('  check  -- check config file\n')
+  io.stderr:write('  initdb -- setup database manually\n')
   return code
 end
 

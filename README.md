@@ -89,9 +89,8 @@ Here's some guides on installing/using:
 
 ## Requirements
 
-* [OpenResty](https://openresty.org/en/) with some extra modules:
+* [OpenResty](https://openresty.org/en/) 1.13.6.1 or greater, with some extra modules:
   * [nginx-rtmp-module](https://github.com/arut/nginx-rtmp-module)
-  * [stream-lua-nginx-module](https://github.com/openresty/stream-lua-nginx-module)
 * ffmpeg
 * lua 5.1
 * luarocks
@@ -127,10 +126,7 @@ git clone https://github.com/jprjr/setup-openresty
 cd setup-openresty
 sudo ./setup-openresty
   --prefix=/opt/openresty-rtmp \
-  --with-rtmp \
-  --with-stream \
-  --with-stream-ssl \
-  --with-stream-lua
+  --with-rtmp
 ```
 
 ### Alternative: Install OpenResty with RTMP Manually
@@ -153,21 +149,17 @@ sudo apt-get -y install \
   curl \
   git
 mkdir openresty-build && cd openresty-build
-curl -R -L https://openresty.org/download/openresty-1.11.2.5.tar.gz | tar xz
-curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.2.0.tar.gz | tar xz
-curl -R -L https://github.com/openresty/stream-lua-nginx-module/archive/a3a050bfacfb8d097ee276380c4e606031f2aaf2.tar.gz | tar xz
-curl -R -L http://luarocks.github.io/luarocks/releases/luarocks-2.4.2.tar.gz | tar xz
+curl -R -L https://openresty.org/download/openresty-1.13.6.1.tar.gz | tar xz
+curl -R -L https://github.com/arut/nginx-rtmp-module/archive/v1.2.1.tar.gz | tar xz
+curl -R -L http://luarocks.github.io/luarocks/releases/luarocks-2.4.3.tar.gz | tar xz
 curl -R -L https://www.lua.org/ftp/lua-5.1.5.tar.gz | tar xz
 
-cd openresty-1.11.2.5
+cd openresty-1.13.6.1
 ./configure \
   --prefix=/opt/openresty-rtmp \
   --with-pcre-jit \
   --with-ipv6 \
-  --with-stream \
-  --with-stream_ssl_module \
-  --add-module=../nginx-rtmp-module-1.2.0 \
-  --add-module=../stream-lua-nginx-module-a3a050bfacfb8d097ee276380c4e606031f2aaf2
+  --add-module=../nginx-rtmp-module-1.2.1
 make
 sudo make install
 
@@ -177,7 +169,7 @@ sed -e 's,/usr/local,/opt/openresty-rtmp,g' -i src/luaconf.h
 make CFLAGS="-fPIC -O2 -Wall -DLUA_USE_LINUX" linux
 sudo make INSTALL_TOP="/opt/openresty-rtmp/luajit" TO_LIB="liblua.a liblua.so" install
 
-cd ../luarocks-2.4.2
+cd ../luarocks-2.4.3
 ./configure \
   --prefix=/opt/openresty-rtmp/luajit \
   --with-lua=/opt/openresty-rtmp/luajit
@@ -307,6 +299,7 @@ the `multistreamer` folder:
 
 ```bash
 /opt/openresty-rtmp/bin/luarocks install --tree=lua_modules --only-deps multistreamer
+# or /opt/openresty-rtmp/bin/luarocks install --tree=lua_modules --only-deps rockspecs/multistreamer-dev-1.rockspec
 ```
 
 Using Mac OS? `lapis` will probably fail to install because `luacrypto`
@@ -322,8 +315,7 @@ luarocks --tree=lua_modules install --only-deps multistreamer
 
 ### Initialize the database
 
-Multistreamer will automatically create tables when starting, or
-you can trigger them manually with `./bin/multistreamer initdb`
+Multistreamer will automatically create tables.
 
 ### Customization
 
@@ -452,10 +444,10 @@ to deploy.
   * `/etc/multistreamer/config.yaml` is read in by default
 * Database migrations are automatic
 
-Version 10.2.5 can dump an existing environment's config to YAML, so to migrate:
+Version 10.2.6 can dump an existing environment's config to YAML, so to migrate:
 
 ```bash
-git checkout 10.2.5
+git checkout 10.2.6
 ./bin/multistreamer -e (environment) initdb # prep db for auto-migrations
 ./bin/multistreamer -e (environment) dump_yaml > config.yaml
 # checkout config.yaml, make sure everything makes sense
