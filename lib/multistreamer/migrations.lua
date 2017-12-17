@@ -53,15 +53,15 @@ local schemas = {
     schema.create_table('streams_accounts', {
       { 'stream_id', types.foreign_key },
       { 'account_id' , types.foreign_key },
-      { 'rtmp_url', types.text },
+      { 'rtmp_url', types.text({ null = true }) },
       'FOREIGN KEY(stream_id) REFERENCES streams(id)',
       'FOREIGN KEY(account_id) REFERENCES accounts(id)',
       'PRIMARY KEY(stream_id, account_id)',
     })
 
     schema.create_table('keystore', {
-      { 'stream_id', types.foreign_key },
-      { 'account_id' , types.foreign_key },
+      { 'stream_id', types.foreign_key({ null = true }) },
+      { 'account_id' , types.foreign_key({ null = true }) },
       { 'key' , types.varchar },
       { 'value', types.text },
       { 'created_at', types.time },
@@ -95,8 +95,8 @@ local schemas = {
     schema.create_table('shared_streams', {
       { 'user_id', types.foreign_key },
       { 'stream_id', types.foreign_key },
-      { 'chat_level', types.integer },
-      { 'metadata_level', types.integer },
+      { 'chat_level', types.integer({ null = true }) },
+      { 'metadata_level', types.integer({ null = true }) },
       { 'created_at', types.time },
       { 'updated_at', types.time },
       "PRIMARY KEY(user_id,stream_id)",
@@ -129,8 +129,8 @@ local schemas = {
       { 'id', types.serial },
       { 'stream_id', types.foreign_key },
       { 'url', types.text },
-      { 'params', types.text },
-      { 'notes', types.text },
+      { 'params', types.text({ null = true }) },
+      { 'notes', types.text({ null = true }) },
       { 'type', types.varchar },
       { 'created_at', types.time },
       { 'updated_at', types.time },
