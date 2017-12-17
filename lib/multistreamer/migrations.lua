@@ -84,11 +84,11 @@ local schemas = {
   end,
 
   [1485029477] = function()
-    schema.add_column('streams_accounts','ffmpeg_args',types.text)
+    schema.add_column('streams_accounts','ffmpeg_args',types.text({ null = false }))
   end,
 
   [1485036089] = function()
-    schema.add_column('accounts','ffmpeg_args',types.text)
+    schema.add_column('accounts','ffmpeg_args',types.text({ null = false }))
   end,
 
   [1485788609] = function()
@@ -107,7 +107,7 @@ local schemas = {
 
   [1489949143] = function()
     schema.add_column('streams','preview_required',types.integer)
-    schema.add_column('streams','ffmpeg_pull_args',types.text)
+    schema.add_column('streams','ffmpeg_pull_args',types.text({ null = false }))
     local Stream = require'multistreamer.models.stream'
     local streams = Stream:select()
     for _,v in ipairs(streams) do
