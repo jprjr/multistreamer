@@ -125,7 +125,7 @@ local schemas = {
   end,
 
   [1497734864] = function()
-    schema.create_table('shared_streams', {
+    schema.create_table('webhooks', {
       { 'id', types.serial },
       { 'stream_id', types.foreign_key },
       { 'url', types.text },

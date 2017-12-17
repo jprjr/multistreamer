@@ -2,20 +2,53 @@
 local ngx = ngx
 local Model = require('lapis.db.model').Model
 local config = require'multistreamer.config'.get()
-local http = require'resty.http'
-local encode_base64 = ngx.encode_base64
-local decode_base64 = ngx.decode_base64
-local hmac_sha1 = ngx.hmac_sha1
-local resty_random = require'resty.random'
-local resty_md5 = require "resty.md5"
-local str = require'resty.string'
+local http
+local encode_base64
+local decode_base64
+local hmac_sha1
+local resty_random
+local resty_md5
+local str
+local ngx_log
+local ngx_err
+local ngx_debug
+
+if ngx then
+    http = require'resty.http'
+    encode_base64 = ngx.encode_base64
+    decode_base64 = ngx.decode_base64
+    hmac_sha1 = ngx.hmac_sha1
+    resty_random = require'resty.random'
+    resty_md5 = require "resty.md5"
+    str = require'resty.string'
+    ngx_log = ngx.log
+    ngx_err = ngx.ERR
+    ngx_debug = ngx.DEBUG
+else
+    local md5 = require'md5'
+    resty_random = {
+      bytes = function(num,whatever)
+        math.randomseed(os.time())
+        local b = ''
+        for i=1,num,1 do
+          b = b .. math.random(1,255)
+        end
+        return b
+      end
+    }
+    resty_md5 = {
+      new = function(self)
+        local n = md5.new()
+        n.to_hex = n.tohex
+        n.final = n.finish
+        return n
+      end,
+    }
+end
+
 local match = string.match
 local upper = string.upper
 local sub = string.sub
-
-local ngx_log = ngx.log
-local ngx_err = ngx.ERR
-local ngx_debug = ngx.DEBUG
 
 local function make_token()
     local rand = resty_random.bytes(16,true)
