@@ -66,7 +66,7 @@ local schemas = {
       { 'value', types.text },
       { 'created_at', types.time },
       { 'updated_at', types.time },
-      { 'expires_at', types.time({ null = false }) },
+      { 'expires_at', types.time({ null = true }) },
       'FOREIGN KEY(stream_id) REFERENCES streams(id)',
       'FOREIGN KEY(account_id) REFERENCES accounts(id)',
     })
@@ -84,11 +84,11 @@ local schemas = {
   end,
 
   [1485029477] = function()
-    schema.add_column('streams_accounts','ffmpeg_args',types.text({ null = false }))
+    schema.add_column('streams_accounts','ffmpeg_args',types.text({ null = true }))
   end,
 
   [1485036089] = function()
-    schema.add_column('accounts','ffmpeg_args',types.text({ null = false }))
+    schema.add_column('accounts','ffmpeg_args',types.text({ null = true }))
   end,
 
   [1485788609] = function()
@@ -107,7 +107,7 @@ local schemas = {
 
   [1489949143] = function()
     schema.add_column('streams','preview_required',types.integer)
-    schema.add_column('streams','ffmpeg_pull_args',types.text({ null = false }))
+    schema.add_column('streams','ffmpeg_pull_args',types.text({ null = true }))
     local Stream = require'multistreamer.models.stream'
     local streams = Stream:select()
     for _,v in ipairs(streams) do
