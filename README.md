@@ -7,6 +7,8 @@ no to being bought a beer!
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NNKN85X52NEP6)
 [![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=jprjr&url=https://github.com/jprjr/multistreamer&title=multistreamer&language=en_GB&tags=github&category=software)
 
+Dogecoin address: DKUX8DmaYHjSbCNdzmp1ook3ZXTNBByEbo
+
 If you want to get this up and running quickly, check out my Docker
 image - https://github.com/jprjr/docker-multistreamer and its corresponding
 video - https://youtu.be/HdDDtBOLme4
