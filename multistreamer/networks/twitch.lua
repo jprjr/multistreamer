@@ -14,6 +14,7 @@ local http = require'multistreamer.http'
 local resty_sha1 = require'resty.sha1'
 local str = require'resty.string'
 local string = require'multistreamer.string'
+local date = require'date'
 local format = string.format
 local len = string.len
 local split = string.split
@@ -58,7 +59,68 @@ local api_url = 'https://api.twitch.tv/kraken'
 local twitch_config = config.networks.twitch
 
 local function http_error_handler(res)
-  return from_json(res.body).message
+  ngx_log(ngx_debug,res.body)
+  return res.body
+end
+
+local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+  local do_refresh = false
+  local now = date(true)
+
+  if not access_token then
+    do_refresh = true
+  else
+    local expires_at_dt = date(expires_at)
+    if now > expires_at_dt then
+      do_refresh = true
+    end
+  end
+
+  if do_refresh == true then
+    local body = encode_query_string({
+      client_id = twitch_config.client_id,
+      client_secret = twitch_config.client_secret,
+      refresh_token = refresh_token,
+      grant_type = 'refresh_token',
+    })
+
+    ngx_log(ngx_debug,body)
+
+    local httpc = http.new(http_error_handler)
+    local refresh_res, refresh_err = httpc:post('https://api.twitch.tv/kraken/oauth2/token',
+      nil,
+      {
+        ['Content-Type'] = 'application/x-www-form-urlencoded',
+      },
+      body
+    )
+
+
+    if refresh_err then return nil, refresh_err end
+
+    local creds = from_json(refresh_res.body)
+
+    return creds.access_token, creds.expires_in, now:addseconds(tonumber(creds.expires_in))
+  else
+    return access_token, expires_in, expires_at
+  end
+end
+
+local function refresh_access_token_wrapper(account)
+  local refresh_token = account['refresh_token']
+
+  local access_token = account['token']
+  local expires_in
+  local expires_at
+
+  if not access_token then
+    access_token, expires_in, expires_at = refresh_access_token(refresh_token)
+  else
+    expires_in = account['token.expires_in']
+    expires_at = account['token.expires_at']
+  end
+
+  return access_token, expires_in, expires_at
 end
 
 local function twitch_api_client(access_token)
@@ -82,6 +144,7 @@ local function twitch_api_client(access_token)
 
     local res, err = _request(self,method,url,params,req_headers,body)
     if err then return false, err end
+    ngx_log(ngx_debug,res.body)
     return from_json(res.body)
   end
 
@@ -115,7 +178,8 @@ function M.metadata_fields()
   }
 end
 
-function M.metadata_form(_, stream)
+function M.metadata_form(account, stream)
+  M.check_errors(account)
 
   local form = M.metadata_fields()
   for _,k in ipairs(form) do
@@ -167,13 +231,20 @@ function M.register_oauth(params)
     grant_type = 'authorization_code',
   })
 
+  ngx_log(ngx_debug,body)
   local res, err = httpc:post(api_url .. '/oauth2/token', nil, nil, body)
 
   if err then return false, nil, err end
 
   local creds = from_json(res.body)
 
-  local tclient = twitch_api_client(creds.access_token)
+  ngx_log(ngx_debug,res.body)
+
+  local access_token = creds.access_token
+  local exp = creds.expires_in
+  local refresh_token = creds.refresh_token
+
+  local tclient = twitch_api_client(access_token)
   local user_info, user_err = tclient:get('/user')
 
   if user_err then
@@ -213,7 +284,8 @@ function M.register_oauth(params)
 
   -- since we may have just taken somebody's account, we'll update
   -- the access token, channel etc anyway but return an error
-  account:set('token',creds.access_token)
+  account:set('token',access_token,exp)
+  account:set('refresh_token',refresh_token)
   account:set('channel',channel_info.name)
   account:set('channel_id',channel_info._id)
   account:set('stream_key',channel_info.stream_key)
@@ -234,6 +306,9 @@ function M.register_oauth(params)
 end
 
 function M.publish_start(account, stream)
+  local err = M.check_errors(account)
+  if err then return false, err end
+
   local stream_o = stream
 
   account = account:get_all()
@@ -278,21 +353,33 @@ function M.publish_start(account, stream)
   return rtmp_url, nil
 end
 
-function M.publish_stop(_, stream)
+function M.publish_stop(account, stream)
+  M.check_errors(account)
   stream:unset('http_url')
 
   return true
 end
 
 function M.check_errors(account)
-  local token = account:get('token')
+  local access_token, exp, _
+  access_token, _ = account:get('token')
+  if access_token then
+    return false, nil
+  end
 
-  if not token then return 'No OAuth token' end
+  local refresh_token = account:get('refresh_token')
+  access_token, exp = refresh_access_token(refresh_token)
+
+  if not access_token then
+    return exp
+  end
+
+  account:set('token',access_token,exp)
 
   local channel_id = account:get('channel_id')
 
   if not channel_id then
-    local tclient = twitch_api_client(token)
+    local tclient = twitch_api_client(access_token)
     local channel_info, err = tclient:get('/channel')
     if err then
       return err
@@ -304,6 +391,7 @@ function M.check_errors(account)
 end
 
 function M.notify_update(_,_)
+  local err = M.check_errors(account)
   return true
 end
 
@@ -379,16 +467,22 @@ end
 function M.create_viewcount_func(account, _, send)
   if not send then return nil end
 
-  local tclient = twitch_api_client(account['token'])
+  local refresh_token = account['refresh_token']
+  local access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
+
   local viewRunning = true
   local viewcount_func, stop_viewcount_func
 
   viewcount_func = function()
     while viewRunning do
-      local res, err = tclient:get('/streams/' .. account['channel_id'])
-      if not err then
-        if type(res.stream) == 'table' then
-          send({viewer_count = tonumber(res.stream.viewers)})
+      access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+      if access_token then
+        local tclient = twitch_api_client(access_token)
+        local res, err = tclient:get('/streams/' .. account['channel_id'])
+        if not err then
+          if type(res.stream) == 'table' then
+            send({viewer_count = tonumber(res.stream.viewers)})
+          end
         end
       end
       sleep(60)
@@ -412,7 +506,11 @@ function M.create_comment_funcs(account, stream, send)
   local tclient = twitch_api_client()
   local my_user_id
 
+  local refresh_token = account['refresh_token']
+  local access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
+
   local function irc_connect()
+    access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
     local ok, err
     ngx_log(ngx_debug,format('[%s] IRC: Connecting',M.displayname))
     ok, err = irc:connect('irc.chat.twitch.tv',6667)
@@ -421,7 +519,7 @@ function M.create_comment_funcs(account, stream, send)
       return false,err
     end
     ngx_log(ngx_debug,format('[%s] IRC: logging in as %s',M.displayname,nick))
-    ok, err = irc:login(nick,nil,nil,'oauth:'..account.token)
+    ok, err = irc:login(nick,nil,nil,'oauth:'..access_token)
     if not ok then
       ngx_log(ngx_err,format('[%s] IRC: Login for "%s" failed: %s',M.displayname,nick,err))
       return false,err
@@ -446,7 +544,7 @@ function M.create_comment_funcs(account, stream, send)
   end
 
   if send then
-    local tclient_temp = twitch_api_client(account['token'])
+    local tclient_temp = twitch_api_client(access_token)
     local user_info = tclient_temp:get('/user/')
     my_user_id = user_info._id
     icons[my_user_id] = user_info.logo
