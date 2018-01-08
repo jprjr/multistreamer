@@ -18,6 +18,7 @@ dependencies = {
   "luafilesystem",
   "lyaml",
   "redis-lua",
+  "md5",
 }
 
 build = {
