@@ -447,10 +447,10 @@ to deploy.
   * `/etc/multistreamer/config.yaml` is read in by default
 * Database migrations are automatic
 
-Version 10.2.6 can dump an existing environment's config to YAML, so to migrate:
+Version 10.2.7 can dump an existing environment's config to YAML, so to migrate:
 
 ```bash
-git checkout 10.2.6
+git checkout 10.2.7
 ./bin/multistreamer -e (environment) initdb # prep db for auto-migrations
 ./bin/multistreamer -e (environment) dump_yaml > config.yaml
 # checkout config.yaml, make sure everything makes sense
