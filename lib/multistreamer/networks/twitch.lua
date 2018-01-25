@@ -390,7 +390,7 @@ function M.check_errors(account)
   return false
 end
 
-function M.notify_update(_,_)
+function M.notify_update(account,_)
   local err = M.check_errors(account)
   return true
 end
