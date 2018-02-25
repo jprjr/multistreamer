@@ -151,7 +151,7 @@ showBtn.onclick = showStreamKey;
 </script>
 
 <script>
-  var url = '<%= url_for('stream-video', { id = stream.id , splat = 'index.m3u8' }) %>';
+  var url = '<%= url_for('stream-video', { id = stream.id , fn = 'index.m3u8' }) %>';
   var goLiveBtn = document.getElementById('goLiveBtn');
   if(Hls.isSupported()) {
 

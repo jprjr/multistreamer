@@ -979,7 +979,7 @@ app:match('stream-chat-preview', config.http_prefix .. '/chat/preview', respond_
   end,
 }))
 
-app:match('stream-video', config.http_prefix .. '/stream/:id/video(/*)', respond_to({
+app:match('stream-video', config.http_prefix .. '/stream/:id/video(/:fn)', respond_to({
   before = function(self)
     local stream = Stream:find({ id = self.params.id })
     if not stream then
@@ -992,10 +992,7 @@ app:match('stream-video', config.http_prefix .. '/stream/:id/video(/*)', respond
     self.stream = stream
   end,
   GET = function(self)
-    local fn = self.params.splat
-    if not fn then
-      fn = 'index.m3u8'
-    end
+    local fn = self.params.fn or 'index.m3u8'
 
     local res = capture(config.http_prefix .. '/video_raw/' .. self.stream.uuid .. '/' .. fn)
     if res then
