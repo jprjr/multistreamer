@@ -411,7 +411,7 @@ function M.create_comment_funcs(account, stream, send)
   local chat_endpoints, chat_err = httpc:getJSON('/chats/' .. stream['channel_id'])
 
   if chat_err then
-    return false, false, chat_err
+    return nil, nil, nil, chat_err
   end
 
   local ws = ws_client:new()
@@ -419,18 +419,24 @@ function M.create_comment_funcs(account, stream, send)
 
   if not ws_ok then
     ngx_log(ngx.ERR,'[Beam] Unable to connect to websocket: ' .. ws_err)
-    return false, false, ws_err
+    return nil, nil, nil, ws_err
   end
+
+  ngx_log(ngx.DEBUG, '[Beam] Connected to websocket: ' .. chat_endpoints.endpoints[1])
 
   local welcome_resp, _, err = ws:recv_frame()
   if not welcome_resp then
-    return nil, nil, err
+    ngx_log(ngx.ERR,'[Beam] Error - did not receive welcome_resp: ' .. err)
+    return nil, nil, nil, err
   end
   welcome_resp = from_json(welcome_resp)
 
   if welcome_resp.type ~= 'event' or welcome_resp.event ~= 'WelcomeEvent' then
-    return nil,nil,'received unexpected event'
+    ngx_log(ngx.ERR,'[Beam] Error - welcome_resp had unexpected event')
+    return nil,nil,nil,'received unexpected event'
   end
+
+  ngx_log(ngx.DEBUG, '[Beam] Received welcome response')
 
   local auth = to_json({
     type = 'method',
@@ -443,13 +449,17 @@ function M.create_comment_funcs(account, stream, send)
 
   local auth_resp = ws:recv_frame()
   if not auth_resp then
-    return nil, nil
+    ngx_log(ngx.ERR,'[Beam] Error - chat endpoint did not respond to auth request')
+    return nil, nil, nil, 'chat endoint did not respond to auth request'
   end
   auth_resp = from_json(auth_resp)
 
   if auth_resp.error ~= cjson.null then
-    return nil, nil
+    ngx_log(ngx.ERR,'[Beam] Error - chat endpoint authentication failed')
+    return nil, nil, nil, 'chat endpoint authentication failed'
   end
+
+  ngx_log(ngx.DEBUG, '[Beam] Successfully authenticated to chat endpoint')
 
   if send then
     local readRunning = true

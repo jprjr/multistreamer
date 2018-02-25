@@ -2,6 +2,8 @@ local http = require'resty.http'
 local encode_query_string = require('lapis.util').encode_query_string
 local string = require'multistreamer.string'
 local find = string.find
+local log = ngx.log
+local ngx_debug = ngx.DEBUG
 
 local M = {}
 M.__index = M
@@ -33,6 +35,8 @@ function M.request(self,method,url,params,headers,body)
   if res and type(res.status) ~= 'number' then
     res.status = tonumber(find(res.status,'^%d+'))
   end
+
+  if res.body then log(ngx_debug,res.body) end
 
   if err or res.status >= 400 then
     return false, err or self.error_handler(res)
