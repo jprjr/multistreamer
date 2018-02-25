@@ -283,6 +283,13 @@ Each module has more details in the [wiki.](https://github.com/jprjr/multistream
 
 ### Install Multistreamer
 
+For either a global install or self-contained install, you'll need
+libyaml and its development headers installed. On Ubuntu, this is `libyaml-dev`:
+
+```bash
+apt-get install libyaml-dev
+```
+
 #### Global install
 
 ```bash
