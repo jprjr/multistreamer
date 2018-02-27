@@ -501,8 +501,12 @@ which is licensed under a BSD-style license. Pure.css license is available
 as LICENSE-purecss.
 
 This project includes a copy of commonmark.js (`static/js/commonmark.min.js`),
-which is licensed under a BSD-style licnese. The commonmark.js license is
+which is licensed under a BSD-style license. The commonmark.js license is
 available as LICENSE-commonmark-js
+
+This project includes a copy of clipboard.js (`static/js/clipboard.min.js`),
+which is licensed under an MIT-style license. The clipboard.js license is
+available as LICENSE-clipboard-js
 
 This project includes a copy of zenscroll (`static/js/zenscroll-min.js`), which
 is public-domain code. The license for zenscroll is availble as LICENSE-zenscroll.
