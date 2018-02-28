@@ -17,10 +17,10 @@ end
 
 M.publish = function(point,message)
   local red = redis.new()
-  local ok, err = red:connect(config.redis_host)
+  local ok, err = red:connect(config.redis_host,config.redis_port)
 
   if not ok then
-    ngx_log(ngx_err,format('Redis:publish: unable to connect to redis: %s',err))
+    ngx_log(ngx_err,format('Redis:publish: unable to connect to redis: %s:%s %s',config.redis_host,config.redis_port,err))
     return false, err
   end
 
@@ -34,9 +34,9 @@ end
 M.subscribe = function(point,red)
   if not red then
     red = redis.new()
-    local ok, err = red:connect(config.redis_host)
+    local ok, err = red:connect(config.redis_host,config.redis_port)
     if not ok then
-      ngx_log(ngx_err,format('Redis:subscribe: Unable to connect to redis: %s',err))
+      ngx_log(ngx_err,format('Redis:subscribe: Unable to connect to redis: %s:%s %s',config.redis_host,config.redis_port,err))
       return false, err
     end
   end

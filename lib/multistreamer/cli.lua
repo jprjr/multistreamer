@@ -79,18 +79,8 @@ local function try_load_config(check)
     return 1
   end
 
-  local redis_host = c.redis_host
-  local redis_port
-  local col_index = find(c.redis_host,':')
-  if col_index then
-    redis_host = sub(c.redis_host,1,col_index-1)
-    redis_port = tonumber(sub(c.redis_host,col_index+1))
-  else
-    redis_port = 6379
-  end
-
   local _, err = pcall(function()
-    redis.connect(redis_host,redis_port)
+    redis.connect(c.redis_host,c.redis_port)
   end)
   if err then
     io.stderr:write('Unable to connect to redis: ' .. err .. '\n')

@@ -99,7 +99,19 @@ local function loadconfig(filename)
   end
 
   if not yaml_config.redis_host or yaml_config.redis_host:len() == 0 then
-    yaml_config.redis_host = '127.0.0.1:6379'
+    yaml_config.redis_host = '127.0.0.1'
+  end
+
+  local redis_i = yaml_config.redis_host:find(':')
+  if redis_i then
+    yaml_config.redis_port = yaml_config.redis_host:sub(redis_i+1)
+    yaml_config.redis_host = yaml_config.redis_host:sub(1,redis_i-1)
+  end
+
+  if not yaml_config.redis_port or yaml_config.redis_port:len() == 0 then
+    yaml_config.redis_port = 6379
+  else
+    yaml_config.redis_port = tonumber(yaml_config.redis_port)
   end
 
   if not yaml_config.rtmp_prefix or yaml_config.rtmp_prefix:len() == 0 then
