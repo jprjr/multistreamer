@@ -23,6 +23,7 @@
 <option value="2" <% if other_user.metadata_level == 2 then %>selected<% end %>>Edit Metadata</option>
 </select>
 </div>
+</fieldset>
 <% end %>
 
 <div class="pure-controls">
