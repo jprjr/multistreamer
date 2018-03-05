@@ -98,6 +98,8 @@ Here's some guides on installing/using:
 * lua 5.1
 * luarocks
 * luajit (included with OpenResty)
+* redis
+* postgresql
 * a POSIX shell (bash, ash, dash, etc)
 
 Note you specifically need OpenResty for this. I no longer support or recommend
