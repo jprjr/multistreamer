@@ -122,7 +122,7 @@ function IRCClient:login(nickname,username,realname,password)
   local logging_in = true
   while(logging_in) do
     local data, sock_err, _ = self.socket:receive('*l')
-    if err then
+    if sock_err then
       ngx_log(ngx_err,sock_err)
       self:emitEvent('error',sock_err)
       return false, sock_err

@@ -36,7 +36,7 @@
 <button class="pure-button pure-button-primary" type="submit" id="customPullBtn" name="customPullBtn">Start Puller</button>
 <% end %>
 <% end %>
-<% if stream.preview_required and #stream_accounts > 0 and stream_status.data_incoming and not stream_status.data_pushing then %>
+<% if stream.preview_required == 1 and #stream_accounts > 0 and stream_status.data_incoming and not stream_status.data_pushing then %>
 <button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn">Go Live!</button>
 <% else %>
 <button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled>Go Live!</button>

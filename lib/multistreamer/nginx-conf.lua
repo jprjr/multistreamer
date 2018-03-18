@@ -116,7 +116,7 @@ rtmp {
       live on;
       record off;
       meta on;
-      idle_streams off;
+      idle_streams on;
       wait_video on;
       wait_key on;
       sync 10ms;

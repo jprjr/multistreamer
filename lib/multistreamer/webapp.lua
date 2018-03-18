@@ -693,6 +693,9 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
             networks[account.network].name,
             rtmp_err
           ))
+          -- reset data_incoming to false
+          stream_status.data_incoming = false
+          streams_dict:set(stream.id, to_json(stream_status))
           return plain_err_out(self,rtmp_err)
         end
         sa:update({rtmp_url = rtmp_url})
@@ -705,7 +708,6 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
       publish('process:start:push', {
         worker = pid,
         id = stream.id,
-        delay = 5,
       })
 
       for _,v in pairs(stream:get_webhooks()) do

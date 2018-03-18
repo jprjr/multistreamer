@@ -64,6 +64,10 @@ local function http_error_handler(res)
 end
 
 local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
+  if expires_at == nil then -- older tokens never expire
+    return access_token, expires_in, expires_at
+  end
+
   local do_refresh = false
   local now = date(true)
 
