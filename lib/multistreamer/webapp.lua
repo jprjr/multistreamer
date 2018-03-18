@@ -762,6 +762,12 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
         data_pulling = false,
       }
     end
+
+    if stream_status.data_incoming == false and
+       stream_status.data_pushing == false then
+      return plain_err_out(self,'Error')
+    end
+
     if stream_status.data_pushing == false then
       return plain_err_out(self,'OK',200)
     end
