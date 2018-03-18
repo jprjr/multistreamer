@@ -27,6 +27,9 @@ psql: '/usr/bin/psql'
 
 ### path to ffmpeg
 ffmpeg: '/usr/bin/ffmpeg'
+
+### for each output stream - try running ffmpeg this
+### number of times before giving up
 ffmpeg_max_attempts: 3
 
 ### set your logging level
