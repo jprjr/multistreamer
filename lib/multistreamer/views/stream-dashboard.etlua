@@ -19,6 +19,11 @@
 
 <fieldset><legend>Stream Preview</legend>
 <div class="pure-g">
+<% if #stream_accounts == 0 then %>
+<div class="pure-u-1-1">
+<p><span class="error">Warning: no accounts are enabled on this stream. Unable to Go Live</span></p>
+</div>
+<% end %>
 <div class="pure-u-1-3">
 <video controls poster="<%= url_for('site-root') %>static/img/novideo.jpg" id="thevideo"></video>
 </div>
@@ -31,7 +36,7 @@
 <button class="pure-button pure-button-primary" type="submit" id="customPullBtn" name="customPullBtn">Start Puller</button>
 <% end %>
 <% end %>
-<% if stream.preview_required and stream_status.data_incoming and not stream_status.data_pushing then %>
+<% if stream.preview_required and #stream_accounts > 0 and stream_status.data_incoming and not stream_status.data_pushing then %>
 <button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn">Go Live!</button>
 <% else %>
 <button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled>Go Live!</button>
@@ -168,7 +173,7 @@ showBtn.onclick = showStreamKey;
       hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
         console.log("manifest loaded, found " + data.levels.length + " quality level");
         video.play();
-        <% if stream.preview_required == 1 and not stream_status.data_pushing then %>goLiveBtn.removeAttribute('disabled');<% end %>
+        <% if stream.preview_required == 1 and #stream_accounts > 0 and not stream_status.data_pushing then %>goLiveBtn.removeAttribute('disabled');<% end %>
       });
     }
     loadVideo();
