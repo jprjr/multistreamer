@@ -35,6 +35,7 @@ local status_dict = ngx.shared.status
 local capture = ngx.location.capture
 local ngx_log = ngx.log
 local ngx_warn = ngx.WARN
+local ngx_debug = ngx.DEBUG
 
 local pid = ngx.worker.pid()
 
@@ -659,6 +660,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
+    ngx_log(ngx_debug,'app:on-publish: ' .. to_json(self.params))
     local stream, sas, err = get_all_streams_accounts(self.params.name)
     if not stream then
       return plain_err_out(self,err)
@@ -728,6 +730,8 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
+    ngx_log(ngx_debug,'app:on-update: ' .. to_json(self.params))
+
     if self.params.call == 'play' then
       return plain_err_out(self,'OK',200)
     end
@@ -765,6 +769,7 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
 }))
 
 app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
+  ngx_log(ngx_debug,'app:on-done: ' .. to_json(self.params))
   local stream, sas, err = get_all_streams_accounts(self.params.name)
   if not stream then
     return plain_err_out(self,err)
