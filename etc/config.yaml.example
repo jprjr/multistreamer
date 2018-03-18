@@ -27,6 +27,7 @@ psql: '/usr/bin/psql'
 
 ### path to ffmpeg
 ffmpeg: '/usr/bin/ffmpeg'
+ffmpeg_max_attempts: 3
 
 ### set your logging level
 log_level: 'debug'

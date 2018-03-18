@@ -14,6 +14,7 @@ local setmetatable = setmetatable
 local tonumber = tonumber
 local pairs = pairs
 local insert = insert or table.insert --luacheck: compat
+local concat = table.concat
 
 local exec_socket = require'resty.exec.socket'
 
@@ -29,43 +30,78 @@ local spawn = ngx.thread.spawn
 local streams_dict = ngx.shared.streams
 local status_dict = ngx.shared.status
 
-local function start_process(callback,client,process_args)
+local function start_process(callback,self,process_args,pusher,stream_id,account_id)
   return function()
-    if not client then
-      client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
-    end
-    local ok = client:connect(config.sockexec_path)
-    if not ok then
-      ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
-      status_dict:set('processmgr_error', true)
-      return
-    end
-    client:send_args(process_args)
-    local data, typ, err, errr
-    ok = true
-    while(not err) do
-      data, typ, err= client:receive()
-      if err and err == 'timeout' then
-        err = nil
+    local running = true
+    local attempts = 0
+    while running do
+      local client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
+      local ok = client:connect(config.sockexec_path)
+      if not ok then
+        ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
+        status_dict:set('processmgr_error', true)
+        return
       end
-      if typ == 'termsig' then
-        ngx_log(ngx_err,'[Process Manager] Process ended with signal ' .. data)
-        ok = false
-        errr = 'signal: ' .. data
-      elseif typ == 'exitcode' then
-        if tonumber(data) > 0 then
-          ngx_log(ngx_err,'[Process Manager] Process ended with error exit code: ' .. data)
-          ok = false
-          errr = 'exitcode: ' .. data
-        else
-          ngx_log(ngx_debug,'[Process Manager] Process ended with normal exit code: ' .. data)
+      if pusher then -- always start new connection when pushing
+        self.pushers[stream_id][account_id] = client
+      else
+        self.pullers[stream_id] = client
+      end
+      ngx_log(ngx_debug,'[Process Manager] Starting: ' .. concat(process_args, ' '))
+      client:send_args(process_args)
+      client:send_close()
+      local data, typ, err, errr
+      ok = true
+      while(not err) do
+        data, typ, err= client:receive()
+        if err and err == 'timeout' then
+          err = nil
         end
-      elseif typ == 'stdout' then
-        ngx_log(ngx_err,'[Process Manager] stdout: ' .. data)
-      elseif typ == 'stderr' then
-        ngx_log(ngx_err,'[Process Manager] stdout: ' .. data)
+        if typ == 'termsig' then
+          ngx_log(ngx_err,'[Process Manager] Process ended with signal ' .. data)
+          ok = false
+          errr = 'signal: ' .. data
+        elseif typ == 'exitcode' then
+          if tonumber(data) > 0 then
+            ngx_log(ngx_err,'[Process Manager] Process ended with error exit code: ' .. data)
+            ok = false
+            errr = 'exitcode: ' .. data
+          else
+            ngx_log(ngx_debug,'[Process Manager] Process ended with normal exit code: ' .. data)
+          end
+        elseif typ == 'stdout' then
+          ngx_log(ngx_err,'[Process Manager] stdout: ' .. data)
+        elseif typ == 'stderr' then
+          ngx_log(ngx_err,'[Process Manager] stdout: ' .. data)
+        end
+      end
+
+      if pusher then
+        ngx_sleep(2)
+        local stream_status = streams_dict:get(stream_id)
+        if stream_status then
+          stream_status = from_json(stream_status)
+        else
+          stream_status = {
+            data_pushing = false,
+            data_incoming = false,
+            data_pulling = true,
+          }
+        end
+        if stream_status.data_pushing == false then
+          running = false
+        else
+          attempts = attempts +  1
+          if attempts >= config.ffmpeg_max_attempts then
+            ngx_log(ngx_err,'[Process Manager] Reached ffmpeg attempt limit -- giving up')
+            running = false
+          end
+        end
+      else
+        running = false
       end
     end
+
     if callback then
       callback()
     end
@@ -143,15 +179,6 @@ function ProcessMgr:startPush(msg)
 
   for _,sa in pairs(sas) do
     local account = sa:get_account()
-    local client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
-    local ok = client:connect(config.sockexec_path)
-    if not ok then
-      ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
-      status_dict:set('processmgr_error', true)
-      return
-    end
-
-    self.pushers[stream.id][sa.account_id] = client
 
     local ffmpeg_args = {
       config.ffmpeg,
@@ -188,7 +215,7 @@ function ProcessMgr:startPush(msg)
 
     spawn(start_process(function()
       self.pushers[stream.id][sa.account_id] = nil
-    end,client,ffmpeg_args))
+    end,self,ffmpeg_args,true,stream.id,account.id))
   end
 
   return true
@@ -203,14 +230,6 @@ function ProcessMgr:startPull(msg)
 
   if not stream then
     return nil
-  end
-
-  local client = exec_socket:new({ timeout = 300000 }) -- 5 minutes
-  local ok = client:connect(config.sockexec_path)
-  if not ok then
-    ngx_log(ngx_err,'[Process Manager] Unable to connect to sockexec!')
-    status_dict:set('processmgr_error', true)
-    return
   end
 
   local stream_status = streams_dict:get(stream.id)
@@ -254,8 +273,7 @@ function ProcessMgr:startPull(msg)
     _stream_status.data_pulling = false
     streams_dict:set(stream.id,to_json(_stream_status))
     self.pullers[stream.id] = nil
-  end,client,ffmpeg_args))
-  self.pullers[stream.id] = client
+  end,self,ffmpeg_args,false,stream.id))
 
   return true
 end
@@ -268,10 +286,7 @@ function ProcessMgr:endPush(msg)
 
   for _,account_id in ipairs(msg.accounts) do
     if self.pushers[msg.id][account_id] then
-      local bytes, err = self.pushers[msg.id][account_id]:send('q')
-      if not bytes then
-        ngx_log(ngx_err,'[Process Manager] failed to send quit message: ' .. err)
-      end
+      self.pushers[msg.id][account_id]:close()
     end
   end
 

@@ -191,6 +191,12 @@ local function loadconfig(filename)
     yaml_config.allow_custom_puller = true
   end
 
+  if yaml_config.ffmpeg_max_attempts == nil then
+    yaml_config.ffmpeg_max_attempts = 3
+  else
+    yaml_config.ffmpeg_max_attempts = tonumber(yaml_config.ffmpeg_max_attempts)
+  end
+
   yaml_config.http_prefix      = gsub(yaml_config.http_prefix,'/+$','')
   yaml_config.public_http_url  = gsub(yaml_config.public_http_url,'/+$','')
   yaml_config.public_rtmp_url  = gsub(yaml_config.public_rtmp_url,'/+$','')
