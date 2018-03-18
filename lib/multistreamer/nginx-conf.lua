@@ -112,11 +112,14 @@ rtmp {
     listen <%= v %>;
     <% end %>
     chunk_size 4096;
+    ping <%= ping %>;
+    ping_timeout <%= ping_timeout %>;
+
     application <%= rtmp_prefix %> {
       live on;
       record off;
       meta on;
-      idle_streams on;
+      idle_streams off;
       wait_video on;
       wait_key on;
       sync 10ms;
