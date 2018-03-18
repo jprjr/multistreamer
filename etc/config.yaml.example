@@ -159,5 +159,9 @@ sockexec_path: '/tmp/exec.sock'
 ### allow/disallow creating pullers (default: true)
 #allow_custom_puller: true
 
-
+### specify how often to ping publishers,
+### and what the ping timeout should be
+### default's to 1m and 30s, see https://github.com/arut/nginx-rtmp-module/wiki/Directives#ping
+ping: '1m'
+ping_timeout: '30s'
 
