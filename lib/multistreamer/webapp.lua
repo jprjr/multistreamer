@@ -680,6 +680,14 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     stream_status.data_incoming = true
     streams_dict:set(stream.id, to_json(stream_status))
 
+    if stream_status.data_pushing == true then -- this happens if OBS was disconnected and reconnected
+                                               -- we don't want to create new videos, just restart ffmpeg
+      publish('process:start:repush', {
+        id = stream.id,
+      })
+      return plain_err_out(self,'OK',200)
+    end
+
     if stream.preview_required == 0 and #sas > 0 then
       local hook_sas = {}
       for _,v in pairs(sas) do
@@ -707,6 +715,7 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
 
       publish('process:start:push', {
         worker = pid,
+        delay = 5,
         id = stream.id,
       })
 
@@ -734,7 +743,7 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
   POST = function(self)
     ngx_log(ngx_debug,'app:on-update: ' .. to_json(self.params))
 
-    if self.params.call == 'play' then
+    if self.params.call == 'play' or self.params.call == 'update_play' then
       return plain_err_out(self,'OK',200)
     end
 

@@ -119,6 +119,7 @@ ProcessMgr.new = function()
   t.pullers = {}
   t.messageFuncs = {
     [endpoint('process:start:push')] = ProcessMgr.startPush,
+    [endpoint('process:start:repush')] = ProcessMgr.startRePush,
     [endpoint('process:end:push')] = ProcessMgr.endPush,
     [endpoint('process:start:pull')] = ProcessMgr.startPull,
     [endpoint('process:end:pull')] = ProcessMgr.endPull,
@@ -154,28 +155,10 @@ function ProcessMgr:run()
   end
 end
 
-function ProcessMgr:startPush(msg)
-  if msg.worker ~= pid then
-    return nil
-  end
-
-  local stream = Stream:find({id = msg.id})
-
-  if not stream then
-    return nil
-  end
-
+function ProcessMgr:startPushInt(stream)
   local sas = stream:get_streams_accounts()
 
   ngx_log(ngx_debug,'[Process Manager] Starting pusher')
-
-  if not self.pushers[stream.id] then
-    self.pushers[stream.id] = {}
-  end
-
-  if msg.delay then
-    ngx_sleep(msg.delay)
-  end
 
   for _,sa in pairs(sas) do
     local account = sa:get_account()
@@ -213,12 +196,49 @@ function ProcessMgr:startPush(msg)
     insert(ffmpeg_args,'flv')
     insert(ffmpeg_args,sa.rtmp_url)
 
-    spawn(start_process(function()
-      self.pushers[stream.id][sa.account_id] = nil
-    end,self,ffmpeg_args,true,stream.id,account.id))
+    if(not self.pushers[stream.id][sa.account_id]) then
+      spawn(start_process(function()
+        self.pushers[stream.id][sa.account_id] = nil
+      end,self,ffmpeg_args,true,stream.id,account.id))
+    end
   end
 
   return true
+end
+
+function ProcessMgr:startRePush(msg)
+  local stream = Stream:find({id = msg.id})
+
+  if not stream then
+    return nil
+  end
+
+  if not self.pushers[stream.id] then return nil end
+
+  return self:startPushInt(stream)
+end
+
+
+function ProcessMgr:startPush(msg)
+  if msg.worker ~= pid then
+    return nil
+  end
+
+  local stream = Stream:find({id = msg.id})
+
+  if not stream then
+    return nil
+  end
+
+  if not self.pushers[stream.id] then
+    self.pushers[stream.id] = {}
+  end
+
+  if msg.delay then
+    ngx_sleep(msg.delay)
+  end
+
+  return self:startPushInt(stream)
 end
 
 function ProcessMgr:startPull(msg)
