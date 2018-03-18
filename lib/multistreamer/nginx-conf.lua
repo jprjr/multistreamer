@@ -123,6 +123,7 @@ rtmp {
       wait_video on;
       wait_key on;
       sync 10ms;
+      notify_update_timeout 5s;
 
       on_publish <%= private_http_url .. http_prefix .. '/on-publish' %>;
       on_publish_done <%= private_http_url .. http_prefix .. '/on-done' %>;
