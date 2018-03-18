@@ -84,6 +84,8 @@ function User:login(username,password)
   local error = nil
   local user = nil
 
+  ngx_log(ngx_debug,'User:login: contacting ' .. config.auth_endpoint)
+
   local httpc = http.new()
   local res, err = httpc:request_uri(config.auth_endpoint, {
     method = "GET",
@@ -94,7 +96,12 @@ function User:login(username,password)
   if not res then
     ngx_log(ngx_err, 'User:login: connection to ' .. config.auth_endpoint ..' failed: ' .. err)
     error = err
-  elseif(res.status >= 200 and res.status < 300) then
+    return user, error
+  end
+
+  ngx_log(ngx_debug,'User:login: endpoint returned ' .. res.status .. ' response code')
+
+  if(res.status >= 200 and res.status < 300) then
     ngx_log(ngx_debug, 'User:login: login succeeded for ' .. username);
     user = self:find({ username = username:lower() })
     if not user then
