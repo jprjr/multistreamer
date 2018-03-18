@@ -695,7 +695,7 @@ function M.create_viewcount_func(account,stream,send)
           part = 'id,liveStreamingDetails',
           id = stream['broadcast_id']
         })
-        if res then
+        if res and res.items and #res.items > 0 then
           local viewer_count = tonumber(res.items[1].liveStreamingDetails.concurrentViewers)
           if not viewer_count then
             viewer_count = 0
