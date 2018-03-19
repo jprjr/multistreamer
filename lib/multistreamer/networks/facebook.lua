@@ -46,7 +46,7 @@ M.icon =
   '-.883V.883C16 .395 15.605 0 15.117 0" fill-rule="nonzero"/></svg>'
 
 
-local graph_root = 'https://graph.facebook.com/v2.8'
+local graph_root = 'https://graph.facebook.com/v2.12'
 
 local function http_error_handler(res)
   ngx_log(ngx_err,res.body)
