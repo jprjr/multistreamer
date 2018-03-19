@@ -1007,6 +1007,7 @@ app:match('stream-stats', config.http_prefix .. '/stats', respond_to({
   GET = function(self)
     local res = capture(config.http_prefix .. '/stats_raw')
     local b = ''
+    local buf = ''
     local s, e, u, stream
     local n = 1
     repeat
@@ -1023,7 +1024,23 @@ app:match('stream-stats', config.http_prefix .. '/stats', respond_to({
     until not s
     b = b .. sub(res.body,n)
 
-    return plain_err_out(self,b,200)
+    n = 1
+    repeat
+      s, e, f = find(b,"<flashver>([^<]+)</flashver>",n)
+      if s then
+        buf = buf .. sub(b,n,e)
+        n = e + 1
+        local _, _, account_id = find(f,"accountid:(.+)")
+        if account_id then
+          local account = Account:find(account_id)
+          buf = buf .. '<network>' .. account.network .. '</network>'
+          buf = buf .. '<name>' .. account.name .. '</name>'
+        end
+      end
+    until not s
+    buf = buf .. sub(b,n)
+
+    return plain_err_out(self,buf,200)
   end,
 }))
 

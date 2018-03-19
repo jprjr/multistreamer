@@ -170,6 +170,8 @@ function ProcessMgr:startPushInt(stream)
       '-copyts',
       '-vsync',
       '0',
+      '-rtmp_flashver',
+      'accountid:' .. account.id,
       '-i',
       config.private_rtmp_url ..'/'.. config.rtmp_prefix ..'/'.. stream.uuid,
     }
