@@ -172,7 +172,7 @@ local function game_search(game)
     ['Client-ID'] = twitch_config.client_id, })
   local r = {}
   for i,v in ipairs(res.games) do
-    insert(r,v.name)
+    insert(r,{id = v._id, name = v.name})
   end
   return r
 end

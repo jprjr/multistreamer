@@ -70,7 +70,10 @@
 <p>Error loading form for this account. Error: <%= err %></p>
 <% elseif metadata_form then %>
 <% for i,v in ipairs(metadata_form) do %>
+
+<% if v.type ~= 'hidden' then %>
 <div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= v.label %><%= v.required and ' *' or '' %></label>
+<% end %>
 
 <% if v.type == 'text' then %>
 <input type="text" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> <%= metadata_level < 2 and 'readonly' or ''%> />
@@ -80,10 +83,20 @@
 var autocomplete_<%= v.key%>_<%= account.id %> = new autoComplete({
     selector: document.getElementById('<%=v.key%>.<%=account.id%>'),
     source: function(term,response) {
-        /* httpc.getJSON = function(url, params, headers, body, callback) */
         httpc.getJSON('<%= url_for('endpoint-' .. account.network .. '-' .. v.search) %>',
           { <%= v.key %>: term } , {}, undefined, response);
     },
+    renderItem: function(item ,search) {
+        search = search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        var re = new RegExp("(" + search.split(' ').join('|') + ")", "gi");
+        return '<div class="autocomplete-suggestion" data-itemid="' + item.id + '" data-val="' + item.name + '">' + item.name.replace(re, "<b>$1</b>") + '</div>';
+    },
+    <% if v.update then %>
+    onSelect: function(e, term, item) {
+        document.getElementById('<%=v.update%>.<%=account.id%>').value = item.getAttribute('data-itemid');
+    },
+    <% end %>
+
 });
 
 </script>
@@ -102,8 +115,13 @@ var autocomplete_<%= v.key%>_<%= account.id %> = new autoComplete({
 
 <% elseif v.type == 'checkbox' then %>
 <input <%= v.value and 'checked ' or ''%>type="checkbox" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>>
+<% elseif v.type == 'hidden' then %>
+<input type="hidden" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> <%= metadata_level < 2 and 'readonly' or '' %> />
+
 <% end %>
+<% if v.type ~= 'hidden' then %>
 </div>
+<% end %>
 <% end %>
 
 <% else %>

@@ -26,6 +26,7 @@ local ngx_log = ngx.log
 local tonumber = tonumber
 local concat = table.concat
 local len = string.len
+local insert = table.insert
 
 local M = {}
 
@@ -174,6 +175,33 @@ local function refresh_access_token_wrapper(account)
   return access_token, expires_in, refresh_token, expires_at
 end
 
+local function game_search(game)
+  local httpc = mixer_client()
+
+  local games, games_err = httpc:getJSON('/types?',
+  {
+    query = game,
+    limit = 100,
+  })
+
+  if games_err then
+    return {}
+  end
+  local r = {}
+  for i,v in ipairs(games) do
+    insert(r,{id = v.id, name = v.name})
+  end
+  return r
+end
+
+M.endpoints = {
+  ['/game'] = {
+    GET = function(self)
+      return { json = game_search(self.params.game) }
+    end,
+  },
+}
+
 function M.get_oauth_url(user,stream_id)
   return 'https://mixer.com/oauth/authorize?' ..
     encode_query_string({
@@ -296,12 +324,18 @@ function M.metadata_fields()
       required = true,
     },
     [2] = {
+      type = 'hidden',
+      key = 'game_id',
+    },
+    [3] = {
       type = 'text',
       label = 'Game',
       key = 'game',
       required = true,
+      search = '/game',
+      update = 'game_id',
     },
-    [3] = {
+    [4] = {
       type = 'select',
       label = 'Target Audience',
       key = 'audience',
@@ -340,25 +374,29 @@ function M.publish_start(account, stream)
   local title = stream['title']
   local game = stream['game']
   local audience = stream['audience']
+  local game_id = stream['game_id']
 
   local rtmp_url = config.networks[M.name].ingest_server .. '/' .. channel_id .. '-' .. stream_key
   local httpc = mixer_client(access_token)
 
-  local games, games_err = httpc:getJSON('/types?',
-  {
-    query = game,
-    limit = 1,
-  })
+  if not game_id then
+    local games, games_err = httpc:getJSON('/types?',
+    {
+      query = game,
+      limit = 1,
+    })
 
-  if games_err then
-    return false, games_err
+    if games_err then
+      return false, games_err
+    end
+    game_id = games[1].id
   end
 
   local channel_info, channel_err = httpc:patchJSON('/channels/' .. channel_id ,
   {
       name = title,
       audience = audience,
-      typeId = games[1].id,
+      typeId = game_id,
   })
 
   if channel_err then
