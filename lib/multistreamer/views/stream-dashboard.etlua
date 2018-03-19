@@ -1,13 +1,62 @@
 <script src="<%= url_for('site-root') %>static/js/hls.min.js"></script>
 <script src="<%= url_for('site-root') %>static/js/auto-complete.min.js"></script>
 <script src="<%= url_for('site-root') %>static/js/util.js"></script>
+<script src="<%= url_for('site-root') %>static/js/clipboard.min.js"></script>
+
 <h3><%= stream.name %></h3>
 
 <% render('multistreamer.views.stream-menu', { active_submenu = 'dashboard' }) %>
 
 <% if metadata_level == 2 then %>
-<p><strong>RTMP URL</strong> <code><%= public_rtmp_url %>/<%= rtmp_prefix %></code></p>
-<p><strong>Stream Key</strong> <button id="showBtn" type="button" class="pure-button">Show</button> <code id="stream-key"><%= stream.uuid %></code></p>
+<div class="pure-form-aligned">
+
+<div class="pure-control-group">
+<label for="rtmp_url">RTMP URL</label>
+<button id="copyRTMPBtn" type="button" class="pure-button" data-clipboard-text="<%= public_rtmp_url %>">Copy</button>
+<input type="text" id="rtmp_url" name="rtmp_url" value="<%= public_rtmp_url %>" readonly />
+</div>
+
+<div class="pure-control-group">
+<label for="stream_key">Stream Key</label>
+<button id="copyKeyBtn" type="button" class="pure-button" data-clipboard-text="<%= stream.uuid %>">Copy</button>
+<button id="showBtn" type="button" class="pure-button">Show</button>
+<input type="text" id="stream-key" value="<%= stream.uuid %>" readonly />
+</div>
+
+<script>
+var copyRTMPBtn = document.getElementById('copyRTMPBtn');
+var copyKeyBtn = document.getElementById('copyKeyBtn');
+var copyRTMPClip = new ClipboardJS(copyRTMPBtn);
+var copyKeyClip = new ClipboardJS(copyKeyBtn);
+
+copyRTMPClip.on('success',function(e) {
+    copyRTMPBtn.setAttribute('data-balloon','Copied!');
+    copyRTMPBtn.setAttribute('data-balloon-pos','up');
+    copyRTMPBtn.setAttribute('data-ballon-visible',true);
+});
+
+copyRTMPBtn.addEventListener('mouseleave',function() {
+    copyRTMPBtn.removeAttribute('data-balloon');
+    copyRTMPBtn.removeAttribute('data-balloon-pos');
+    copyRTMPBtn.removeAttribute('data-ballon-visible');
+});
+
+
+copyKeyClip.on('success',function(e) {
+    copyKeyBtn.setAttribute('data-balloon','Copied!');
+    copyKeyBtn.setAttribute('data-balloon-pos','up');
+    copyKeyBtn.setAttribute('data-ballon-visible',true);
+});
+
+copyKeyBtn.addEventListener('mouseleave',function() {
+    copyKeyBtn.removeAttribute('data-balloon');
+    copyKeyBtn.removeAttribute('data-balloon-pos');
+    copyKeyBtn.removeAttribute('data-ballon-visible');
+});
+
+</script>
+
+</div>
 <% end %>
 <% if metadata_level == 2 or chat_level > 0 then %>
 <p><a target="_blank" href="<%= url_for('stream-chat', { id = stream.id })%>?show_picture">Chat</a></p>

@@ -515,6 +515,10 @@ This project includes a copy of Pixabay's "JavaScript-autoComplete" library
 is licensed under an MIT-style license. The license is available
 as LICENSE-autocomplete-js.
 
+This project includes a copy of balloon.css (`static/css/balloon.css`),
+which is licensed under an MIT-style license. The balloon.css licence is
+available as LICENSE-balloon-css.
+
 This project includes a copy of zenscroll (`static/js/zenscroll-min.js`), which
 is public-domain code. The license for zenscroll is availble as LICENSE-zenscroll.
 
