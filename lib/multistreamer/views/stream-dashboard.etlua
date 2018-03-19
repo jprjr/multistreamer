@@ -1,4 +1,6 @@
 <script src="<%= url_for('site-root') %>static/js/hls.min.js"></script>
+<script src="<%= url_for('site-root') %>static/js/auto-complete.min.js"></script>
+<script src="<%= url_for('site-root') %>static/js/util.js"></script>
 <h3><%= stream.name %></h3>
 
 <% render('multistreamer.views.stream-menu', { active_submenu = 'dashboard' }) %>
@@ -48,7 +50,8 @@
 </fieldset>
 
 <div class="pure-control-group"><label for="title">Title</label>
-<input type="text" id="title" name="title" <% if stream:get('title') then %>value="<%= stream:get('title') %>"<% end %> <%= metadata_level < 2 and 'readonly' or '' %>/></div>
+<input type="text" id="title" name="title" <% if stream:get('title') then %>value="<%= stream:get('title') %>"<% end %> <%= metadata_level < 2 and 'readonly' or '' %>/>
+</div>
 
 <div class="pure-control-group"><label for="description">Description</label>
 <textarea id="description" name="description" <%= metadata_level < 2 and 'readonly' or '' %>><% if stream:get('description') then %><%= stream:get('description') %><% end %></textarea></div>
@@ -71,6 +74,20 @@
 
 <% if v.type == 'text' then %>
 <input type="text" id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <% if v.value then %>value="<%= v.value %>"<% end %> <%= metadata_level < 2 and 'readonly' or ''%> />
+<% if metadata_level >= 2 and v.search then %>
+<script>
+
+var autocomplete_<%= v.key%>_<%= account.id %> = new autoComplete({
+    selector: document.getElementById('<%=v.key%>.<%=account.id%>'),
+    source: function(term,response) {
+        /* httpc.getJSON = function(url, params, headers, body, callback) */
+        httpc.getJSON('<%= url_for('endpoint-' .. account.network .. '-' .. v.search) %>',
+          { <%= v.key %>: term } , {}, undefined, response);
+    },
+});
+
+</script>
+<% end %>
 
 <% elseif v.type == 'textarea' then %>
 <textarea id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>><%= v.value ~= nil and v.value or '' %></textarea>

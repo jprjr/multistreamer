@@ -6,6 +6,7 @@
   <title>multistreamer</title>
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/pure-min.css">
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.css">
+  <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/auto-complete.css">
 </head>
 <body>
   <div class="pure-g header">

@@ -1169,6 +1169,11 @@ app:match('account-share', config.http_prefix .. '/account/:id/share', respond_t
 
 
 for _,m in networks() do
+  if m.endpoints then
+    for url, func_table in pairs(m.endpoints) do
+      app:match('endpoint-' .. m.name .. '-' .. url, config.http_prefix .. '/util/' .. m.name .. url, respond_to(func_table))
+    end
+  end
   if m.register_oauth then
     app:match('auth-'..m.name, config.http_prefix .. '/auth/' .. m.name, respond_to({
       GET = function(self)

@@ -165,6 +165,26 @@ local function twitch_api_client(access_token)
 
 end
 
+local function game_search(game)
+  local t = twitch_api_client()
+  local res = t:get('/search/games', {
+    query = game }, {
+    ['Client-ID'] = twitch_config.client_id, })
+  local r = {}
+  for i,v in ipairs(res.games) do
+    insert(r,v.name)
+  end
+  return r
+end
+
+M.endpoints = {
+  ['/game'] = {
+    GET = function(self)
+      return { json = game_search(self.params.game) }
+    end,
+  },
+}
+
 function M.metadata_fields()
   return {
     [1] = {
@@ -178,6 +198,7 @@ function M.metadata_fields()
         label = 'Game',
         key = 'game',
         required = true,
+        search = '/game',
     },
   }
 end
