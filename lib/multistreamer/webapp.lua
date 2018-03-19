@@ -813,22 +813,18 @@ app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
     id = stream.id,
   })
 
-  if stream_status.data_pushing == true then
-    for _,v in pairs(stream:get_webhooks()) do
-      v:fire_event('stream:end')
-    end
+  for _,v in pairs(stream:get_webhooks()) do
+    v:fire_event('stream:end')
   end
 
   streams_dict:set(stream.id,nil)
 
-  if stream_status.data_pushing == true then
-    for _,v in pairs(sas) do
-      local account = v[1]
-      local sa = v[2]
+  for _,v in pairs(sas) do
+    local account = v[1]
+    local sa = v[2]
 
-      sa:update({rtmp_url = db.NULL})
-      networks[account.network].publish_stop(account:get_keystore(),sa:get_keystore())
-    end
+    sa:update({rtmp_url = db.NULL})
+    networks[account.network].publish_stop(account:get_keystore(),sa:get_keystore())
   end
 
   return plain_err_out(self,'OK',200)
