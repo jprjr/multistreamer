@@ -150,13 +150,13 @@ local function refresh_targets(access_token)
     end
     event_info, event_info_err = fb_client:get('/me/events', {
       after = after,
-      fields = 'id,name,is_viewer_admin,start_time',
+      fields = 'id,name,start_time',
     })
     for _,event in pairs(event_info.data) do
       local days_after = date.diff(right_now,date(event.start_time)):spandays()
       -- events in the future will be negative, events in the past
       -- will be positive. So we want < (some-time)
-      if event.is_viewer_admin == true and days_after < 15 then -- skip events > 15 days old
+      if days_after < 15 then -- skip events > 15 days old
         targets[event.id] = {
           type = 'event',
           name = event.name,
