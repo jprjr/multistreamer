@@ -101,6 +101,11 @@ http {
       alias <%= work_dir %>/hls;
     }
 
+    location <%= http_prefix %>/stats_raw {
+        internal;
+        rtmp_stat all;
+    }
+
   }
 }
 

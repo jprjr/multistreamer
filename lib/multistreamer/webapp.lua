@@ -29,6 +29,8 @@ local len = string.len
 local lower = string.lower
 local format = string.format
 local insert = table.insert
+local find = string.find
+local sub = string.sub
 local sort = table.sort
 local streams_dict = ngx.shared.streams
 local status_dict = ngx.shared.status
@@ -1000,6 +1002,31 @@ app:match('stream-chat-preview', config.http_prefix .. '/chat/preview', respond_
     return { layout = 'chatlayout', render = 'chat' }
   end,
 }))
+
+app:match('stream-stats', config.http_prefix .. '/stats', respond_to({
+  GET = function(self)
+    local res = capture(config.http_prefix .. '/stats_raw')
+    local b = ''
+    local s, e, u, stream
+    local n = 1
+    repeat
+      s, e, u = find(res.body,"<name>([^<]+)</name>",n)
+      if s then
+        b = b .. sub(res.body,n,e)
+        n = e + 1
+        stream = Stream:find({ uuid = u })
+        if stream then
+          b = b .. '\n<user>' .. stream:get_user().username .. '</user>'
+          b = b .. '\n<title>' .. stream.name .. '</title>'
+        end
+      end
+    until not s
+    b = b .. sub(res.body,n)
+
+    return plain_err_out(self,b,200)
+  end,
+}))
+
 
 app:match('stream-video', config.http_prefix .. '/stream/:id/video(/:fn)', respond_to({
   before = function(self)
