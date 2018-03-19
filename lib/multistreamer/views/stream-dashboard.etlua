@@ -12,8 +12,8 @@
 
 <div class="pure-control-group">
 <label for="rtmp_url">RTMP URL</label>
-<button id="copyRTMPBtn" type="button" class="pure-button" data-clipboard-text="<%= public_rtmp_url %>">Copy</button>
-<input type="text" id="rtmp_url" name="rtmp_url" value="<%= public_rtmp_url %>" readonly />
+<button id="copyRTMPBtn" type="button" class="pure-button" data-clipboard-text="<%= public_rtmp_url %>/<%= rtmp_prefix %>">Copy</button>
+<input type="text" id="rtmp_url" name="rtmp_url" value="<%= public_rtmp_url %>/<%= rtmp_prefix %>" readonly />
 </div>
 
 <div class="pure-control-group">
