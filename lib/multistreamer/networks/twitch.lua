@@ -524,7 +524,7 @@ function M.create_viewcount_func(account, _, send)
 end
 
 function M.create_comment_funcs(account, stream, send)
-  local irc = IRCClient.new()
+  local irc = IRCClient.new({ssl = true})
   local nick = account.channel:lower()
   local channel = '#' .. stream.channel:lower()
   local icons = {}
@@ -538,7 +538,7 @@ function M.create_comment_funcs(account, stream, send)
     access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
     local ok, err
     ngx_log(ngx_debug,format('[%s] IRC: Connecting',M.displayname))
-    ok, err = irc:connect('irc.chat.twitch.tv',6667)
+    ok, err = irc:connect('irc.chat.twitch.tv',443)
     if not ok then
       ngx_log(ngx_err,format('[%s] IRC: Connection failed: %s',M.displayname,err))
       return false,err
@@ -629,16 +629,15 @@ function M.create_comment_funcs(account, stream, send)
         return true
       end
 
-      if not cruise_ok then
-        ngx_log(ngx_err,format('[%s] IRC Client error: %s, reconnecting',M.displayname,cruise_err))
-      end
-
-      local reconnect_ok, reconnect_err = irc_connect()
-
-      if not reconnect_ok then
-        ngx_log(ngx_err,format('[%s] IRC Client error: %s, giving up',M.displayname,reconnect_err))
-        return false, reconnect_err
-      end
+      local reconnect_ok, reconnect_err
+      repeat
+        ngx_log(ngx_err,format('[%s] IRC Client disconnected, attempting reconnect',M.displayname))
+        reconnect_ok, reconnect_err = irc_connect()
+        if not reconnect_ok then
+          ngx_log(ngx_err,format('[%s] IRC Client error: %s, trying again in 10 seconds',M.displayname,reconnect_err))
+        end
+        sleep(10)
+      until reconnect_ok == true or running == false
     end
     return true
   end

@@ -36,8 +36,9 @@ local function ircline_forcecol(...)
   end
 end
 
-function IRCClient.new()
+function IRCClient.new(opts)
   local t = {}
+  t.opts = opts or {}
   t.events = {}
   t.commandFuncs = {
     ['PING'] = IRCClient.serverPing,
@@ -81,6 +82,12 @@ function IRCClient:connect(host,port)
   self.socket:settimeout(30000) -- crap out after 30 seconds
   local ok, err = self.socket:connect(host,port)
   if ok then
+    if self.opts.ssl then
+      local session, session_err = self.socket:sslhandshake(nil,host)
+      if not session then
+        self:emitEvent('error',session_err)
+      end
+    end
     self:emitEvent('connected')
     return true,nil
   end
