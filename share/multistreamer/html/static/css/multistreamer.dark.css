@@ -21,6 +21,10 @@ div#chatinput, div.chatpicker, div.chatmessage {
     box-shadow: none;
 }
 
+.pure-form input[type="text"][disabled], input[type="text"][disabled] .pure-form input[type="text"][readonly], input[type="text"][readonly] {
+    color: #a0b2bf;
+}
+
 .pure-form textarea, textarea {
     background-color: #314963;
     border: 1px solid #000;
