@@ -6,6 +6,9 @@
   <title>multistreamer</title>
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/pure-min.css">
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.css">
+  <% if (user:get_pref('night_mode') and params.night_mode ~= 'false') or (params.night_mode == 'true') then %>
+  <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.dark.css">
+  <% end %>
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/auto-complete.css">
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/balloon.min.css">
 </head>

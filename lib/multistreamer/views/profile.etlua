@@ -13,6 +13,14 @@
   <input class="pure-button" type="submit" value="Reset Token" name="resetTokenBtn" id="resetTokenBtn" />
 </div>
 
+<div class="pure-control-group">
+  <label for="access_token">Night Mode</label>
+  <select name="night_mode" id="night_mode">
+    <option value="0" <%= user:get_pref('night_mode') and '' or 'selected' %>>Off</option>
+    <option value="1" <%= user:get_pref('night_mode') and 'selected' or '' %>>On</option>
+  </select
+</div>
+
 <div class="pure-control-group"><label>Save</label>
 <input class="pure-button pure-button-primary" type="submit" value="Submit" id="submitBtn" />
 </div>

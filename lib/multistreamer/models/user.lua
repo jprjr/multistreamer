@@ -1,6 +1,8 @@
 -- luacheck: globals ngx
 local ngx = ngx
 local Model = require('lapis.db.model').Model
+local from_json = require('lapis.util').from_json
+local to_json = require('lapis.util').to_json
 local config = require'multistreamer.config'.get()
 local http
 local encode_base64
@@ -77,6 +79,19 @@ local User = Model:extend('users', {
   end,
   reset_token = function(self)
     self:update({access_token = make_token()})
+  end,
+  get_pref = function(self, key)
+    if not self.prefs then
+      self.prefs = from_json(self.preferences)
+    end
+    return self.prefs[key]
+  end,
+  save_pref = function(self, key, value)
+    if not self.prefs then
+      self.prefs = from_json(self.preferences)
+    end
+    self.prefs[key] = value
+    self:update({ preferences = to_json(self.prefs) })
   end
 })
 

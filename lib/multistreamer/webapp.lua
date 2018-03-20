@@ -640,6 +640,7 @@ app:match('profile-edit', config.http_prefix .. '/profile/:id', respond_to({
     if self.params['resetTokenBtn'] ~= nil then
       self.user:reset_token()
     end
+    self.user:save_pref('night_mode',tonumber(self.params['night_mode']) == 1)
     return { render = 'profile' }
   end,
 }))

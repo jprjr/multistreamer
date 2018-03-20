@@ -60,7 +60,7 @@ copyKeyBtn.addEventListener('mouseleave',function() {
 <% end %>
 <% if metadata_level == 2 or chat_level > 0 then %>
 <p><a target="_blank" href="<%= url_for('stream-chat', { id = stream.id })%>?show_picture">Chat</a></p>
-<p><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = stream.id }) %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = stream.id})%>">Chat Widget</a></p>
+<p><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = stream.id }) %>?night_mode=<%= user:get_pref('night_mode') and 'true' or 'false' %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = stream.id})%>">Chat Widget</a></p>
 <p><strong>IRC Room</strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass">Join</a></p>
 <% end %>
 

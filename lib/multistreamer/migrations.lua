@@ -153,6 +153,10 @@ local schemas = {
     return true
   end,
 
+  [1521568700] = function()
+    schema.add_column('users','preferences',types.text({ default = "{}"}))
+  end,
+
 }
 
 migrations.run_migrations(schemas)

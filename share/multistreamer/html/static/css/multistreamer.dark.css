@@ -1,0 +1,48 @@
+html {
+    background-color: #1b2836;
+    color: #e1e8ed;
+}
+
+div#chatinput, div.chatpicker, div.chatmessage {
+    background-color: #1f3a57;
+    color: #e1e8ed;
+}
+
+.pure-form select {
+    background-color: #1b2836;
+    color: #e1e8ed;
+    border: 1px solid #000;
+}
+
+.pure-form input, .pure-form.pure-form-aligned input, .pure-form.pure-form-aligned .pure-control-group input, input {
+    background-color: #1b2836;
+    border: 1px solid #000;
+    box-shadow: none;
+}
+
+.pure-form textarea, .pure-form.pure-form-aligned textarea, .pure-form.pure-form-aligned .pure-control-group textarea, textarea {
+    background-color: #1b2836;
+    border: 1px solid #000;
+    box-shadow: none;
+}
+
+li.pure-menu-item a.pure-menu-link {
+    color: #6b6b6b;
+}
+
+li.pure-menu-item.pure-menu-selected a.pure-menu-link {
+    color: #e1e8ed;
+}
+
+a.pure-menu-link:hover {
+    background-color: #303030;
+    color: #e1e8ed;
+}
+
+a.pure-menu-link:visited {
+    color: #e1e8ed;
+}
+
+.pure-form legend {
+    color: #e1e8ed;
+}
