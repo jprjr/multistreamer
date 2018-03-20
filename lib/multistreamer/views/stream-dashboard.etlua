@@ -8,7 +8,7 @@
 <% render('multistreamer.views.stream-menu', { active_submenu = 'dashboard' }) %>
 
 <% if metadata_level == 2 then %>
-<div class="pure-form-aligned">
+<div class="pure-form pure-form-aligned">
 
 <div class="pure-control-group">
 <label for="rtmp_url">RTMP URL</label>
