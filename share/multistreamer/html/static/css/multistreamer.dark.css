@@ -4,24 +4,25 @@ html {
 }
 
 div#chatinput, div.chatpicker, div.chatmessage {
-    background-color: #1f3a57;
+    background-color: #314963;
     color: #e1e8ed;
 }
 
-.pure-form select {
-    background-color: #1b2836;
+.pure-form select, select {
+    background-color: #314963;
     color: #e1e8ed;
-    border: 1px solid #000;
-}
-
-.pure-form input, .pure-form.pure-form-aligned input, .pure-form.pure-form-aligned .pure-control-group input, input {
-    background-color: #1b2836;
     border: 1px solid #000;
     box-shadow: none;
 }
 
-.pure-form textarea, .pure-form.pure-form-aligned textarea, .pure-form.pure-form-aligned .pure-control-group textarea, textarea {
-    background-color: #1b2836;
+.pure-form input[type="text"], input[type="text"] {
+    background-color: #314963;
+    border: 1px solid #000;
+    box-shadow: none;
+}
+
+.pure-form textarea, textarea {
+    background-color: #314963;
     border: 1px solid #000;
     box-shadow: none;
 }
