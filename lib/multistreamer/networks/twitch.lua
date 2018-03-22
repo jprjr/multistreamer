@@ -64,7 +64,7 @@ local function http_error_handler(res)
 end
 
 local function refresh_access_token(refresh_token, access_token, expires_in, expires_at)
-  if expires_at == nil then -- older tokens never expire
+  if access_token and expires_in == nil then -- older token, never expires
     return access_token, expires_in, expires_at
   end
 
