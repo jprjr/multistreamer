@@ -578,7 +578,7 @@ function M.create_comment_funcs(account, stream, send)
   local function sendMsg(event,data)
     local msg = {
       from = {
-        name = data.tags['display-name'],
+        name = data.tags['display-name'] or data.from.nick,
         id = data.tags['user-id'],
       },
       text = data.message,

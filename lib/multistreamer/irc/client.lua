@@ -36,6 +36,11 @@ local function ircline_forcecol(...)
   end
 end
 
+local function log_parse_line(data)
+  ngx_log(ngx_debug,'[IRC] ' .. data)
+  return irc.parse_line(data)
+end
+
 function IRCClient.new(opts)
   local t = {}
   t.opts = opts or {}
@@ -135,7 +140,7 @@ function IRCClient:login(nickname,username,realname,password)
       return false, sock_err
     end
 
-    local msg = irc.parse_line(data)
+    local msg = log_parse_line(data)
     if msg.command == '001' then
       logging_in = false
     end
@@ -190,9 +195,9 @@ function IRCClient:cruise()
     end
     local msg
     if data then
-      msg = irc.parse_line(data)
+      msg = log_parse_line(data)
     else
-      msg = irc.parse_line(partial)
+      msg = log_parse_line(partial)
     end
     if msg and msg.command then
       local func = self.commandFuncs[upper(msg.command)]
