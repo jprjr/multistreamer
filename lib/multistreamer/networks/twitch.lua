@@ -189,13 +189,11 @@ function M.metadata_fields()
   return {
     [1] = {
         type = 'text',
-        label = 'Title',
         key = 'title',
         required = true,
     },
     [2] = {
         type = 'text',
-        label = 'Game',
         key = 'game',
         required = true,
         search = '/game',

@@ -1,51 +1,51 @@
-<h3>Streams</h3>
+<h3><%= config.lang.streams %></h3>
 <ul>
 <% if #streams == 0 then %>
 <li><p>No streams created</p></li>
 <% else %>
 <% for k,v in pairs(streams) do %>
-<li class="<%= v.live and 'live' or 'offline' %>"><%= v.name %><% if v.shared then %> (Shared by <%= v.shared_from %>)<% end %>:
+<li class="<%= v.live and 'live' or 'offline' %>"><%= v.name %><% if v.shared then %> (<%= config.lang.shared_by:format(v.shared_from) %>)<% end %>:
   <ul>
     <% if (not v.shared) or (v.shared and v.metadata_level > 0) then %>
-    <li><a href="<%= url_for('stream-edit', { id = v.id }) %>?subset=dashboard">Dashboard</a></li>
+    <li><a href="<%= url_for('stream-edit', { id = v.id }) %>?subset=dashboard"><%= config.lang.dashboard %></a></li>
     <% end %>
 
     <% if (not v.shared) or (v.shared and v.chat_level > 0) then %>
-    <li><a href="<%= url_for('stream-chat', { id = v.id })%>?show_picture">Chat</a></li>
-    <li><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = v.id }) %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = v.id})%>">Chat Widget</a></li>
+    <li><a href="<%= url_for('stream-chat', { id = v.id })%>?show_picture"><%= config.lang.chat %></a></li>
+    <li><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = v.id }) %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = v.id})%>"><%= config.lang.chat_widget %></a></li>
     <% end %>
     <% if not v.shared then %>
-    <li><a href="<%= url_for('stream-delete', { id = v.id }) %>">Delete Stream</a></li>
+    <li><a href="<%= url_for('stream-delete', { id = v.id }) %>"><%= config.lang.delete_stream %></a></li>
     <% end %>
   </ul></li>
 <% end %>
 <% end %>
-<li><a href="<%= url_for('stream-edit')%>">Create new stream</a></li>
+<li><a href="<%= url_for('stream-edit')%>"><%= config.lang.new_stream %></a></li>
 </ul>
 
 
-<h3>Accounts</h3>
+<h3><%= config.lang.accounts %></h3>
 
 <ul>
 <% if #accounts == 0 then %>
-<li>No connected accounts</li>
+<li><%= config.lang.no_accounts %></li>
 <% else %>
 <% for k,v in pairs(accounts) do %>
 <% if v.network then %>
 
-<li><% if v.shared then %>(Shared by <%= v.shared_from %>) <% end %><%= networks[v.network].displayname -%>
-<% if v.name then %>: <%= v.name -%> <% end %><% if v.errors then %><span class="error">Error encountered: <%= v.errors %></span><% end %>
+<li><% if v.shared then %>(<%= config.lang.shared_by:format(v.shared_from)%>) <% end %><%= networks[v.network].displayname -%>
+<% if v.name then %>: <%= v.name -%> <% end %><% if v.errors then %><span class="error"><%= config.lang.account_error:format(v.errors) %></span><% end %>
 
 <ul>
 
 <% if networks[v.network].create_form and not v.shared then %>
-<li><a href="<%= url_for('account-'..networks[v.network].name) %>/<%= v.id %>">Edit</a></li>
+<li><a href="<%= url_for('account-'..networks[v.network].name) %>/<%= v.id %>"><%= config.lang.edit %></a></li>
 <% end %>
 
-<li><a href="<%= url_for('account-delete',{id = v.id}) %>"><%= v.shared and 'Remove' or 'Delete'%></a></li>
+<li><a href="<%= url_for('account-delete',{id = v.id}) %>"><%= v.shared and config.lang.remove or config.lang.delete %></a></li>
 
 <% if not v.shared and networks[v.network].allow_sharing then %>
-<li><a href="<%= url_for('account-share',{id = v.id}) %>">Share</a></li>
+<li><a href="<%= url_for('account-share',{id = v.id}) %>"><%= config.lang.share %></a></li>
 <% end %>
 </ul>
 </li>
@@ -56,17 +56,17 @@
 
 <% for k,v in networks() do %>
 <% if v.get_oauth_url then %>
-<li>Add New <a href="<%= v.get_oauth_url(user) %>"><%= v.displayname %></a></li>
+<li><%- string.format(config.lang.add_new_account,'<a href="' .. v.get_oauth_url(user) .. '">' .. v.displayname .. '</a>') %></li>
 <% else %>
-<li>Add New <a href="<%= url_for('account-'..v.name) %>"><%= v.displayname %></a></li>
+<li><%- string.format(config.lang.add_new_account,'<a href="' .. url_for('account-' .. v.name) .. '">' .. v.displayname .. '</a>') %></li>
 <% end %>
 <% end %>
 
 </ul>
 
-<h3>IRC Info</h3>
-<p>Hostname: <%= public_irc_hostname %></p>
-<p>Port: <%= public_irc_port %></p>
-<p>SSL: <%= public_irc_ssl and 'Enabled' or 'Disabled' %></p>
+<h3><%= config.lang.irc %></h3>
+<p><%= config.lang.hostname:format(public_irc_hostname) %></p>
+<p><%= config.lang.port:format(public_irc_port) %></p>
+<p><%= config.lang.ssl:format(public_irc_ssl and config.lang.enabled or config.lang.disabled) %></p>
 <p><a href="irc<%= public_irc_ssl and 's' or ''%>://<%=public_irc_hostname%>:<%=public_irc_port %>/,needpass">Login</a></p>
 

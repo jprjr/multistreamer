@@ -1,6 +1,6 @@
 <% if not params.widget then %>
 <div id="chatviewers">
-<div><span class="offline">Disconnected from Multistreamer</span></div>
+<div><span class="offline"><%= config.lang.disconnected:format(config.app_name) %></span></div>
 </div>
 <% end %>
 
@@ -9,18 +9,17 @@
 <% if not params.widget then %>
 <div id="chatinput">
 <div class="name">
-<p>Stream not started</p>
+<p><%= config.lang.stream_not_started %></p>
 </div>
 </div>
 <% end %>
 
-
 <script src="<%= url_for("site-root") %>static/js/zenscroll-min.js"></script>
 <script src="<%= url_for("site-root") %>static/js/chat-client.js"></script>
 <script type="text/javascript">
-<% if params.id then %>
+<% if params.id then -%>
   start_chat('<%= public_http_url:gsub("^http","ws",1) .. http_prefix %>/ws/<%= params.id %><%= params.token and '?token='..params.token or '' %>');
-  <% if not params.widget then %>
+  <% if not params.widget then -%>
   buildChatInput(null);
   <% end %>
 <% else %>

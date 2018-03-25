@@ -1,12 +1,12 @@
 <div class="pure-menu pure-menu-horizontal pure-menu-scrollable">
     <ul class="pure-menu-list">
-        <li class="pure-menu-item<%= active_submenu == 'dashboard' and ' pure-menu-selected' or '' %><%= metadata_level > 0 and '' or ' pure-menu-disabled' %>"><a id="submit-dashboard" href="#" class="pure-menu-link">Dashboard</a></li>
-        <li class="pure-menu-item<%= active_submenu == 'accounts' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-accounts" href="#" class="pure-menu-link">Accounts</a></li>
-        <li class="pure-menu-item<%= active_submenu == 'permissions' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-permissions" href="#" class="pure-menu-link">Permissions</a></li>
-        <li class="pure-menu-item<%= active_submenu == 'webhooks' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-webhooks" href="#" class="pure-menu-link">Webhooks</a></li>
-        <li class="pure-menu-item<%= active_submenu == 'general' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-general" href="#" class="pure-menu-link">General</a></li>
+        <li class="pure-menu-item<%= active_submenu == 'dashboard' and ' pure-menu-selected' or '' %><%= metadata_level > 0 and '' or ' pure-menu-disabled' %>"><a id="submit-dashboard" href="#" class="pure-menu-link"><%= config.lang.dashboard %></a></li>
+        <li class="pure-menu-item<%= active_submenu == 'accounts' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-accounts" href="#" class="pure-menu-link"><%= config.lang.accounts %></a></li>
+        <li class="pure-menu-item<%= active_submenu == 'permissions' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-permissions" href="#" class="pure-menu-link"><%= config.lang.permissions %></a></li>
+        <li class="pure-menu-item<%= active_submenu == 'webhooks' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-webhooks" href="#" class="pure-menu-link"><%= config.lang.webhooks %></a></li>
+        <li class="pure-menu-item<%= active_submenu == 'general' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled' %>"><a id="submit-general" href="#" class="pure-menu-link"><%= config.lang.general %></a></li>
         <% if config.allow_custom_puller then %>
-        <li class="pure-menu-item<%= active_submenu == 'advanced' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled'%>"><a id="submit-advanced" href="#" class="pure-menu-link">Advanced</a></li>
+        <li class="pure-menu-item<%= active_submenu == 'advanced' and ' pure-menu-selected' or '' %><%= stream:check_owner(user) and '' or ' pure-menu-disabled'%>"><a id="submit-advanced" href="#" class="pure-menu-link"><%= config.lang.advanced %></a></li>
         <% end %>
     </ul>
 </div>

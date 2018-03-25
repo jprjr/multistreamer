@@ -1,17 +1,17 @@
-<p>Login</p>
+<p><%= config.lang.login %></p>
 
 <form class="pure-form pure-form-aligned" id="login_form" method="post" action="<%= url_for('login') %>">
 
 <fieldset>
 
-<div class="pure-control-group"><label for="username">Username</label>
+<div class="pure-control-group"><label for="username"><%= config.lang.username %></label>
 <input type="text" name="username"></div>
 
-<div class="pure-control-group"><label for="password">Password</label>
+<div class="pure-control-group"><label for="password"><%= config.lang.password %></label>
 <input type="password" name="password"></div>
 
 <div class="pure-controls">
-<button type="submit" class="pure-button pure-button-primary">Login</button>
+<button type="submit" class="pure-button pure-button-primary"><%= config.lang.login %></button>
 </div>
 
 </fieldset>

@@ -11,7 +11,6 @@ local unpack = unpack or table.unpack -- luacheck: compat
 
 local Webhook_types = {
     [1] = {
-        name = 'Discord',
         value = 'discord',
         events = {
           ['comment:in'] = function(hook,msg)
@@ -81,7 +80,6 @@ local Webhook_types = {
         }
     },
     [2] = {
-        name = 'Raw',
         value = 'raw',
         events = {
           ['comment:in'] = function(hook,msg)
@@ -214,15 +212,12 @@ local Webhook_types_rev = {
 
 local Webhook_events = {
     [1] = {
-        name = 'Stream Start',
         value = 'stream:start',
     },
     [2] = {
-        name = 'Stream End',
         value = 'stream:end',
     },
     [3] = {
-        name = 'New Comment',
         value = 'comment:in',
     },
 }

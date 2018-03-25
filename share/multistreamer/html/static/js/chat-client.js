@@ -131,10 +131,10 @@ function buildChatPickerList(accounts) {
         var chatPicker = document.createElement('div');
         chatPicker.className = 'chatpicker';
         if(live) {
-            chatPicker.innerHTML = '<p>No accounts available</p>'
+            chatPicker.innerHTML = '<p>' + lang.no_accounts_available + '</p>'
         }
         else {
-            chatPicker.innerHTML = '<p>Stream not started</p>'
+            chatPicker.innerHTML = '<p>' + lang.stream_not_started + '</p>'
         }
         chatPicker.onclick = function() {
             buildChatInput(null);
@@ -238,7 +238,7 @@ function buildChatInput(account) {
                 var firstOpt = document.createElement('option');
                 firstOpt.disabled = true;
                 firstOpt.selected = true;
-                firstOpt.innerHTML = 'Choose which stream to chat on'
+                firstOpt.innerHTML = lang.choose_stream;
                 inputElement.appendChild(firstOpt);
                 liveAccounts.forEach(function(a) {
                     var optionElement = document.createElement('option');
@@ -274,10 +274,10 @@ function buildChatInput(account) {
         curAccount = undefined;
         curInput = undefined;
         if(live) {
-            nameElement.innerHTML = '<p>No account chosen - click to choose</p>';
+            nameElement.innerHTML = '<p>' + lang.no_account_selected + '</p>';
         }
         else {
-            nameElement.innerHTML = '<p>Stream not started</p>';
+            nameElement.innerHTML = '<p>' + lang.stream_not_started + '</p>';
         }
     }
     chatInput.appendChild(nameElement);
@@ -437,7 +437,7 @@ function updateViewCountResult(data) {
        if(live) {
            live_sp.className = 'live';
            if(!connected) {
-               live_sp.innerHTML = 'Disconnected from Multistreamer, reconnecting in ' + seconds + ' seconds';
+               live_sp.innerHTML = lang.disconnect_reconnect.replace('%s',seconds);
            }
            else {
                live_sp.innerHTML = 'Live';
@@ -470,10 +470,10 @@ function updateViewCountResult(data) {
        else {
            live_sp.className = 'offline';
            if(!connected) {
-               live_sp.innerHTML = 'Disconnected from Multistreamer, reconnecting in ' + seconds + ' seconds';
+               live_sp.innerHTML = lang.disconnect_reconnect.replace('%s',seconds);
            }
            else {
-               live_sp.innerHTML = 'Not Streaming';
+               live_sp.innerHTML = lang.stream_not_started;
            }
            live_div.appendChild(live_sp);
            chatViewers.appendChild(live_div);

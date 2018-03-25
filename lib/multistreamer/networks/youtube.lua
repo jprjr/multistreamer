@@ -319,7 +319,6 @@ function M.metadata_form(account, stream)
   form[7].options = {}
   form[8].options = {
     [1] = {
-      label = 'None',
       value = '',
     }
   }
@@ -369,36 +368,31 @@ function M.metadata_fields()
   local fields = {
     [1] = {
       type = 'text',
-      label = 'Title',
       key = 'title',
       required = true,
     },
     [2] = {
       type = 'textarea',
-      label = 'Description',
       key = 'description',
       required = true,
     },
     [3] = {
       type = 'textarea',
-      label = 'Tags (one per line)',
       key = 'tags',
       required = false,
     },
     [4] = {
       type = 'select',
-      label = 'Privacy',
       key = 'privacy',
       required = true,
       options = {
-        { label = 'Private', value = 'private' },
-        { label = 'Unlisted', value = 'unlisted' },
-        { label = 'Public', value = 'public' },
+        { value = 'private' },
+        { value = 'unlisted' },
+        { value = 'public' },
       },
     },
     [5] = {
       type = 'select',
-      label = 'Resolution',
       key = 'resolution',
       required = true,
       options = {
@@ -412,7 +406,6 @@ function M.metadata_fields()
     },
     [6] = {
       type = 'select',
-      label = 'Framerate',
       key = 'framerate',
       required = true,
       options = {
@@ -422,19 +415,16 @@ function M.metadata_fields()
     },
     [7] = {
       type = 'select',
-      label = 'Category',
       key = 'category',
       required = true,
     },
     [8] = {
       type = 'select',
-      label = 'Use pre-existing event (ignores most metadata)',
       key = 'event',
       required = false,
     },
     [9] = {
       type = 'checkbox',
-      label = 'Enable low-latency',
       key = 'lowlatency',
       required = false,
     },

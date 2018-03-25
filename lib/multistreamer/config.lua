@@ -1,7 +1,9 @@
 local config = require'lapis.config'
 local lyaml  = require'lyaml'
 local posix  = require'posix'
+local langs = require'multistreamer.lang'
 local gsub = string.gsub
+local len = string.len
 
 local config_loaded = false
 
@@ -203,6 +205,17 @@ local function loadconfig(filename)
 
   if yaml_config.ping_timeout == nil then
     yaml_config.ping_timeout = '30s';
+  end
+
+  if yaml_config.lang_id == nil or len(yaml_config.lang_id) == 0 or langs[yaml_config.lang_id] == nil then
+    yaml_config.lang_id = 'en_us'
+  end
+
+  yaml_config.lang = langs[yaml_config.lang]
+  yaml_config.langs = langs
+
+  if yaml_config.app_name == nil or len(yaml_config.app_name) == 0 then
+    yaml_config.app_name = yaml_config.lang.app_name
   end
 
   yaml_config.http_prefix      = gsub(yaml_config.http_prefix,'/+$','')

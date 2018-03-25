@@ -1,49 +1,51 @@
 <form class="pure-form pure-form-aligned">
-    <fieldset><legend>Chat Widget</legend>
+    <fieldset><legend><%= config.lang.chat_widget %></legend>
         <div class="pure-control-group">
-          <label for="widget_url">URL</label>
+          <label for="widget_url"><%= config.lang.url %></label>
           <input style="width: auto;" id="widget_url" type="text" value="<%= config.public_http_url .. config.http_prefix %>/stream/<%= stream.id %>/chat?token=<%= user.access_token %>&widget&font_size=16&hide_irc&hide_pm&from_bottom&show_picture&night_mode=<%=params.night_mode == 'true' and 'true' or 'false' %>">
-          <span class="pure-form-message-inline"><input type="button" value="Copy" class="pure-button pure-button-primary" id="copy_button"></span>
+          <span class="pure-form-message-inline"><input type="button" value="<%= config.lang.copy %>" class="pure-button pure-button-primary" data-clipboard-target="#widget_url" id="copy_button"></span>
         </div>
     </fieldset>
     <fieldset>
         <div class="pure-control-group">
-            <label for="fadeout">Fadeout messages after (x) seconds</label>
+            <label for="fadeout"><%= config.lang.fadeout %></label>
             <input id="fadeout" type="number" value="0">
-            <span class="pure-form-message-inline">0 to disable</span>
+            <span class="pure-form-message-inline"><%= config.lang.zero_disable %></span>
         </div>
         <div class="pure-control-group">
-            <label for="font_size">Font size (in pixels)</label>
+            <label for="font_size"><%= config.lang.font_size %></label>
             <input id="font_size" type="number" value="16">
         </div>
         <div class="pure-control-group">
-            <label for="compact">Compact Widget</label>
+            <label for="compact"><%= config.lang.compact_widget %></label>
             <input id="compact" type="checkbox">
         </div>
         <div class="pure-control-group">
-            <label for="show_picture">Show Profile Pictures</label>
+            <label for="show_picture"><%= config.lang.show_picture %></label>
             <input id="show_picture" type="checkbox" checked>
         </div>
         <div class="pure-control-group">
-            <label for="hide_irc">Hide IRC messages</label>
+            <label for="hide_irc"><%= config.lang.hide_irc %></label>
             <input id="hide_irc" type="checkbox" checked>
         </div>
         <div class="pure-control-group">
-            <label for="hide_pm">Hide whispers/PMs/etc</label>
+            <label for="hide_pm"><%= config.lang.hide_pm %></label>
             <input id="hide_pm" type="checkbox" checked>
         </div>
         <div class="pure-control-group">
-            <label for="from_bottom">Scroll messages from bottom</label>
+            <label for="from_bottom"><%= config.lang.from_bottom %></label>
             <input id="from_bottom" type="checkbox" checked>
         </div>
         <div class="pure-control-group">
-            <label for="night_mode">Night Mode</label>
+            <label for="night_mode"><%= config.lang.night_mode %></label>
             <input id="night_mode" type="checkbox" <%= params.night_mode == 'true' and 'checked' or ''%>>
         </div>
     </fieldset>
 </form>
 
 <iframe id="preview_frame" style="position: absolute; top: 0; right: 0; height: 100%; width: 50%" src="<%= config.public_http_url .. config.http_prefix %>/chat/preview?widget&font_size=16&hide_irc&hide_pm&from_bottom&show_picture&night_mode=<%= params.night_mode == 'true' and 'true' or 'false'%>"></iframe>
+
+<script src="<%= url_for('site-root') %>static/js/clipboard.min.js"></script>
 
 <script type="text/javascript">
 var preview_frame = document.getElementById('preview_frame');
@@ -106,21 +108,21 @@ hide_pm_box.addEventListener('change',update_preview);
 from_bottom_box.addEventListener('change',update_preview);
 night_mode_box.addEventListener('change',update_preview);
 
-var copy_button = document.getElementById('copy_button');
 
-copy_button.addEventListener('click', function() {
-    widget_url_box.select();
-    try {
-        var successful = document.execCommand('copy');
-        if(successful) {
-            alert('URL copied to clipboard');
-        }
-        else {
-            alert('Unable to copy');
-        }
-    }
-    catch(e) {
-    }
+var copy_button = document.getElementById('copy_button');
+var copy_clipboard = new ClipboardJS(copy_button);
+copy_clipboard.on('success',function(e) {
+    console.log('copied');
+    copy_button.setAttribute('data-balloon','<%= config.lang.copied %>');
+    copy_button.setAttribute('data-balloon-pos','up');
+    copy_button.setAttribute('data-ballon-visible','');
+    alert('URL copied to clipboard');
+});
+
+copy_button.addEventListener('mouseleave',function() {
+    copy_button.removeAttribute('data-balloon');
+    copy_button.removeAttribute('data-balloon-pos');
+    copy_button.removeAttribute('data-ballon-visible');
 });
 
 

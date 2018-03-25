@@ -1,16 +1,16 @@
 <% if account.shared then %>
-<h3>Remove Account</h3>
-<p>This will remove account <%= account.name %> (<%= networks[account.network].displayname %>) from your list of available accounts</p>
+<h3><%= config.lang.remove_account %></h3>
+<p><%= config.lang.remove_account_warn:format(string.format('%s (%s)',account.name,networks[account.network].displayname)) %></p>
 <% else %>
-<h3>Delete Account</h3>
-<p>This will delete account <%= account.name %> (<%= networks[account.network].displayname %>)</p>
+<h3><%= config.lang.delete_account %></h3>
+<p><%= config.lang.delete_account_warn:format(string.format('%s (%s)',account.name,networks[account.network].displayname)) %></p>
 <% end %>
 
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('account-delete', { id = account.id }) %>" enctype="multipart/form-data">
 
 <div class="pure-controls">
-<button class="pure-button pure-button-primary" type="submit" id="submitBtn"><%= account.shared and 'Remove' or 'Delete' %></button>
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn"><%= account.shared and config.lang.remove or config.lang.delete %></button>
 </div>
 </form>
 

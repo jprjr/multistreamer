@@ -8,26 +8,26 @@
 <fieldset>
 <legend><%= other_user.username %></legend>
 <div class="pure-control-group">
-<label for="user.<%= other_user.id %>.chat">Chat Permissions</label>
+<label for="user.<%= other_user.id %>.chat"><%= config.lang.chat_permissions %></label>
 <select name="user.<%= other_user.id %>.chat">
-<option value="0" <% if other_user.chat_level == 0 then %>selected<% end %>>None</option>
-<option value="1" <% if other_user.chat_level == 1 then %>selected<% end %>>View Chat</option>
-<option value="2" <% if other_user.chat_level == 2 then %>selected<% end %>>Write Chat</option>
+<option value="0" <% if other_user.chat_level == 0 then %>selected<% end %>><%= config.lang.none %></option>
+<option value="1" <% if other_user.chat_level == 1 then %>selected<% end %>><%= config.lang.view_chat %></option>
+<option value="2" <% if other_user.chat_level == 2 then %>selected<% end %>><%= config.lang.write_chat %></option>
 </select>
 </div>
 <div class="pure-control-group">
-<label for="user.<%= other_user.id %>.metadata">Metadata Permissions</label>
+<label for="user.<%= other_user.id %>.metadata"><%= config.lang.metadata_permissions %></label>
 <select name="user.<%= other_user.id %>.metadata">
-<option value="0" <% if other_user.metadata_level == 0 then %>selected<% end %>>None</option>
-<option value="1" <% if other_user.metadata_level == 1 then %>selected<% end %>>View Metadata</option>
-<option value="2" <% if other_user.metadata_level == 2 then %>selected<% end %>>Edit Metadata</option>
+<option value="0" <% if other_user.metadata_level == 0 then %>selected<% end %>><%= config.lang.none %></option>
+<option value="1" <% if other_user.metadata_level == 1 then %>selected<% end %>><%= config.lang.view_metadata %></option>
+<option value="2" <% if other_user.metadata_level == 2 then %>selected<% end %>><%= config.lang.edit_metadata %></option>
 </select>
 </div>
 </fieldset>
 <% end %>
 
 <div class="pure-controls">
-<input class="pure-button pure-button-primary" type="submit" id="submitBtn" value="Save" />
+<input class="pure-button pure-button-primary" type="submit" id="submitBtn" value="<%= config.lang.save %>" />
 </div>
 </form>
 

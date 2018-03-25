@@ -6,14 +6,14 @@
 
 <% if config.allow_custom_puller then %>
 <div class="pure-control-group">
-<label for="ffmpeg_pull_args">FFMPEG Pull Args</label>
+<label for="ffmpeg_pull_args"><%= config.lang.ffmpeg_pull_args %></label>
 <input type="text" name="ffmpeg_pull_args" <% if stream and stream.ffmpeg_pull_args then %>value="<%= stream.ffmpeg_pull_args %>"<% end %>/>
 </div>
 <% end %>
 
 
 <div class="pure-controls">
-<input class="pure-button pure-button-primary" type="submit" value="Save" id="submitBtn" />
+<input class="pure-button pure-button-primary" type="submit" value="<%= config.lang.save %>" id="submitBtn" />
 </div>
 
 </form>

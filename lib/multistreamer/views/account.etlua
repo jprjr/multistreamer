@@ -1,14 +1,14 @@
 <% if account then %>
-<h3>Edit <%= network.displayname %> Account</h3>
+<h3><%= config.lang.edit_account:format(network.displayname) %></h3>
 <% else %>
-<h3>Create <%= network.displayname %> Account</h3>
+<h3><%= config.lang.create_account:format(network.displayname) %></h3>
 <% end %>
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('account-'..network.name) %><% if account then %>/<%= account.id %><% end %>">
 
 <% for i,v in ipairs(network.create_form()) do %>
 <% local value ; if account then value = account:get(v.key) end  %>
-<div class="pure-control-group"><label for="<%= v.key %>"><%= v.label %></label>
+<div class="pure-control-group"><label for="<%= v.key %>"><%= config.lang[network.name].create_forms[v.key] %></label>
 <% if v.type == "text" then %>
 <input type="text" name="<%= v.key %>" <% if value then %>value="<%= value %>"<% end%> />
 <% elseif v.type == 'textarea' then %>
@@ -23,13 +23,13 @@
 
 <% if config.allow_transcoding then %>
 <div class="pure-control-group">
-  <label for="ffmpeg_args">FFMPEG Args (blank for default)</label>
+  <label for="ffmpeg_args"><%= config.lang.ffmpeg_args %></label>
   <input id="ffmpeg_args" name="ffmpeg_args" type="text" <% if account and account.ffmpeg_args then %>value="<%= account.ffmpeg_args %>" <% end %> />
 </div>
 <% end %>
 
-<div class="pure-control-group"><label>Save</label>
-<input class="pure-button" type="submit" value="Submit" id="submitBtn" />
+<div class="pure-control-group"><label><%= config.lang.save %></label>
+<input class="pure-button" type="submit" value="<%= config.lang.submit %>" id="submitBtn" />
 </div>
 </form>
 

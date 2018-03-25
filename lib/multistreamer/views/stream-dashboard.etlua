@@ -11,15 +11,15 @@
 <div class="pure-form pure-form-aligned">
 
 <div class="pure-control-group">
-<label for="rtmp_url">RTMP URL</label>
-<button id="copyRTMPBtn" type="button" class="pure-button" data-clipboard-text="<%= public_rtmp_url %>/<%= rtmp_prefix %>">Copy</button>
+<label for="rtmp_url"><%= config.lang.rtmp_url %></label>
+<button id="copyRTMPBtn" type="button" class="pure-button" data-clipboard-text="<%= public_rtmp_url %>/<%= rtmp_prefix %>"><%= config.lang.copy %></button>
 <input type="text" id="rtmp_url" name="rtmp_url" value="<%= public_rtmp_url %>/<%= rtmp_prefix %>" readonly />
 </div>
 
 <div class="pure-control-group">
-<label for="stream_key">Stream Key</label>
-<button id="copyKeyBtn" type="button" class="pure-button" data-clipboard-text="<%= stream.uuid %>">Copy</button>
-<button id="showBtn" type="button" class="pure-button">Show</button>
+<label for="stream_key"><%= config.lang.stream_key %></label>
+<button id="copyKeyBtn" type="button" class="pure-button" data-clipboard-text="<%= stream.uuid %>"><%= config.lang.copy %></button>
+<button id="showBtn" type="button" class="pure-button"><%= config.lang.show %></button>
 <input type="text" id="stream-key" value="<%= stream.uuid %>" readonly />
 </div>
 
@@ -59,20 +59,20 @@ copyKeyBtn.addEventListener('mouseleave',function() {
 </div>
 <% end %>
 <% if metadata_level == 2 or chat_level > 0 then %>
-<p><a target="_blank" href="<%= url_for('stream-chat', { id = stream.id })%>?show_picture">Chat</a></p>
+<p><a target="_blank" href="<%= url_for('stream-chat', { id = stream.id })%>?show_picture"><%= config.lang.chat %></a></p>
 <p><a onclick="window.open('<%= url_for('stream-chat-widget-config', { id = stream.id }) %>?night_mode=<%= user:get_pref('night_mode') and 'true' or 'false' %>','newwindow','width=1200,height=600'); return false;"  href="<%= url_for('stream-chat-widget-config', { id = stream.id})%>">Chat Widget</a></p>
-<p><strong>IRC Room</strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass">Join</a></p>
+<p><strong><%= config.lang.irc_room %></strong> <code>#<%= user.username %>-<%= stream.slug %></code> <a href="irc<%= public_irc_ssl and 's' or '' %>://<%= public_irc_hostname %>:<%= public_irc_port %>/<%= user.username %>-<%= stream.slug %>,needpass"><%= config.lang.join %></a></p>
 <% end %>
 
 <% if metadata_level > 0 then %>
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('stream-edit', { id = stream.id}) %>?subset=dashboard" enctype="multipart/form-data">
 
-<fieldset><legend>Stream Preview</legend>
+<fieldset><legend><%= config.lang.stream_preview %></legend>
 <div class="pure-g">
 <% if #stream_accounts == 0 then %>
 <div class="pure-u-1-1">
-<p><span class="error">Warning: no accounts are enabled on this stream. Unable to Go Live</span></p>
+<p><span class="error"><%= config.lang.stream_live_warning %></span></p>
 </div>
 <% end %>
 <div class="pure-u-1-3">
@@ -82,46 +82,48 @@ copyKeyBtn.addEventListener('mouseleave',function() {
 <div class="pure-u-1-3 pure-controls">
 <% if stream.ffmpeg_pull_args then %>
 <% if stream_status.data_pulling then %>
-<button class="pure-button pure-button-primary" type="submit" id="customPullBtnStop" name="customPullBtnStop">Stop Puller</button>
+<button class="pure-button pure-button-primary" type="submit" id="customPullBtnStop" name="customPullBtnStop"><%= config.lang.stop_puller %></button>
 <% else %>
-<button class="pure-button pure-button-primary" type="submit" id="customPullBtn" name="customPullBtn">Start Puller</button>
+<button class="pure-button pure-button-primary" type="submit" id="customPullBtn" name="customPullBtn"><%= config.lang.start_puller %></button>
 <% end %>
 <% end %>
 <% if stream.preview_required == 1 and #stream_accounts > 0 and stream_status.data_incoming and not stream_status.data_pushing then %>
-<button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn">Go Live!</button>
+<button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn"><%= config.lang.go_live %></button>
 <% else %>
-<button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled>Go Live!</button>
+<button class="pure-button pure-button-primary" type="submit" id="goLiveBtn" name="goLiveBtn" disabled><%= config.lang.go_live %></button>
 <% end %>
-<button class="pure-button pure-button-primary" type="submit" id="stopLiveBtn" name="stopLiveBtn" <%= stream_status.data_pushing == true and '' or 'disabled'%>>Stop Pushing</button>
+<button class="pure-button pure-button-primary" type="submit" id="stopLiveBtn" name="stopLiveBtn" <%= stream_status.data_pushing == true and '' or 'disabled'%>><%= config.lang.stop_pushing %></button>
 </div>
 <% end %>
 </div>
 </fieldset>
 
-<div class="pure-control-group"><label for="title">Title</label>
+<div class="pure-control-group"><label for="title"><%= config.lang.title %></label>
 <input type="text" id="title" name="title" <% if stream:get('title') then %>value="<%= stream:get('title') %>"<% end %> <%= metadata_level < 2 and 'readonly' or '' %>/>
 </div>
 
-<div class="pure-control-group"><label for="description">Description</label>
+<div class="pure-control-group"><label for="description"><%= config.lang.description %></label>
 <textarea id="description" name="description" <%= metadata_level < 2 and 'readonly' or '' %>><% if stream:get('description') then %><%= stream:get('description') %><% end %></textarea></div>
 
 <% if metadata_level == 2 then %>
-<div class="pure-control-group"><label>Copy above fields to below fields</label>
-<button id="copyDownBtn" type="button" class="pure-button">Copy</button>
+<div class="pure-control-group"><label><%= config.lang.copy_above_to_below %></label>
+<button id="copyDownBtn" type="button" class="pure-button"><%= config.lang.copy %></button>
 </div>
 <% end %>
 
 <% for _,account in pairs(stream_accounts) do %>
-<fieldset><legend><%= account.name %> (<%= networks[account.network].displayname %>) Settings</legend>
+<fieldset><legend>
+<%= config.lang.account_settings:gsub('%%account_with_network', config.lang.account_with_network:gsub('%%account',account.name):gsub('%%network',networks[account.network].displayname)) %>
+</legend>
 <% local metadata_form, err = networks[account.network].metadata_form(account:get_keystore(),stream:get_stream_account(account):get_keystore()) %>
 
 <% if err then %>
-<p>Error loading form for this account. Error: <%= err %></p>
+<p><%= config.lang.account_form_error:format(err) %></p>
 <% elseif metadata_form then %>
 <% for i,v in ipairs(metadata_form) do %>
 
 <% if v.type ~= 'hidden' then %>
-<div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= v.label %><%= v.required and ' *' or '' %></label>
+<div class="pure-control-group"><label for="<%= v.key %>.<%= account.id %>"><%= config.lang[account.network].metadata_form[v.key] %><%= v.required and ' *' or '' %></label>
 <% end %>
 
 <% if v.type == 'text' then %>
@@ -156,9 +158,20 @@ var autocomplete_<%= v.key%>_<%= account.id %> = new autoComplete({
 
 <% elseif v.type == 'select' then %>
 <select id="<%= v.key %>.<%= account.id %>" name="<%= v.key %>.<%= account.id %>" <%= metadata_level < 2 and 'readonly' or '' %>>
-<option value="" disabled <% if not v.value then %>selected<% end %>>Select</option>
+<option value="" disabled <% if not v.value then %>selected<% end %>><%= config.lang.select %></option>
 <% for i,o in ipairs(v.options) do %>
-<option value="<%= o.value %>" <%= o.value == v.value and 'selected' or '' %>><%= o.label %></option>
+<%
+local label
+if config.lang[account.network] and
+   config.lang[account.network].metadata_opts and
+   config.lang[account.network].metadata_opts[v.key] and
+   config.lang[account.network].metadata_opts[v.key][o.value] then
+   label = config.lang[account.network].metadata_opts[v.key][o.value]
+else
+   label = o.label
+end
+%>
+<option value="<%= o.value %>" <%= o.value == v.value and 'selected' or '' %>><%= label %></option>
 <% end %>
 </select>
 
@@ -174,12 +187,12 @@ var autocomplete_<%= v.key%>_<%= account.id %> = new autoComplete({
 <% end %>
 
 <% else %>
-<p>No settings for this account</o>
+<p><%= config.lang.no_account_settings %></o>
 <% end %>
 
 <% if config.allow_transcoding then %>
 <% local ffmpeg_args = stream:get_stream_account(account).ffmpeg_args %>
-<div class="pure-control-group"><label for="ffmpeg_args.<%= account.id %>">FFMPEG Args (blank for default)</label>
+<div class="pure-control-group"><label for="ffmpeg_args.<%= account.id %>"><%= config.lang.ffmpeg_args %></label>
 <input type="text" id="ffmpeg_args.<%= account.id %>" name="ffmpeg_args.<%= account.id %>" <% if ffmpeg_args then %>value="<%= ffmpeg_args %>" <% end %> <%= metadata_level < 2 and 'readonly' or '' %> />
 </div>
 <% end %>
@@ -189,7 +202,7 @@ var autocomplete_<%= v.key%>_<%= account.id %> = new autoComplete({
 
 <% if metadata_level == 2 then %>
 <div class="pure-controls">
-<button class="pure-button pure-button-primary" type="submit" id="submitBtn" name="submitBtn">Submit</button>
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn" name="submitBtn"><%= config.lang.submit %></button>
 </div>
 <% end %>
 </form>

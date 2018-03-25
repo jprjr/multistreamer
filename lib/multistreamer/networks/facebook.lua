@@ -408,26 +408,22 @@ function M.metadata_fields()
   return {
     [1] = {
       type = 'text',
-      label = 'Video Title',
       key = 'title',
       required = true,
     },
     [2] = {
       type = 'textarea',
-      label = 'Description',
       key = 'description',
       required = true,
     },
     [3] = {
       type = 'select',
-      label = 'Profile/Page',
       key = 'target',
       required = true,
       options = {},
     },
     [4] = {
       type = 'select',
-      label = 'Privacy (N/A to Pages)',
       key = 'privacy',
       required = false,
       options = {
@@ -439,7 +435,6 @@ function M.metadata_fields()
     },
     [5] = {
       type = 'select',
-      label = 'Continuous (>4 hours) video?',
       key = 'stream_type',
       required = true,
       options = {
@@ -449,7 +444,6 @@ function M.metadata_fields()
     },
     [6] = {
       type = 'select',
-      label = 'Use Existing Event/Video',
       key = 'event',
       required = false,
       options = {
@@ -458,7 +452,6 @@ function M.metadata_fields()
     },
     [7] = {
       type = 'checkbox',
-      label = 'End live video when stream ends',
       key = 'endlive',
       required = true,
     },

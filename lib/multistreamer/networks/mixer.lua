@@ -226,11 +226,11 @@ function M.register_oauth(params)
   local user, _ = decode_with_secret(decode_base64(params.state))
 
   if not user then
-    return false, nil, 'Beam error: no user info sent'
+    return false, nil, 'nouser'
   end
 
   if not params.code then
-    return false, nil, 'Beam error: no temporary access code'
+    return false, nil, 'nocode'
   end
 
   local httpc = mixer_client()
@@ -319,7 +319,6 @@ function M.metadata_fields()
   return {
     [1] = {
       type = 'text',
-      label = 'Stream Title',
       key = 'title',
       required = true,
     },
@@ -329,7 +328,6 @@ function M.metadata_fields()
     },
     [3] = {
       type = 'text',
-      label = 'Game',
       key = 'game',
       required = true,
       search = '/game',
@@ -337,7 +335,6 @@ function M.metadata_fields()
     },
     [4] = {
       type = 'select',
-      label = 'Target Audience',
       key = 'audience',
       required = true,
       options = {

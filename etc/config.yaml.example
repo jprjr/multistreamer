@@ -1,3 +1,9 @@
+### set the default app language
+lang_id: 'en_us'
+
+### override the app name
+app_name: 'multistreamer'
+
 ### name of the cookie used to store session data
 session_name: 'multistreamer'
 

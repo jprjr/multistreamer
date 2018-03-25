@@ -1,6 +1,6 @@
-<h3>Share Account</h3>
+<h3><%= config.lang.share_account %></h3>
 
-<p>Sharing settings for <%= account.name %> (<%= networks[account.network].displayname %>)<p>
+<p><%= config.lang.share_account_settings:format( string.format("%s (%s)", account.name, networks[account.network].displayname ) ) %></p>
 
 <form class="pure-form pure-form-aligned" id="the_form" method="post" action="<%= url_for('account-share', { id = account.id }) %>" enctype="multipart/form-data">
 
@@ -12,7 +12,7 @@
 <% end %>
 
 <div class="pure-controls">
-<button class="pure-button pure-button-primary" type="submit" id="submitBtn">Update</button>
+<button class="pure-button pure-button-primary" type="submit" id="submitBtn"><%= config.lang.update %></button>
 </div>
 </form>
 

@@ -18,18 +18,15 @@ function M.create_form()
   return {
     [1] = {
       type = 'text',
-      label = 'Name',
       key = 'name',
     },
     [2] = {
       type = 'text',
-      label = 'RTMP URL',
       key = 'url',
       required = true,
     },
     [3] = {
       type = 'text',
-      label = 'Shareable URL',
       key = 'http_url',
       required = false,
     },

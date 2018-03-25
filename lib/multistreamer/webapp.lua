@@ -56,7 +56,7 @@ app:before_filter(function(self)
   if status_dict:get('processmgr_error') or status_dict:get('chatmgr_error') then
     self.status_msg = {
       type = 'error',
-      msg = 'Unrecoverable error! Please check logs and restart Multistreamer',
+      msg = config.lang.restart_error,
     }
   end
   self.public_http_url = config.public_http_url
@@ -64,6 +64,9 @@ app:before_filter(function(self)
   self.public_irc_hostname = config.public_irc_hostname
   self.public_irc_port = config.public_irc_port
   self.public_irc_ssl = config.public_irc_ssl
+  if self.user and self.user:get_pref('lang') and self.config.langs[self.user:get_pref('lang')] then
+    self.config.lang = self.config.langs[self.user:get_pref('lang')]
+  end
 end)
 
 local function sort_accounts(a,b)
@@ -130,13 +133,13 @@ end)
 
 app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
   before = function(self)
-    if not require_login(self) then return err_out(self,'login required') end
+    if not require_login(self) then return err_out(self,self.config.lang.login_required) end
 
     if self.params.id then
       self.stream = Stream:find({ id = self.params.id })
 
       if not self.stream then
-        return err_out(self,'Stream not found')
+        return err_out(self,self.config.lang.stream_not_found)
       end
 
       self.stream_accounts = {}
@@ -162,7 +165,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       end
 
       if self.metadata_level < 1 and self.chat_level < 1 then
-        return err_out(self,'Stream not found')
+        return err_out(self,self.config.lang.stream_not_found)
       end
     end
 
@@ -261,7 +264,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       local stream_name = nil
       if self.stream then
         if not self.stream:check_owner(self.user) then
-          return err_out(self,'Stream not found')
+          return err_out(self,self.config.lang.stream_not_found)
         end
         preview_required = self.stream.preview_required
         stream_name = self.stream.name
@@ -269,19 +272,19 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       local stream, err = Stream:save_stream(self.user,self.stream,self.params)
       if not self.stream then
         if err then
-          self.session.status_msg = { type = 'error', msg = 'Failed to make stream: ' .. err}
+          self.session.status_msg = { type = 'error', msg = self.config.lang.stream_create_error:format(err) }
         else
-          self.session.status_msg = { type = 'success', msg = 'Stream created' }
+          self.session.status_msg = { type = 'success', msg = self.config.lang.stream_created }
           self.stream = stream
           stream_updated = true
         end
       else
         if err then
-          self.session.status_msg = { type = 'error', msg = 'Failed to update stream: ' .. err}
+          self.session.status_msg = { type = 'error', msg = self.config.lang.stream_update_error:format(err) }
         else
           if stream_name ~= stream.name or
              preview_required ~= stream.preview_required then
-            self.session.status_msg = { type = 'success', msg = 'Stream updated' }
+            self.session.status_msg = { type = 'success', msg = self.config.lang.stream_updated }
             stream_updated = true
           end
           self.stream = stream
@@ -291,7 +294,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.subset == 'accounts' then -- {{{
       if not self.stream:check_owner(self.user) then
-        return err_out(self,'Stream not found')
+        return err_out(self,self.config.lang.stream_not_found)
       end
       local accounts = {}
       for _,account in pairs(self.accounts) do
@@ -303,24 +306,24 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       end
       if Stream:save_accounts(self.user, self.stream, accounts) == true then
         stream_updated = true
-        self.session.status_msg = { type = 'success', msg = 'Accounts updated' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.accounts_updated }
       end
     end -- }}}
 
     if self.params.subset == 'advanced' then -- {{{
       if not self.stream:check_owner(self.user) then
-        return err_out(self,'Stream not found')
+        return err_out(self,self.config.lang.stream_not_found)
       end
       if not self.params.ffmpeg_pull_args or len(self.params.ffmpeg_pull_args) == 0 then
         if self.stream.ffmpeg_pull_args ~= nil then
           self.stream:update({ffmpeg_pull_args = db.NULL})
-          self.session.status_msg = { type = 'success', msg = 'FFMPEG puller removed' }
+          self.session.status_msg = { type = 'success', msg = self.confg.lang.ffmpeg_pull_removed }
           stream_updated = true
         end
       else
         if self.stream.ffmpeg_pull_args == nil then
           self.stream:update({ffmpeg_pull_args = self.params.ffmpeg_pull_args})
-          self.session.status_msg = { type = 'success', msg = 'FFMPEG puller updated' }
+          self.session.status_msg = { type = 'success', msg = self.config.lang.ffmpeg_pull_updated }
           stream_updated = true
         end
       end
@@ -328,7 +331,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.subset == 'permissions' then -- {{{
       if not self.stream:check_owner(self.user) then
-        return err_out(self,'Stream not found')
+        return err_out(self,self.config.lang.stream_not_found)
       end
       for _,other_user in pairs(self.users) do
         local chat_level = 0
@@ -343,7 +346,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         if ss then
           if ss.chat_level ~= chat_level or ss.metadata_level ~= metadata_level then
             stream_updated = true
-            self.session.status_msg = { type = 'success', msg = 'Sharing permissions updated' }
+            self.session.status_msg = { type = 'success', msg = self.config.lang.share_updated }
           end
           ss:update({chat_level = chat_level, metadata_level = metadata_level})
         else
@@ -355,7 +358,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           })
           if chat_level > 0 or metadata_level > 0 then
             stream_updated = true
-            self.session.status_msg = { type = 'success', msg = 'Sharing permissions updated' }
+            self.session.status_msg = { type = 'success', msg = self.config.lang.share_updated }
           end
         end
       end
@@ -363,7 +366,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.subset == 'webhooks' then -- {{{
       if not self.stream:check_owner(self.user) then
-        return err_out(self,'Stream not found')
+        return err_out(self,self.config.lang.stream_not_found)
       end
       local webhook_created = false
       local webhook_updated = false
@@ -449,7 +452,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
     if self.params.subset == 'dashboard' then -- {{{
       if self.metadata_level < 2 then
-        return err_out(self,'Stream not found')
+        return err_out(self,self.config.lang.stream_not_found)
       end
 
       if self.params.title then
@@ -526,7 +529,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           worker = pid,
           id = self.stream.id,
         })
-        self.session.status_msg = { type = 'success', msg = 'Custom Puller Started' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.puller_started }
         return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=dashboard' }
       end
 
@@ -536,12 +539,12 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         publish('process:end:pull', {
           id = self.stream.id,
         })
-        self.session.status_msg = { type = 'success', msg = 'Custom Puller Stopped' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.puller_stopped }
         return { redirect_to = self:url_for('stream-edit', { id = self.stream.id }) .. '?subset=dashboard' }
       end
 
       if stream_updated then
-        self.session.status_msg = { type = 'success', msg = 'Stream settings saved' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.stream_saved }
       end
 
       -- is there incoming data, and the user clicked the golivebutton? start the stream
@@ -557,7 +560,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           if sa then
             local rtmp_url, err = networks[account.network].publish_start(account:get_keystore(),sa:get_keystore())
             if (not rtmp_url) or err then
-              self.session.status_msg = { type = 'error', msg = 'Failed to start pusher: ' .. err}
+              self.session.status_msg = { type = 'error', msg = self.config.lang.pusher_error:format(err)}
               ngx_log(ngx_warn,format(
                 'app:publish-start: failed to start %s (%s): %s',
                 account.name,
@@ -586,7 +589,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
           v:fire_event('stream:start', sas)
         end
 
-        self.session.status_msg = { type = 'success', msg = 'Stream started' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.stream_started }
       end
 
       if self.stream_status.data_pushing == true and self.params['stopLiveBtn'] ~= nil then
@@ -611,7 +614,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         for _,v in pairs(self.stream:get_webhooks()) do
           v:fire_event('stream:end')
         end
-        self.session.status_msg = { type = 'success', msg = 'Stream stopped' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.stream_stopped }
       end
 
       streams_dict:set(self.stream.id, to_json(self.stream_status))
@@ -631,7 +634,7 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
 
 app:match('profile-edit', config.http_prefix .. '/profile/:id', respond_to({
   before = function(self)
-    if not require_login(self) then return err_out(self,'login required') end
+    if not require_login(self) then return err_out(self,self.config.lang.login_required) end
   end,
   GET = function(_)
     return { render = 'profile' }
@@ -641,6 +644,7 @@ app:match('profile-edit', config.http_prefix .. '/profile/:id', respond_to({
       self.user:reset_token()
     end
     self.user:save_pref('night_mode',tonumber(self.params['night_mode']) == 1)
+    self.user:save_pref('lang',self.params['lang'])
     return { render = 'profile' }
   end,
 }))
@@ -910,11 +914,11 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
     end
     local stream = Stream:find({ id = self.params.id })
     if not stream then
-      return err_out(self,'Not authorized to modify that stream')
+      return err_out(self,self.config.lang.stream_not_auth)
     end
     local owner_ok, _ = stream:check_owner(self.user)
     if not owner_ok then
-      return err_out(self,'Not authorized to modify that stream')
+      return err_out(self,self.config.lang.stream_not_auth)
     end
 
     self.stream = stream
@@ -944,7 +948,7 @@ app:match('stream-delete', config.http_prefix .. '/stream/:id/delete', respond_t
       slug = self.stream.slug
     })
     self.stream:delete()
-    self.session.status_msg = { type = 'success', msg = 'Stream removed' }
+    self.session.status_msg = { type = 'success', msg = config.lang.stream_removed }
     return { redirect_to = self:url_for('site-root') }
   end
 }))
@@ -958,11 +962,11 @@ app:match('stream-chat', config.http_prefix .. '/stream/:id/chat', respond_to({
 
     local stream = Stream:find({ id = self.params.id })
     if not stream then
-      return err_out(self, 'Not authorized to view this chat')
+      return err_out(self, self.config.lang.chat_not_auth)
     end
     local level = stream:check_chat(self.user)
     if level == 0 then
-      return err_out(self, 'Not authorized to view this chat')
+      return err_out(self, self.config.lang.chat_not_auth)
     end
     self.stream = stream
   end,
@@ -980,11 +984,11 @@ app:match('stream-chat-widget-config', config.http_prefix .. '/stream/:id/chat/w
 
     local stream = Stream:find({ id = self.params.id })
     if not stream then
-      return err_out(self, 'Not authorized to view this chat')
+      return err_out(self, self.config.lang.chat_not_auth)
     end
     local level = stream:check_chat(self.user)
     if level == 0 then
-      return err_out(self, 'Not authorized to view this chat')
+      return err_out(self, self.config.lang.chat_not_auth)
     end
     self.stream = stream
   end,
@@ -1046,11 +1050,11 @@ app:match('stream-video', config.http_prefix .. '/stream/:id/video(/:fn)', respo
   before = function(self)
     local stream = Stream:find({ id = self.params.id })
     if not stream then
-      return plain_err_out(self, 'Stream not found')
+      return plain_err_out(self, self.config.lang.stream_not_found)
     end
     local ok = streams_dict:get(stream.id)
     if ok == nil or ok == 0 then
-      return plain_err_out(self, 'Stream not live', 404)
+      return plain_err_out(self, self.config.lang.stream_not_live, 404)
     end
     self.stream = stream
   end,
@@ -1060,7 +1064,7 @@ app:match('stream-video', config.http_prefix .. '/stream/:id/video(/:fn)', respo
     local res = capture(config.http_prefix .. '/video_raw/' .. self.stream.uuid .. '/' .. fn)
     if res then
       if res.status == 302 then
-        return plain_err_out(self, 'Stream not live', 404)
+        return plain_err_out(self, self.config.lang.stream_not_live, 404)
       end
       return self:write({
         layout = 'plain',
@@ -1102,8 +1106,8 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
       return err_out(self,err)
     end
     local account = Account:find({ id = self.params.id })
-    if not account or not account:check_owner(self.user) then
-      return err_out(self,'Not authorized to modify that account')
+    if not account or not account:check_user(self.user) then
+      return err_out(self,self.config.lang.account_not_auth)
     end
     if not account:check_owner(self.user) then
       account.shared = true
@@ -1133,7 +1137,7 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
         user_id = self.user.id,
       })
       sa:delete()
-      self.session.status_msg = { type = 'success', msg = 'Account removed' }
+      self.session.status_msg = { type = 'success', msg = self.config.lang.account_removed }
     else
       local ssas = self.account:get_shared_accounts()
       if not ssas then ssas = {} end
@@ -1142,7 +1146,7 @@ app:match('account-delete', config.http_prefix .. '/account/:id/delete', respond
       end
       self.account:get_keystore():unset_all()
       self.account:delete()
-      self.session.status_msg = { type = 'success', msg = 'Account deleted' }
+      self.session.status_msg = { type = 'success', msg = self.config.lang.account_deleted }
     end
     return { redirect_to = self:url_for('site-root') }
   end,
@@ -1156,7 +1160,7 @@ app:match('stream-share',config.http_prefix .. '/stream/:id/share', respond_to({
     end
     local stream = Stream:find({ id = self.params.id })
     if not stream or not stream:check_owner(self.user) then
-      return err_out(self,'Stream not found')
+      return err_out(self,self.config.lang.stream_not_found)
     end
     self.stream = stream
   end,
@@ -1164,7 +1168,7 @@ app:match('stream-share',config.http_prefix .. '/stream/:id/share', respond_to({
     return { render = 'stream-share' }
   end,
   POST = function(self)
-    self.session.status_msg = { type = 'success', msg = 'Sharing settings updated' }
+    self.session.status_msg = { type = 'success', msg = self.config.lang.share_updated }
     return { redirect_to = self:url_for('stream-share', { id = self.stream.id }) }
   end,
 }))
@@ -1178,7 +1182,7 @@ app:match('account-share', config.http_prefix .. '/account/:id/share', respond_t
 
     local account = Account:find({ id = self.params.id })
     if not account or not account:check_owner(self.user) or not networks[account.network].allow_sharing then
-      return err_out(self,'Not authorized to share that account')
+      return err_out(self,self.config.lang.account_not_share)
     end
     self.account = account
     self.users = User:select('where id != ?',self.user.id)
@@ -1202,7 +1206,7 @@ app:match('account-share', config.http_prefix .. '/account/:id/share', respond_t
         self.account:unshare(other_user.id)
       end
     end
-    self.session.status_msg = { type = 'success', msg = 'Sharing settings updated' }
+    self.session.status_msg = { type = 'success', msg = self.config.lang.share_updated }
     return { redirect_to = self:url_for('account-share', { id = self.account.id }) }
 
   end,
@@ -1221,7 +1225,7 @@ for _,m in networks() do
         local _, sa, err = m.register_oauth(self.params)
         if err then return err_out(self,err) end
 
-        self.session.status_msg = { type = 'success', msg = 'Account saved' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.account_saved }
         if sa then
           return { redirect_to = self:url_for('stream-edit', { id = sa.stream_id }) .. '?subset=accounts' }
         end
@@ -1251,7 +1255,7 @@ for _,m in networks() do
         else
           account:update({ ffmpeg_args = db.NULL })
         end
-        self.session.status_msg = { type = 'success', msg = 'Account saved' }
+        self.session.status_msg = { type = 'success', msg = self.config.lang.account_saved }
         if sa then
           return { redirect_to = self:url_for('stream-edit', { id = sa.stream_id }) .. '?subset=accounts' }
         end

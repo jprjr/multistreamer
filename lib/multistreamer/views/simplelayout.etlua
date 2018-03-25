@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>multistreamer</title>
+  <title><%= config.app_name %></title>
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/pure-min.css">
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.css">
   <% if params.night_mode == 'true' then %>
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.dark.css">
   <% end %>
+  <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/balloon.min.css">
 </head>
 <body>
 <% content_for('inner') %>
