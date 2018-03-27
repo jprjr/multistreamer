@@ -211,7 +211,7 @@ local function loadconfig(filename)
     yaml_config.lang_id = 'en_us'
   end
 
-  yaml_config.lang = langs[yaml_config.lang]
+  yaml_config.lang = langs[yaml_config.lang_id]
   yaml_config.langs = langs
 
   if yaml_config.app_name == nil or len(yaml_config.app_name) == 0 then
