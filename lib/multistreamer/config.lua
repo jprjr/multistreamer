@@ -214,10 +214,6 @@ local function loadconfig(filename)
   yaml_config.lang = langs[yaml_config.lang_id]
   yaml_config.langs = langs
 
-  if yaml_config.app_name == nil or len(yaml_config.app_name) == 0 then
-    yaml_config.app_name = yaml_config.lang.app_name
-  end
-
   yaml_config.http_prefix      = gsub(yaml_config.http_prefix,'/+$','')
   yaml_config.public_http_url  = gsub(yaml_config.public_http_url,'/+$','')
   yaml_config.public_rtmp_url  = gsub(yaml_config.public_rtmp_url,'/+$','')

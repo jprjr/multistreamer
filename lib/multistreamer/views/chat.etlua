@@ -1,6 +1,6 @@
 <% if not params.widget then %>
 <div id="chatviewers">
-<div><span class="offline"><%= config.lang.disconnected:format(config.app_name) %></span></div>
+<div><span class="offline"><%= config.lang.disconnected:format(config.app_name or config.lang.app_name) %></span></div>
 </div>
 <% end %>
 

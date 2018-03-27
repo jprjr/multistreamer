@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= config.app_name %></title>
+  <title><%= config.app_name or config.lang.app_name %></title>
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/pure-min.css">
   <link rel="stylesheet" href="<%= url_for("site-root") %>static/css/multistreamer.css">
   <% if (user and user:get_pref('night_mode') and params.night_mode ~= 'false') or (params.night_mode == 'true') then %>
@@ -15,7 +15,7 @@
 <body>
   <div class="pure-g header">
   <div class="pure-u-1 title">
-  <h1><a href="<%= url_for("site-root") %>"><%= config.app_name %></a></h1>
+  <h1><a href="<%= url_for("site-root") %>"><%= config.app_name or config.lang.app_name %></a></h1>
   <p><% if user then %><%= config.lang.logged_in:format(user.username) %> (<a href="<%= url_for('profile-edit',{ id = user.id })%>"><%= config.lang.profile%></a>) (<a href="<%= url_for('logout') %>"><%= config.lang.logout %></a>)<% end %></p>
   </div>
   </div>
