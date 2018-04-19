@@ -17,13 +17,13 @@ local db = require'lapis.db'
 local redis = require'multistreamer.redis'
 local publish = redis.publish
 
-local User = require'models.user'
-local Account = require'models.account'
-local Stream = require'models.stream'
-local StreamAccount = require'models.stream_account'
-local SharedStream = require'models.shared_stream'
-local SharedAccount = require'models.shared_account'
-local Webhook = require'models.webhook'
+local User = require'multistreamer.models.user'
+local Account = require'multistreamer.models.account'
+local Stream = require'multistreamer.models.stream'
+local StreamAccount = require'multistreamer.models.stream_account'
+local SharedStream = require'multistreamer.models.shared_stream'
+local SharedAccount = require'multistreamer.models.shared_account'
+local Webhook = require'multistreamer.models.webhook'
 
 local streams_dict = ngx.shared.streams
 local pid = ngx.worker.pid()
@@ -270,6 +270,29 @@ app:match('api-v1-account',api_prefix .. '/account(/:id)', respond_to({
     return get_account(self, account.id)
   end)
 }))
+
+app:match('api-v1-stream-msg',api_prefix .. '/stream/:id/msg', respond_to({
+  before = read_bearer,
+  POST = json_params(function(self)
+    if not self.params.id then
+      return { status = 400, json = { error = 'missing parameter: stream_id' } }
+    end
+
+    local stream = Stream:find({ id = self.params.id })
+    if not stream then
+      return { status = 400, json = { error = 'unauthorized to use that stream' } }
+    end
+
+    local chat_level = stream:check_chat(self.user)
+
+    if chat_level < 2 then
+      return { status = 400, json = { error = 'unauthorized to use that stream' } }
+    end
+    self.params.stream_id = stream.id
+    publish('comment:in',self.params)
+
+    return { json = { status = 'ok' } }
+end)}))
 
 app:match('api-v1-stream',api_prefix .. '/stream(/:id)', respond_to({
   before = read_bearer,
