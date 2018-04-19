@@ -30,6 +30,7 @@ local Webhook_types = {
               body = to_json({
                 content = content,
                 username = username,
+                avatar_url = msg.from.picture,
               }),
             })
 
