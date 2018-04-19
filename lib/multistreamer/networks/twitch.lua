@@ -555,6 +555,7 @@ function M.create_comment_funcs(account, stream, send)
   end
 
   local function getIcon(userid)
+    if not userid then return nil end
     if icons[userid] == nil then
       local icon_res = tclient:get('/users/' .. userid, nil, {
         ['Client-ID'] = twitch_config.client_id,
