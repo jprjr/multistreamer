@@ -645,6 +645,7 @@ app:match('profile-edit', config.http_prefix .. '/profile/:id', respond_to({
     end
     self.user:save_pref('night_mode',tonumber(self.params['night_mode']) == 1)
     self.user:save_pref('lang',self.params['lang'])
+    self.config.lang = self.config.langs[self.user:get_pref('lang')]
     return { render = 'profile' }
   end,
 }))
