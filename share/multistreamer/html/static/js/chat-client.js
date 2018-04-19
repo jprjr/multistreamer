@@ -309,6 +309,22 @@ function appendMessage(msg) {
   var nameImgDiv = document.createElement('div');
   var msgDiv = document.createElement('div');
   var svgIcon = domParser.parseFromString(icons[msg.network],'image/svg+xml');
+
+  if(svgIcon.getElementsByTagName('parsererror').length > 0) {
+    if(msg.network_icon !== undefined) {
+      svgIcon = domParser.parseFromString(msg.network_icon,'image/svg+xml');
+      if(svgIcon.getElementsByTagName('parsererror').length > 0) {
+        svgIcon = null;
+      }
+      else if(msg.network_icon_css !== undefined) {
+        svgIcon.documentElement.style.cssText = msg.network_icon_css;
+      }
+    }
+    else {
+      svgIcon = null;
+    }
+  }
+
   var t;
   var nameMarkdown;
   var msgMarkdown;
@@ -345,13 +361,18 @@ function appendMessage(msg) {
     var profileImg = document.createElement('img');
     profileImg.setAttribute('class','chaticon');
     profileImg.setAttribute('src',msg.from.picture);
-    svgIcon.documentElement.setAttribute('class','minicon ' + msg.network);
+    if(svgIcon !== null) {
+      svgIcon.documentElement.setAttribute('class','minicon ' + msg.network);
+    }
     nameImgDiv.appendChild(profileImg);
   }
-  else {
+  else if(svgIcon !== null) {
     svgIcon.documentElement.setAttribute('class','chaticon ' + msg.network);
   }
-  nameImgDiv.appendChild(svgIcon.documentElement);
+
+  if(svgIcon !== null) {
+    nameImgDiv.appendChild(svgIcon.documentElement);
+  }
 
   if(msg.type === 'emote') {
       nameDiv.setAttribute('class','emote');
