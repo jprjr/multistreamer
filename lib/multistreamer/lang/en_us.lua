@@ -172,7 +172,7 @@ return {
   twitch = {
     metadata_form = {
       title = 'Title',
-      game = 'game',
+      game = 'Game',
     },
   },
 
