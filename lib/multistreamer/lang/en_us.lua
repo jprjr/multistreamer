@@ -95,7 +95,7 @@ return {
   new_webhook = 'New Webhook',
   webhook = 'Webhook %s',
   webhook_url = 'Webhook URL',
-  webhook_notes = 'Webhook URL',
+  webhook_notes = 'Webhook Notes',
   webhook_type = 'Webhook Type',
   webhook_types = {
     discord = 'Discord',
