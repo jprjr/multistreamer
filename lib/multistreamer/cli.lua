@@ -19,9 +19,11 @@ local optarg, optind
 local function help(code)
   io.stderr:write('Usage: multistreamer [-c /path/to/config.yaml] <action>\n')
   io.stderr:write('Available actions:\n')
-  io.stderr:write('  run    -- run server\n')
-  io.stderr:write('  check  -- check config file\n')
-  io.stderr:write('  initdb -- setup database manually\n')
+  io.stderr:write('  run           -- run server\n')
+  io.stderr:write('  check         -- check config file\n')
+  io.stderr:write('  listusers     -- list current users\n')
+  io.stderr:write('  deluser [id]  -- delete user\n')
+  io.stderr:write('  initdb        -- setup database manually\n')
   return code
 end
 
@@ -131,6 +133,63 @@ local functions = {
     local res = try_load_config(true)
     if res ~= 0 then
       return res
+    end
+    return 0
+  end,
+
+  ['listusers'] = function()
+    local res = try_load_config(false)
+    if res ~= 0 then return 1 end
+    local User = require'multistreamer.models.user'
+    for _,v in ipairs(User:select("order by id")) do
+      print(v.id,v.username)
+    end
+    return 0
+  end,
+
+  ['deluser'] = function(userid)
+    if not userid then return help(1) end
+    local res = try_load_config(false)
+    if res ~= 0 then return 1 end
+    local User = require'multistreamer.models.user'
+    local Account = require'multistreamer.models.account'
+    local Keystore = require'multistreamer.models.keystore'
+    local SharedAccount = require'multistreamer.models.shared_account'
+    local SharedStream = require'multistreamer.models.shared_stream'
+    local StreamAccount = require'multistreamer.models.stream_account'
+    local Stream = require'multistreamer.models.stream'
+    local Webhook = require'multistreamer.models.webhook'
+    local u = User:find({id = userid})
+    if not u then
+      print('User not found')
+    else
+      print('Deleting user ' .. u.username)
+      for _,s in ipairs(Stream:select({user_id = u.id})) do
+        for _,sa in ipairs(StreamAccount:select({stream_id = s.id})) do
+          local ks = Keystore(sa.id,s.id)
+          ks:unset_all()
+          sa:delete()
+        end
+        for _,ss in ipairs(SharedStream:select({ stream_id = s.id})) do
+          ss:delete()
+        end
+        for _,wh in ipairs(Webhook:select({ stream_id = s.id })) do
+          wh:delete()
+        end
+        local ks = Keystore(nil,s.id)
+        ks:unset_all()
+        s:delete()
+      end
+      for _,a in ipairs(Account:select({user_id = u.id})) do
+        for _,sa in ipairs(SharedAccount:select({ account_id = a.id})) do
+          sa:delete()
+        end
+        local ks = Keystore(a.id,nil)
+        ks:unset_all()
+        a:delete()
+      end
+
+      u:delete()
     end
     return 0
   end,

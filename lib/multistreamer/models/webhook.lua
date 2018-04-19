@@ -6,7 +6,10 @@ local insert = table.insert
 local concat = table.concat
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
-local http = require'resty.http'
+local http
+if ngx then -- for when running offline commands, like deletion
+  http = require'resty.http'
+end
 local unpack = unpack or table.unpack -- luacheck: compat
 
 local Webhook_types = {
