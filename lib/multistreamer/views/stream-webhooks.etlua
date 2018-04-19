@@ -37,7 +37,7 @@
 <% for i, webhook in ipairs(webhooks) do %>
 <fieldset><legend><%= config.lang.webhook:format(i) %></legend>
 <div class="pure-control-group">
-<label for="webhook.<%= webhook.id %>.url">config.lang.webhook_url</label>
+<label for="webhook.<%= webhook.id %>.url"><%= config.lang.webhook_url %></label>
 <input type="text" name="webhook.<%= webhook.id %>.url" value="<%= webhook.url %>"></input>
 </div>
 
