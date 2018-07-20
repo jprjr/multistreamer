@@ -46,7 +46,7 @@ M.icon =
   '-.883V.883C16 .395 15.605 0 15.117 0" fill-rule="nonzero"/></svg>'
 
 
-local graph_root = 'https://graph.facebook.com/v2.12'
+local graph_root = 'https://graph.facebook.com/v3.0'
 
 local function http_error_handler(res)
   ngx_log(ngx_err,res.body)
@@ -97,12 +97,12 @@ local function facebook_client(access_token)
 end
 
 function M.get_oauth_url(user, stream_id)
-  return 'https://www.facebook.com/v2.8/dialog/oauth?' ..
+  return 'https://www.facebook.com/v3.0/dialog/oauth?' ..
     encode_query_string({
       state = encode_base64(encode_with_secret({ id = user.id, stream_id = stream_id })),
       redirect_uri = M.redirect_uri,
       client_id = facebook_config.app_id,
-      scope = 'user_events,user_managed_groups,publish_actions,manage_pages,publish_pages',
+      scope = 'publish_video,user_events,manage_pages,publish_pages',
     })
 end
 
