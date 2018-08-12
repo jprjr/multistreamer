@@ -475,12 +475,12 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         local sa_keys = sa:get_all()
         local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
         if ffmpeg_args and len(ffmpeg_args) > 0 then
-          if sa_keys.ffmpeg_args == nil then
+          if sa.ffmpeg_args == nil then
             sa:update({ffmpeg_args = ffmpeg_args })
             stream_updated = true
           end
         else
-          if sa_keys.ffmpeg_args ~= nil then
+          if sa.ffmpeg_args ~= nil then
             sa:update({ffmpeg_args = db.NULL })
             stream_updated = true
           end
