@@ -16,6 +16,7 @@ local StreamAccount = require'multistreamer.models.stream_account'
 local SharedAccount = require'multistreamer.models.shared_account'
 local SharedStream  = require'multistreamer.models.shared_stream'
 local Webhook = require'multistreamer.models.webhook'
+local version = require'multistreamer.version'
 
 local respond_to = lapis.application.respond_to
 local to_json   = require('lapis.util').to_json
@@ -46,6 +47,7 @@ app:enable('etlua')
 app.layout = require'multistreamer.views.layout'
 
 app:before_filter(function(self)
+  self.version = version
   self.config = config
   self.networks = networks
   self.user = User.read_session(self)

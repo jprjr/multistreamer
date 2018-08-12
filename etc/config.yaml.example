@@ -171,3 +171,5 @@ sockexec_path: '/tmp/exec.sock'
 ping: '1m'
 ping_timeout: '30s'
 
+### whether to show the version info (default: true)
+show_version: true

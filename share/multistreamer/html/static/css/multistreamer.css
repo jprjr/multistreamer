@@ -1,3 +1,7 @@
+h6.center {
+    text-align: center;
+}
+
 span.error {
     color: red;
 }

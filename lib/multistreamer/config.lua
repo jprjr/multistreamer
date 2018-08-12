@@ -207,6 +207,10 @@ local function loadconfig(filename)
     yaml_config.ping_timeout = '30s';
   end
 
+  if yaml_config.show_version == nil then
+    yaml_config.show_version = true
+  end
+
   if yaml_config.lang_id == nil or len(yaml_config.lang_id) == 0 or langs[yaml_config.lang_id] == nil then
     yaml_config.lang_id = 'en_us'
   end
