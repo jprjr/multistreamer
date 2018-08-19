@@ -1,9 +1,9 @@
 package = "multistreamer"
-version = "@@VERSION@@-0"
+version = "12.2.0-0"
 
 source = {
-  url = "https://github.com/jprjr/multistreamer/archive/@@VERSION@@.tar.gz",
-  file = "multistreamer-@@VERSION@@.tar.gz",
+  url = "https://github.com/jprjr/multistreamer/archive/12.2.0.tar.gz",
+  file = "multistreamer-12.2.0.tar.gz",
 }
 
 dependencies = {

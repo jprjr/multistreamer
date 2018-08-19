@@ -24,6 +24,7 @@ local StreamAccount = require'multistreamer.models.stream_account'
 local SharedStream = require'multistreamer.models.shared_stream'
 local SharedAccount = require'multistreamer.models.shared_account'
 local Webhook = require'multistreamer.models.webhook'
+local importexport = require'multistreamer.importexport'
 
 local streams_dict = ngx.shared.streams
 local pid = ngx.worker.pid()
@@ -45,76 +46,28 @@ local function get_stream(self, id)
     if not stream then
       return { status = 400, json = { error = 'unauthorized to access that stream' } }
     end
-    local chat_level, meta_level = stream:user_prep(self.user)
-    local stream_status = streams_dict:get(stream.id)
-    if stream_status then
-      stream_status = from_json(stream_status)
-    else
-      stream_status = { data_pushing = false }
-    end
-    if stream_status.data_pushing == true then
-      stream.live = true
-    else
-      stream.live = false
-    end
-    stream.webhooks = stream:get_webhooks()
-    for _,w in pairs(stream.webhooks) do
-      w.events = from_json(w.params).events
-      w.params = nil
-    end
-    if chat_level > 0 or meta_level > 0 then
-
-      return { json = { stream = stream } }
-    end
-    return { status = 400, json = { error = 'unauthorized to access that stream' } }
+    return importexport.export_stream(self, stream)
   end
+
+  local ret = {}
 
   local streams = self.user:get_streams()
   for _,v in ipairs(streams) do
-    v:user_prep(self.user)
-
-    local stream_status = streams_dict:get(v.id)
-    if stream_status then
-      stream_status = from_json(stream_status)
-    else
-      stream_status = { data_pushing = false }
-    end
-    if stream_status.data_pushing == true then
-      v.live = true
-    else
-      v.live = false
-    end
-    v.webhooks = v:get_webhooks()
-    for _,w in pairs(v.webhooks) do
-      w.events = from_json(w.params).events
-      w.params = nil
+    local export = importexport.export_stream(self,v)
+    if export.status == 200 then
+      insert(ret,export.json.stream)
     end
   end
+
   local sas = self.user:get_shared_streams()
   for _,v in ipairs(sas) do
     local s = v:get_stream()
-    s:user_prep(self.user)
-
-    local stream_status = streams_dict:get(s.id)
-    if stream_status then
-      stream_status = from_json(stream_status)
-    else
-      stream_status = { data_pushing = false }
+    local export = importexport.export_stream(self,s)
+    if export.status == 200 then
+      insert(ret,export.json.stream)
     end
-    if stream_status.data_pushing == true then
-      s.live = true
-    else
-      s.live = false
-    end
-    s.webhooks = s:get_webhooks()
-    for _,w in pairs(s.webhooks) do
-      w.events = from_json(w.params).events
-      w.params = nil
-    end
-
-    insert(streams,s)
   end
-  return { json = { streams = streams } }
+  return { json = { streams = ret } }
 end
 
 local function get_account(self, id)
@@ -459,120 +412,14 @@ app:match('api-v1-stream',api_prefix .. '/stream(/:id)', respond_to({
       if not stream then
         return { status = 400, json = { error = 'name needed when making new stream' } }
       end
-      self.params.name = stream.name
     end
 
-    self.params.stream_name = self.params.name
-    local og_accounts = self.params.accounts
-    local og_shares = self.params.shares
-    local og_webhooks = self.params.webhooks
-    self.params.webhooks = nil
+    local ret = importexport.import_stream(self, stream, self.params)
 
-    if og_accounts then
-      self.params.accounts = {}
-
-      for _,acc in ipairs(self.user:get_accounts()) do
-        self.params.accounts[acc.id] = false
-      end
-      for _, sa in ipairs(self.user:get_shared_accounts()) do
-        self.params.accounts[sa.account_id] = false
-      end
-
-      for _,v in ipairs(og_accounts) do
-        if v.id then
-          self.params.accounts[v.id] = true
-        end
-      end
+    if ret.status == 200 then
+      publish('stream:update',stream)
     end
-
-    stream, err = Stream:save_stream(self.user,stream,self.params)
-
-    if not stream then
-      return { status = 400, json = { error = err } }
-    end
-
-    if self.params.title then
-      stream:set('title',self.params.title)
-    end
-    if self.params.description then
-      stream:set('description',self.params.description)
-    end
-
-    if og_accounts then
-      for _,acc in ipairs(og_accounts) do
-        local account = Account:find({ id = acc.id })
-
-        if not account then
-          return { status = 400, json = { error = 'unauthorized to use that account' } }
-        end
-        if not account:check_user(self.user) then
-          return { status = 400, json = { error = 'unauthorized to use that account' } }
-        end
-
-        local sa = StreamAccount:find({ account_id = account.id, stream_id = stream.id })
-        local metadata_fields = networks[account.network].metadata_fields()
-        if acc.ffmpeg_args and acc.ffmpeg_args ~= cjson.null then
-          sa:update({ ffmpeg_args = acc.ffmpeg_args })
-        elseif acc.ffmpeg_args == cjson.null then
-          sa:update({ ffmpeg_args = db.NULL })
-        end
-
-        for _,f in pairs(metadata_fields) do
-          if f.required and not acc.settings or not acc.settings[f.key] then
-            return { status = 400, json = { error = 'missing required field ' .. f.key } }
-          end
-          if acc.settings[f.key] then
-            sa:set(f.key,acc.settings[f.key])
-          else
-            sa:unset(f.key)
-          end
-        end
-      end
-    end
-
-    if og_shares then
-      if og_shares == cjson.null then
-        for _,v in ipairs(stream:get_stream_shares()) do
-          v:delete()
-        end
-      else
-        for _,v in ipairs(og_shares) do
-          local ss = SharedStream:find({ stream_id = stream.id, user_id = v.user.id })
-          if not ss then
-            SharedStream:create({
-              stream_id = stream.id,
-              user_id = v.user.id,
-              chat_level = v.chat_level,
-              metadata_level = v.metadata_level,
-            })
-          else
-            ss:update({
-              chat_level = v.chat_level,
-              metadata_level = v.metadata_level,
-            })
-          end
-        end
-      end
-    end
-
-    if og_webhooks then
-      for _,w in pairs(stream:get_webhooks()) do
-        w:delete()
-      end
-      if og_webhooks ~= cjson.null then
-        for _,w in ipairs(og_webhooks) do
-          local t = {}
-          t.stream_id = stream.id
-          t.url = w.url
-          t.events = w.events
-          t.notes = w.notes
-          Webhook:create(t)
-        end
-      end
-    end
-
-    publish('stream:update',stream)
-    return get_stream(self, stream.id)
+    return ret
   end),
 }))
 

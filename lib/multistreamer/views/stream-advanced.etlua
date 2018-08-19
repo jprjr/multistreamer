@@ -11,6 +11,16 @@
 </div>
 <% end %>
 
+<div class="pure-control-group">
+<label for="export_button"><%= config.lang.export_long %></label>
+<input class="pure-button pure-button-secondary"  type="submit" id="export_button" name="export_button" value="<%= config.lang.export %>" />
+</div>
+
+<div class="pure-control-group">
+<label for="import_file"><%= config.lang.import_long %></label>
+<input type="file" id="import_file" name="import_file" />
+<input class="pure-button pure-button-secondary"  type="submit" id="import_button" name="import_button" value="<%= config.lang.import %>" />
+</div>
 
 <div class="pure-controls">
 <input class="pure-button pure-button-primary" type="submit" value="<%= config.lang.save %>" id="submitBtn" />

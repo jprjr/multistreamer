@@ -40,6 +40,8 @@ local ngx_log = ngx.log
 local ngx_warn = ngx.WARN
 local ngx_debug = ngx.DEBUG
 
+local importexport = require'multistreamer.importexport'
+
 local pid = ngx.worker.pid()
 
 app.views_prefix = 'multistreamer.views'
@@ -132,6 +134,28 @@ app:match('logout', config.http_prefix .. '/logout', function(self)
   User.unwrite_session(self)
   return { redirect_to = self:url_for('site-root') }
 end)
+
+app:match('stream-export', config.http_prefix .. '/stream/:id/export', respond_to({
+  before = function(self)
+    if not require_login(self) then return err_out(self,self.config.lang.login_required) end
+
+    self.stream = Stream:find({ id = self.params.id })
+    if not self.stream then
+      return err_out(self,self.config.lang.stream_not_found)
+    end
+  end,
+  GET = function(self)
+    local t = importexport.export_stream(self,self.stream)
+    return self:write({
+      layout = 'plain',
+      content_type = 'application/octet-stream',
+      headers = {
+        ['Content-Disposition'] = 'attachment; filename="'..  self.stream.name .. '.json"',
+      },
+      status = 200,
+    }, to_json(t.json))
+  end,
+}))
 
 app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
   before = function(self)
@@ -316,6 +340,24 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       if not self.stream:check_owner(self.user) then
         return err_out(self,self.config.lang.stream_not_found)
       end
+
+      if self.params['export_button'] ~= nil then
+        return self:write({ redirect_to = self:url_for('stream-export', {id = self.stream.id}) })
+      end
+
+      if self.params['import_file'] ~= nil and self.params['import_file'].content ~= nil and len(self.params['import_file'].content) > 0 then
+        local js = from_json(self.params['import_file'].content)
+        if js ~= nil then
+          js.stream.name = nil
+          local r = importexport.import_stream(self,self.stream,js.stream)
+          if r.status == 200 then
+            self.session.status_msg = { type = 'success', msg = self.config.lang.stream_import_success }
+          else
+            self.session.status_msg = { type = 'error', msg = self.config.lang.stream_import_error }
+          end
+        end
+      end
+
       if not self.params.ffmpeg_pull_args or len(self.params.ffmpeg_pull_args) == 0 then
         if self.stream.ffmpeg_pull_args ~= nil then
           self.stream:update({ffmpeg_pull_args = db.NULL})

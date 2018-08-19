@@ -1,6 +1,6 @@
 return {
   MAJOR = 12,
-  MINOR = 1,
-  PATCH = 1,
-  STRING = '12.1.1',
+  MINOR = 2,
+  PATCH = 0,
+  STRING = '12.2.0',
 }

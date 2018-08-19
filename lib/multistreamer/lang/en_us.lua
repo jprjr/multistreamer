@@ -242,4 +242,10 @@ return {
   restart_error = 'Unrecoverable error! Please check logs and restart',
   stream_create_error = 'Failed to create stream: %s',
   stream_update_error = 'Failed to update stream: %s',
+  export = 'Export',
+  export_long = 'Export settings as JSON',
+  import = 'Import',
+  import_long = 'Import settings from JSON',
+  stream_import_success = 'Successfully imported stream settings',
+  stream_import_error = 'Error importing stream settings',
 }
