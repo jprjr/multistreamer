@@ -44,6 +44,7 @@ M.icon =
   '.066 1.262-3.19 3.106-3.19.883 0 1.642.064 1.863.094v2.16h-1.28c-1 0-1.1' ..
   '95.48-1.195 1.18v1.54h2.39l-.31 2.42h-2.08V16h4.077c.488 0 .883-.395.883' ..
   '-.883V.883C16 .395 15.605 0 15.117 0" fill-rule="nonzero"/></svg>'
+M.icon_css = 'background-color: #3b5998;'
 
 
 local graph_root = 'https://graph.facebook.com/v3.0'

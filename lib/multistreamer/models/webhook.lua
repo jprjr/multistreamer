@@ -109,10 +109,13 @@ local Webhook_types = {
               hook_type = 'comment:in',
               type = msg.type,
               text = msg.text,
+              from = msg.from,
               markdown = msg.markdown,
               network = {
                 displayname = network.displayname,
                 name = network.name,
+                icon = network.icon,
+                icon_css = network.icon_css,
               },
               account = {
                 id = msg.account_id,

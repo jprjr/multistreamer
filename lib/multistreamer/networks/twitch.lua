@@ -54,6 +54,7 @@ M.icon =
   '1.39H14.26v7.653l-2.435 2.435H8l-2.085 2.085v-2.085H2.783V1.39z"/><path ' ..
   'd="M6.61 8.348H8V4.175H6.61v4.173zm3.824 0h1.39V4.175h-1.39v4.173z"/></g' ..
   '></svg>'
+M.icon_css = 'background-color: #6441a5;'
 
 local api_url = 'https://api.twitch.tv/kraken'
 local twitch_config = config.networks.twitch
