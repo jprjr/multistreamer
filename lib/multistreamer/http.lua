@@ -36,11 +36,11 @@ function M.request(self,method,url,params,headers,body)
     res.status = tonumber(find(res.status,'^%d+'))
   end
 
-  if res.body then log(ngx_debug,res.body) end
-
-  if err or res.status >= 400 then
+  if err or (res and res.status >= 400) then
     return false, err or self.error_handler(res)
   end
+
+  if res and res.body then log(ngx_debug,res.body) end
 
   return res, nil
 end
