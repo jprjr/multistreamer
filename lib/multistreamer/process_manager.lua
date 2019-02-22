@@ -321,7 +321,10 @@ function ProcessMgr:endPull(msg)
 
   if not self.pullers[msg.id] then return end
 
-  self.pullers[msg.id]:send('q')
+  local id = msg.id
+  ngx_log(ngx_debug,'[Process Manager] Stopping puller with id ' .. id)
+  -- self.pullers[msg.id]:send('q')
+  self.pullers[msg.id]:close()
   return true
 end
 
