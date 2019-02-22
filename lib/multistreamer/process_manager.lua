@@ -2,6 +2,8 @@
 local ngx = ngx
 local lua_bin = lua_bin
 
+local len = string.len
+
 local config = require'multistreamer.config'.get()
 local redis = require'multistreamer.redis'
 local endpoint = redis.endpoint
