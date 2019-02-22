@@ -268,6 +268,7 @@ function ProcessMgr:startPull(msg)
   streams_dict:set(stream.id,to_json(stream_status))
 
   local ffmpeg_args = {
+    config.ffmpeg,
     '-v',
     'error',
   }
