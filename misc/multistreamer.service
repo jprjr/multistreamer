@@ -1,6 +1,7 @@
 [Unit]
 Description=multistreamer
 After=network.target
+After=postgresql.service
 
 [Service]
 ExecStart=/opt/multistreamer/bin/multistreamer -c /etc/multistreamer/config.yaml run
