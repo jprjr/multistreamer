@@ -359,17 +359,13 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
       end
 
       if not self.params.ffmpeg_pull_args or len(self.params.ffmpeg_pull_args) == 0 then
-        if self.stream.ffmpeg_pull_args ~= nil then
-          self.stream:update({ffmpeg_pull_args = db.NULL})
-          self.session.status_msg = { type = 'success', msg = self.confg.lang.ffmpeg_pull_removed }
-          stream_updated = true
-        end
+        self.stream:update({ffmpeg_pull_args = db.NULL})
+        self.session.status_msg = { type = 'success', msg = self.config.lang.ffmpeg_pull_removed }
+        stream_updated = true
       else
-        if self.stream.ffmpeg_pull_args == nil then
-          self.stream:update({ffmpeg_pull_args = self.params.ffmpeg_pull_args})
-          self.session.status_msg = { type = 'success', msg = self.config.lang.ffmpeg_pull_updated }
-          stream_updated = true
-        end
+        self.stream:update({ffmpeg_pull_args = self.params.ffmpeg_pull_args})
+        self.session.status_msg = { type = 'success', msg = self.config.lang.ffmpeg_pull_updated }
+        stream_updated = true
       end
     end -- }}}
 
@@ -517,15 +513,11 @@ app:match('stream-edit', config.http_prefix .. '/stream(/:id)', respond_to({
         local sa_keys = sa:get_all()
         local ffmpeg_args = self.params['ffmpeg_args' .. '.' .. account.id]
         if ffmpeg_args and len(ffmpeg_args) > 0 then
-          if sa.ffmpeg_args == nil then
-            sa:update({ffmpeg_args = ffmpeg_args })
-            stream_updated = true
-          end
+          sa:update({ffmpeg_args = ffmpeg_args })
+          stream_updated = true
         else
-          if sa.ffmpeg_args ~= nil then
-            sa:update({ffmpeg_args = db.NULL })
-            stream_updated = true
-          end
+          sa:update({ffmpeg_args = db.NULL })
+          stream_updated = true
         end
 
         local metadata_fields = networks[account.network].metadata_fields()
