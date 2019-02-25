@@ -37,6 +37,7 @@ build = {
       ["multistreamer.config"] = "lib/multistreamer/config.lua",
       ["multistreamer.getopt"] = "lib/multistreamer/getopt.lua",
       ["multistreamer.http"] = "lib/multistreamer/http.lua",
+      ["multistreamer.importexport"] = "lib/multistreamer/importexport.lua",
       ["multistreamer.migrations"] = "lib/multistreamer/migrations.lua",
       ["multistreamer.nginx-conf"] = "lib/multistreamer/nginx-conf.lua",
       ["multistreamer.process_manager"] = "lib/multistreamer/process_manager.lua",
