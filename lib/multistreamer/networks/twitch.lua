@@ -222,7 +222,7 @@ function M.get_oauth_url(user, stream_id)
            redirect_uri = M.redirect_uri,
            client_id = twitch_config.client_id,
            state = encode_base64(encode_with_secret({ id = user.id, stream_id = stream_id })),
-           scope = 'user_read channel_read channel_editor channel_stream chat_login',
+           scope = 'user_read channel_read channel_editor channel_stream chat:edit chat:read channel:moderate',
          })
 end
 
