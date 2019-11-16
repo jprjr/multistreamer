@@ -233,6 +233,27 @@ local function loadconfig(filename)
     yaml_config.networks.beam = nil
   end
 
+  for _,network in ipairs({ 'mixer', 'facebook', 'youtube', 'twitch' }) do
+    if type(yaml_config.networks[network]) == 'table' and yaml_config.networks[network].debug == nil then
+      -- default to true to preserve old behavior
+      yaml_config.networks[network].debug = true
+    end
+  end
+
+  -- default to true to preserve old behavior
+  if yaml_config.redis_debug == nil then
+    yaml_config.redis_debug = true
+  end
+  if yaml_config.rtmp_debug == nil then
+    yaml_config.rtmp_debug = true
+  end
+  if yaml_config.websocket_debug == nil then
+    yaml_config.websocket_debug = true
+  end
+  if yaml_config.process_manager_debug == nil then
+    yaml_config.process_manager_debug = true
+  end
+
   config('default',yaml_config)
 
   package.loaded['lapis_environment'] = 'default'

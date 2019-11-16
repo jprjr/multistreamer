@@ -66,16 +66,20 @@ public_irc_ssl: true
 ### you'll need to register a new app with each
 ### service and insert keys/ids in here
 
+### each network can have debug logging enabled/disabled
+
 ### 'rtmp' just stores RTMP urls and has no config
 networks:
   #mixer:
   #  client_id: 'client_id'
   #  client_secret: 'client_secret'
+  #  debug: true
   #  ingest_server: 'rtmp://somewhere'
 
   #twitch:
   #  client_id: 'client_id'
   #  client_secret: 'client_secret'
+  #  debug: true
   #  ingest_server: 'rtmp://somewhere'
     # see https://bashtech.net/twitch/ingest.php
     # for a list of endpoints
@@ -83,10 +87,12 @@ networks:
   #facebook:
   #  app_id: 'app_id'
   #  app_secret: 'app_secret'
+  #  debug: true
 
   #youtube:
   #  client_id: 'client_id'
   #  client_secret: 'client_secret'
+  #  debug: true
   #  country: 'us'
     # 2-character country code, used for listing available categories
 
@@ -173,3 +179,8 @@ ping_timeout: '30s'
 
 ### whether to show the version info (default: true)
 show_version: true
+
+# Turn on/off debug logging for parts of the app
+redis_debug: false
+rtmp_debug: false
+websocket_debug: false

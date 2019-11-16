@@ -27,9 +27,10 @@ local escape_markdown = string.escape_markdown
 local insert = table.insert
 local sort = table.sort
 local tonumber = tonumber
-local ngx_log = ngx.log
+local ngx_log_o = ngx.log
 local ngx_err = ngx.ERR
 local ngx_debug = ngx.DEBUG
+
 local sleep = ngx.sleep
 
 local IRCClient = require'multistreamer.irc.client'
@@ -38,6 +39,14 @@ local Account = require'multistreamer.models.account'
 local StreamAccount = require'multistreamer.models.stream_account'
 
 local M = {}
+
+local function ngx_log(lvl, msg)
+  if lvl ~= ngx_debug then
+    ngx_log_o(lvl,msg)
+  elseif config.networks.twitch.debug then
+    ngx_log_o(lvl,msg)
+  end
+end
 
 M.name = 'twitch'
 M.displayname = 'Twitch'
@@ -60,7 +69,7 @@ local api_url = 'https://api.twitch.tv/kraken'
 local twitch_config = config.networks.twitch
 
 local function http_error_handler(res)
-  ngx_log(ngx_debug,res.body)
+  ngx_log(ngx_err,res.body)
   return res.body
 end
 
@@ -91,7 +100,7 @@ local function refresh_access_token(refresh_token, access_token, expires_in, exp
 
     ngx_log(ngx_debug,body)
 
-    local httpc = http.new(http_error_handler)
+    local httpc = http.new(http_error_handler,config.networks.twitch.debug)
     local refresh_res, refresh_err = httpc:post('https://api.twitch.tv/kraken/oauth2/token',
       nil,
       {
@@ -129,7 +138,7 @@ local function refresh_access_token_wrapper(account)
 end
 
 local function twitch_api_client(access_token)
-  local httpc = http.new(http_error_handler)
+  local httpc = http.new(http_error_handler,config.networks.twitch.debug)
 
   local _request = httpc.request
 
@@ -244,7 +253,7 @@ function M.register_oauth(params)
     return false, nil, 'Twitch Error: failed to get temporary client token'
   end
 
-  local httpc = http.new(http_error_handler)
+  local httpc = http.new(http_error_handler,config.networks.twitch.debug)
 
   local body = encode_query_string({
     client_id = twitch_config.client_id,
@@ -256,6 +265,7 @@ function M.register_oauth(params)
   })
 
   ngx_log(ngx_debug,body)
+
   local res, err = httpc:post(api_url .. '/oauth2/token', nil, nil, body)
 
   if err then return false, nil, err end
@@ -269,7 +279,9 @@ function M.register_oauth(params)
   local refresh_token = creds.refresh_token
 
   local tclient = twitch_api_client(access_token)
-  local user_info, user_err = tclient:get('/user')
+  local user_info, user_err = tclient:get('/user', nil, {
+    ['Client-ID'] = twitch_config.client_id,
+  })
 
   if user_err then
     return false, nil, user_err
@@ -361,7 +373,8 @@ function M.publish_start(account, stream)
       game = stream.game,
     }
   }, {
-    ['Content-Type'] = 'application/json'
+    ['Content-Type'] = 'application/json',
+    ['Client-ID'] = twitch_config.client_id,
   })
 
   if not res then
@@ -404,7 +417,9 @@ function M.check_errors(account)
 
   if not channel_id then
     local tclient = twitch_api_client(access_token)
-    local channel_info, err = tclient:get('/channel')
+    local channel_info, err = tclient:get('/channel', nil, {
+      ['Client-ID'] = twitch_config.client_id,
+    })
     if err then
       return err
     end
@@ -502,7 +517,9 @@ function M.create_viewcount_func(account, _, send)
       access_token, expires_in, expires_at = refresh_access_token(refresh_token, access_token, expires_in, expires_at)
       if access_token then
         local tclient = twitch_api_client(access_token)
-        local res, err = tclient:get('/streams/' .. account['channel_id'])
+        local res, err = tclient:get('/streams/' .. account['channel_id'], nil, {
+          ['Client-ID'] = twitch_config.client_id,
+        })
         if not err then
           if type(res.stream) == 'table' then
             send({viewer_count = tonumber(res.stream.viewers)})
@@ -536,19 +553,25 @@ function M.create_comment_funcs(account, stream, send)
   local function irc_connect()
     access_token, expires_in, expires_at = refresh_access_token_wrapper(account)
     local ok, err
+
     ngx_log(ngx_debug,format('[%s] IRC: Connecting',M.displayname))
+
     ok, err = irc:connect('irc.chat.twitch.tv',443)
     if not ok then
       ngx_log(ngx_err,format('[%s] IRC: Connection failed: %s',M.displayname,err))
       return false,err
     end
+
     ngx_log(ngx_debug,format('[%s] IRC: logging in as %s',M.displayname,nick))
+
     ok, err = irc:login(nick,nil,nil,'oauth:'..access_token)
     if not ok then
       ngx_log(ngx_err,format('[%s] IRC: Login for "%s" failed: %s',M.displayname,nick,err))
       return false,err
     end
+
     ngx_log(ngx_debug,format('[%s] IRC: logged in as %s',M.displayname,nick))
+
     irc:join(channel)
     irc:capreq('twitch.tv/tags')
     irc:capreq('twitch.tv/commands')
@@ -570,7 +593,9 @@ function M.create_comment_funcs(account, stream, send)
 
   if send then
     local tclient_temp = twitch_api_client(access_token)
-    local user_info = tclient_temp:get('/user/')
+    local user_info = tclient_temp:get('/user/', nil, {
+      ['Client-ID'] = twitch_config.client_id,
+    })
     my_user_id = user_info._id
     icons[my_user_id] = user_info.logo
   end

@@ -19,7 +19,7 @@ local sort = table.sort
 local format = string.format
 local escape_markdown = string.escape_markdown
 local date = require'date'
-local ngx_log = ngx.log
+local ngx_log_o = ngx.log
 local ngx_err = ngx.ERR
 local ngx_debug = ngx.DEBUG
 local facebook_config = config.networks.facebook
@@ -28,6 +28,14 @@ local Account = require'multistreamer.models.account'
 local StreamAccount = require'multistreamer.models.stream_account'
 
 local M = {}
+
+local function ngx_log(lvl, msg)
+  if lvl ~= ngx_debug then
+    ngx_log_o(lvl,msg)
+  elseif config.networks.facebook.debug then
+    ngx_log_o(lvl,msg)
+  end
+end
 
 M.name = 'facebook'
 M.displayname = 'Facebook'
@@ -59,7 +67,7 @@ local function facebook_client(access_token)
     return false,'access_token required'
   end
 
-  local httpc = http.new(http_error_handler)
+  local httpc = http.new(http_error_handler,config.networks.facebook.debug)
   local _request = httpc.request
 
   httpc.request = function(self,method,endpoint,params,headers,body)
@@ -199,7 +207,7 @@ function M.register_oauth(params)
     return false, 'error'
   end
 
-  local httpc = http.new(http_error_handler)
+  local httpc = http.new(http_error_handler,config.networks.facebook.debug)
 
   local token_res, token_err = httpc:get(graph_root .. '/oauth/access_token',
     {
@@ -555,7 +563,7 @@ function M.check_errors(account)
   end
 
   if exp and exp < 864000 then -- if token expires in <10 days
-    local httpc = http.new(http_error_handler)
+    local httpc = http.new(http_error_handler,config.networks.facebook.debug)
 
     -- httpc.get = function(self,endpoint,params,headers)
     local res, err = httpc:get(graph_root .. '/oauth/client_code',

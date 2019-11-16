@@ -21,29 +21,12 @@ local ngx_debug = ngx.DEBUG
 local IRCClient = {}
 IRCClient.__index = IRCClient
 
-local function ircline(...)
-  local line = irc.format_line(...)
-  return line .. '\r\n'
-end
-
-local function ircline_forcecol(...)
-  local args = {...}
-  if args[#args]:find(' ') then
-    return ircline(...)
-  else
-    args[#args] = ':' .. args[#args]
-    return ircline(unpack(args))
-  end
-end
-
-local function log_parse_line(data)
-  ngx_log(ngx_debug,'[IRC] ' .. data)
-  return irc.parse_line(data)
-end
-
 function IRCClient.new(opts)
   local t = {}
   t.opts = opts or {}
+  if t.opts.debug == nil then
+    t.opts.debug = true
+  end
   t.events = {}
   t.commandFuncs = {
     ['PING'] = IRCClient.serverPing,
@@ -53,6 +36,28 @@ function IRCClient.new(opts)
   setmetatable(t,IRCClient)
   return t
 end
+
+function IRCClient:log(lvl,msg)
+  if lvl ~= ngx_debug then
+    ngx_log(lvl,msg)
+  elseif self.opts.debug then
+    ngx_log(lvl,msg)
+  end
+end
+
+function IRCClient:send(...)
+  local line = irc.format_line(...)
+  self:log(ngx_debug,'[IRC] > ' .. line)
+  return self.socket:send(line .. '\r\n')
+end
+
+function IRCClient:send_forcecol(...)
+  local args = {...}
+  args[#args] = ':' .. args[#args]
+  return self:send(unpack(args))
+end
+
+
 
 function IRCClient:onEvent(event,func)
   if(not self.events[event]) then
@@ -120,14 +125,14 @@ function IRCClient:login(nickname,username,realname,password)
 
   local ok, err
   if self.password then
-    ok, err = self.socket:send(ircline('PASS',self.password))
+    ok, err = self:send('PASS',self.password)
     if not ok then return false, err end
   end
 
-  ok, err = self.socket:send(ircline('NICK',self.nickname))
+  ok, err = self:send('NICK',self.nickname)
   if not ok then return false, err end
 
-  ok, err = self.socket:send(ircline_forcecol('USER',self.username,0,'*',self.realname))
+  ok, err = self:send_forcecol('USER',self.username,0,'*',self.realname)
   if not ok then return false, err end
 
   -- keep reading in lines until we see a '001' message
@@ -140,7 +145,9 @@ function IRCClient:login(nickname,username,realname,password)
       return false, sock_err
     end
 
-    local msg = log_parse_line(data)
+    self:log(ngx_debug,'[IRC] < ' .. data)
+    local msg = irc.parse_line(data)
+
     if msg.command == '001' then
       logging_in = false
     end
@@ -150,20 +157,20 @@ function IRCClient:login(nickname,username,realname,password)
 end
 
 function IRCClient:join(room)
-  local ok, err = self.socket:send(ircline('JOIN',room))
+  local ok, err = self:send('JOIN',room)
   if not ok then return false, err end
   return true, nil
 end
 
 function IRCClient:quit()
-  self.socket:send(ircline('QUIT'))
+  self:send('QUIT')
 end
 
 function IRCClient:part(room,reason)
   if not reason then
     reason = 'Leaving'
   end
-  local ok, err = self.socket:send(ircline_forcecol('PART',room,reason))
+  local ok, err = self:send_forcecol('PART',room,reason)
   if not ok then return false, err end
   return true,nil
 end
@@ -174,13 +181,13 @@ function IRCClient:emote(room,msg)
 end
 
 function IRCClient:message(room,msg)
-  local ok, err = self.socket:send(ircline_forcecol('PRIVMSG',room,msg))
+  local ok, err = self:send_forcecol('PRIVMSG',room,msg)
   if not ok then return false, err end
   return true,nil
 end
 
 function IRCClient:capreq(cap)
-  local ok, err = self.socket:send(ircline_forcecol('CAP','REQ',cap))
+  local ok, err = self:send_forcecol('CAP','REQ',cap)
   if not ok then return false, err end
   return true,nil
 end
@@ -195,9 +202,13 @@ function IRCClient:cruise()
     end
     local msg
     if data then
-      msg = log_parse_line(data)
+      self:log(ngx_debug,'[IRC] < ' .. data)
+      msg = irc.parse_line(data)
     else
-      msg = log_parse_line(partial)
+      if len(partial) > 0 then
+        self:log(ngx_debug,'[IRC] < ' .. partial)
+      end
+      msg = irc.parse_line(partial)
     end
     if msg and msg.command then
       local func = self.commandFuncs[upper(msg.command)]
@@ -208,7 +219,7 @@ end
 
 function IRCClient:serverPing(msg)
   ngx_log(ngx_debug,'[IRC] Received ping, sending pong')
-  self.socket:send(ircline('PONG',msg.args[1]))
+  self:send('PONG',msg.args[1])
 end
 
 function IRCClient:serverMessage(msg)

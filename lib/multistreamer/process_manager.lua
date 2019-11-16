@@ -20,10 +20,10 @@ local concat = table.concat
 
 local exec_socket = require'resty.exec.socket'
 
+local ngx_log_o = ngx.log
 local ngx_err = ngx.ERR
 local ngx_error = ngx.ERROR
 local ngx_debug = ngx.DEBUG
-local ngx_log = ngx.log
 local ngx_exit = ngx.exit
 local ngx_sleep = ngx.sleep
 
@@ -31,6 +31,14 @@ local pid = ngx.worker.pid()
 local spawn = ngx.thread.spawn
 local streams_dict = ngx.shared.streams
 local status_dict = ngx.shared.status
+
+local function ngx_log(lvl, msg)
+  if lvl ~= ngx_debug then
+    ngx_log_o(lvl,msg)
+  elseif config.process_manager_debug then
+    ngx_log_o(lvl,msg)
+  end
+end
 
 local function start_process(callback,self,process_args,pusher,stream_id,account_id)
   return function()

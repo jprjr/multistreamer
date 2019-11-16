@@ -704,7 +704,9 @@ app:match('publish-start',config.http_prefix .. '/on-publish', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
-    ngx_log(ngx_debug,'app:on-publish: ' .. to_json(self.params))
+    if config.rtmp_debug then
+      ngx_log(ngx_debug,'app:on-publish: ' .. to_json(self.params))
+    end
     local stream, sas, err = get_all_streams_accounts(self.params.name)
     if not stream then
       return plain_err_out(self,err)
@@ -785,7 +787,9 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
     return plain_err_out(self,'Not Found')
   end,
   POST = function(self)
-    ngx_log(ngx_debug,'app:on-update: ' .. to_json(self.params))
+    if config.rtmp_debug then
+      ngx_log(ngx_debug,'app:on-update: ' .. to_json(self.params))
+    end
 
     if self.params.call == 'play' or self.params.call == 'update_play' then
       return plain_err_out(self,'OK',200)
@@ -830,7 +834,9 @@ app:match('on-update',config.http_prefix .. '/on-update', respond_to({
 }))
 
 app:post('publish-stop',config.http_prefix .. '/on-done',function(self)
-  ngx_log(ngx_debug,'app:on-done: ' .. to_json(self.params))
+  if config.rtmp_debug then
+    ngx_log(ngx_debug,'app:on-done: ' .. to_json(self.params))
+  end
   local stream, sas, err = get_all_streams_accounts(self.params.name)
   if not stream then
     return plain_err_out(self,err)

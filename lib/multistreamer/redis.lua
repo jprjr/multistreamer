@@ -5,9 +5,17 @@ local redis = require'resty.redis'
 local to_json = require('lapis.util').to_json
 local format = string.format
 
-local ngx_log = ngx.log
+local ngx_log_o = ngx.log
 local ngx_err = ngx.ERR
 local ngx_debug = ngx.DEBUG
+
+local function ngx_log(lvl, msg)
+  if lvl ~= ngx_debug then
+    ngx_log_o(lvl,msg)
+  elseif config.redis_debug then
+    ngx_log_o(lvl,msg)
+  end
+end
 
 local M = {}
 

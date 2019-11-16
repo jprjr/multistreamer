@@ -21,7 +21,9 @@ local slugify = require('lapis.util').slugify
 local date = require'date'
 local cjson = require'cjson'
 
-local ngx_log = ngx.log
+local ngx_log_o = ngx.log
+local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
 
 local tonumber = tonumber
 local concat = table.concat
@@ -29,6 +31,14 @@ local len = string.len
 local insert = table.insert
 
 local M = {}
+
+local function ngx_log(lvl, msg)
+  if lvl ~= ngx_debug then
+    ngx_log_o(lvl,msg)
+  elseif config.networks.mixer.debug then
+    ngx_log_o(lvl,msg)
+  end
+end
 
 M.name = 'mixer'
 M.displayname = 'Mixer'
@@ -57,7 +67,7 @@ local function http_error_handler(res)
 end
 
 local function mixer_client(access_token)
-  local httpc = http.new(http_error_handler)
+  local httpc = http.new(http_error_handler,config.networks.mixer.debug)
   local _request = httpc.request
 
   httpc.request = function(self,method,endpoint,params,headers,body)

@@ -12,13 +12,22 @@ local function default_error_handler(res)
   return res
 end
 
-function M.new(error_handler)
+function M.new(error_handler,debug)
   local t = {}
   t.httpc = http.new()
   t.error_handler = error_handler or default_error_handler
+  t.debug = debug
 
   setmetatable(t,M)
   return t
+end
+
+function M.log(self,lvl,msg)
+  if lvl ~= ngx_debug then
+    log(lvl,msg)
+  elseif self.debug then
+    log(lvl,msg)
+  end
 end
 
 function M.request(self,method,url,params,headers,body)
@@ -32,6 +41,9 @@ function M.request(self,method,url,params,headers,body)
     body = body,
   })
 
+  if res and res.status then M.log(self,ngx_debug,res.status) end
+  if res and res.body then M.log(self,ngx_debug,res.body) end
+
   if res and type(res.status) ~= 'number' then
     res.status = tonumber(find(res.status,'^%d+'))
   end
@@ -39,8 +51,6 @@ function M.request(self,method,url,params,headers,body)
   if err or (res and res.status >= 400) then
     return false, err or self.error_handler(res)
   end
-
-  if res and res.body then log(ngx_debug,res.body) end
 
   return res, nil
 end

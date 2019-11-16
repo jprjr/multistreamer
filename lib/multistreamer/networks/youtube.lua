@@ -29,6 +29,17 @@ local ipairs = ipairs
 local ceil = math.ceil
 local len = string.len
 local tonumber = tonumber
+local ngx_log_o = ngx.log
+local ngx_err = ngx.ERR
+local ngx_debug = ngx.DEBUG
+
+local function ngx_log(lvl, msg)
+  if lvl ~= ngx_debug then
+    ngx_log_o(lvl,msg)
+  elseif config.networks.youtube.debug then
+    ngx_log_o(lvl,msg)
+  end
+end
 
 local M = {}
 
@@ -61,7 +72,7 @@ local function google_client(base_url,access_token)
     return false,'access_token required'
   end
 
-  local httpc = http.new(http_error_handler)
+  local httpc = http.new(http_error_handler,config.networks.youtube.debug)
   local _request = httpc.request
 
   local httpc_overrides = {}
@@ -133,7 +144,7 @@ local function refresh_access_token(refresh_token, access_token, expires_in, exp
 
   if do_refresh == true then
 
-    local httpc = http.new(http_error_handler)
+    local httpc = http.new(http_error_handler,config.networks.youtube.debug)
     local refresh_res, refresh_err = httpc:post('https://accounts.google.com/o/oauth2/token',
       nil,
       {
@@ -238,7 +249,7 @@ function M.register_oauth(params)
     return false, nil, 'YouTube error: no temporary token'
   end
 
-  local httpc = http.new(http_error_handler)
+  local httpc = http.new(http_error_handler,config.networks.youtube.debug)
   local token_res, token_err = httpc:post('https://accounts.google.com/o/oauth2/token',
     nil,
     {
@@ -437,7 +448,10 @@ end
 
 function M.publish_start(account, stream)
   local err = M.check_errors(account)
-  if err then return false, err end
+
+  if err then
+    return false, err
+  end
 
   local stream_o = stream
 

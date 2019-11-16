@@ -3,6 +3,7 @@ local ngx = ngx
 local networks = networks
 local uuid = uuid
 
+local config = require'multistreamer.config'.get()
 local from_json = require('lapis.util').from_json
 local to_json = require('lapis.util').to_json
 local ws_server = require'resty.websocket.server'
@@ -17,7 +18,7 @@ local subscribe = redis.subscribe
 local publish = redis.publish
 local endpoint = redis.endpoint
 
-local ngx_log = ngx.log
+local ngx_log_o = ngx.log
 local ngx_eof = ngx.eof
 local ngx_exit = ngx.exit
 local ngx_error = ngx.ERROR
@@ -42,6 +43,14 @@ local User = require'multistreamer.models.user'
 local Stream = require'multistreamer.models.stream'
 local StreamAccount = require'multistreamer.models.stream_account'
 local Account = require'multistreamer.models.account'
+
+local function ngx_log(lvl, msg)
+  if lvl ~= ngx_debug then
+    ngx_log_o(lvl,msg)
+  elseif config.websocket_debug then
+    ngx_log_o(lvl,msg)
+  end
+end
 
 local Server = {}
 Server.__index = Server
