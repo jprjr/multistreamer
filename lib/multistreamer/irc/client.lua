@@ -53,6 +53,9 @@ end
 
 function IRCClient:send_forcecol(...)
   local args = {...}
+  if args[#args]:find(' ') then
+    return self:send(...)
+  end
   args[#args] = ':' .. args[#args]
   return self:send(unpack(args))
 end
