@@ -111,7 +111,7 @@ function M.get_oauth_url(user, stream_id)
       state = encode_base64(encode_with_secret({ id = user.id, stream_id = stream_id })),
       redirect_uri = M.redirect_uri,
       client_id = facebook_config.app_id,
-      scope = 'publish_video,user_events,manage_pages,publish_pages',
+      scope = 'publish_video,manage_pages,publish_pages',
     })
 end
 
