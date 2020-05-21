@@ -64,7 +64,21 @@ M.icon_css = 'background-color: #cd201f;'
 
 
 local function http_error_handler(res)
-  return from_json(res.body).error.message
+  local r = from_json(res.body)
+  if not r then return res.body or res end
+  if r.error then
+    if type(r.error) == 'table' then
+      if r.error.message then
+        return r.error.message
+      else
+        return to_json(r.error)
+      end
+    else
+      return r.error
+    end
+  else
+    return to_json(r)
+  end
 end
 
 local function google_client(base_url,access_token)

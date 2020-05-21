@@ -49,7 +49,7 @@ function M.request(self,method,url,params,headers,body)
   end
 
   if err or (res and res.status >= 400) then
-    return false, err or self.error_handler(res)
+    return false, err or self.error_handler(res) or res
   end
 
   return res, nil
