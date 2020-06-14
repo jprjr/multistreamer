@@ -71,3 +71,7 @@
 <p><a href="irc<%= public_irc_ssl and 's' or ''%>://<%=public_irc_hostname%>:<%=public_irc_port %>/,needpass">Login</a></p>
 
 <% if config.show_version then %> <h6 class="center">Multistreamer Version <%= version.STRING %></h6> <% end %>
+
+<% for i,link in ipairs(config.links) do %>
+<p><a href="<%- link.url %>"><%= link.label %></a>
+<% end %>

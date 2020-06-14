@@ -184,3 +184,11 @@ show_version: true
 redis_debug: false
 rtmp_debug: false
 websocket_debug: false
+
+links:
+  - label: 'YouTube Terms of Service'
+    url: 'https://youtube.com/terms'
+  - label: 'Google Privacy Policy'
+    url: 'https://policies.google.com/privacy'
+  - label: 'Google Security Permissions'
+    url: 'https://security.google.com/settings/security/permissions'

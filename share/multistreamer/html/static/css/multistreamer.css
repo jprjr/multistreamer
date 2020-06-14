@@ -357,18 +357,11 @@ img.chaticon {
     display: block;
 }
 
-.chaticon path, .minicon path {
-    fill: #fff;
-}
-
 .facebook {
     background-color: #3b5998;
 }
 .twitch {
     background-color: #6441a5;
-}
-.youtube {
-    background-color: #cd201f;
 }
 .irc {
     background-color: #6b6f75;
@@ -377,8 +370,15 @@ img.chaticon {
     background-color: #0e162a;
 }
 
-.mixer path.st0{fill:#03214F;}
-.mixer path.st1{fill:#1FBAED;}
+.facebook path {fill:#fff;}
+.twitch path {fill:#fff;}
+.irc path {fill:#fff;}
+
+.youtube path.st0 {fill:#ed1d24;}
+.youtube path.st1 {fill:#fff;}
+
+.mixer path.st0 {fill:#03214F;}
+.mixer path.st1 {fill:#1FBAED;}
 
 video {
     width: 100%;

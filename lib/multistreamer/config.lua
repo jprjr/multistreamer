@@ -224,6 +224,10 @@ local function loadconfig(filename)
   yaml_config.private_http_url = gsub(yaml_config.private_http_url,'/+$','')
   yaml_config.private_rtmp_url = gsub(yaml_config.private_rtmp_url,'/+$','')
 
+  if yaml_config.links == nil then
+    yaml_config.links = {}
+  end
+
   if type(yaml_config.networks.beam) == 'table' and not yaml_config.networks.mixer then
     yaml_config.networks.mixer = {
       client_secret = yaml_config.networks.beam.client_secret,
