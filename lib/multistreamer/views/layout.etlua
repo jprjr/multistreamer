@@ -28,6 +28,9 @@
 <% end %>
 
     <% content_for('inner') %>
+<% for i,link in ipairs(config.links) do %>
+<p><a href="<%- link.url %>"><%= link.label %></a>
+<% end %>
   </div>
 </body>
 </html>

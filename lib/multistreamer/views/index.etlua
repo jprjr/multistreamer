@@ -72,6 +72,3 @@
 
 <% if config.show_version then %> <h6 class="center">Multistreamer Version <%= version.STRING %></h6> <% end %>
 
-<% for i,link in ipairs(config.links) do %>
-<p><a href="<%- link.url %>"><%= link.label %></a>
-<% end %>
